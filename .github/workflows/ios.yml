@@ -1,0 +1,160 @@
+# =====================================================================
+# 「우리 모임」 아이폰 빌드 → App Store Connect(TestFlight) 업로드
+# ---------------------------------------------------------------------
+# 맥이 없어도 GitHub 의 맥 러너를 빌려 IPA 를 만든다.
+# 실행: 저장소 → Actions → "iOS 빌드" → Run workflow
+#
+# ⚠️ 미리 저장소 Settings → Secrets and variables → Actions 에 5가지가 있어야 한다
+#    (열쇠·비밀번호는 사장님이 직접 넣는다 — 값은 C:\unse-build\credentials\ 에 있다):
+#      ASC_KEY_ID        = 8SVHXRL56W
+#      ASC_ISSUER_ID     = dfe42600-d0e5-41f1-8e77-48ce0c98a53e
+#      ASC_PRIVATE_KEY   = AuthKey_8SVHXRL56W.p8 파일 내용 전체
+#      DIST_P12_BASE64   = dist.p12 를 base64 로 바꾼 글자
+#      DIST_P12_PASSWORD = dist.p12 의 비밀번호
+#
+# ⚠️ 스크린샷도 여기서 찍는다 — 애플은 아이폰 규격(6.7인치 1290×2796)을 요구하는데
+#    안드로이드 화면을 늘려 쓰면 상태바·비율이 어긋난다. 시뮬레이터에서 «진짜»를 찍는다.
+# =====================================================================
+name: iOS 빌드
+
+on:
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: '스크린샷도 찍기 (시뮬레이터)'
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 패키지 받기
+        run: flutter pub get
+
+      - name: 코드 점검 (오류 있으면 여기서 멈춤)
+        run: flutter analyze lib
+
+      - name: 계산 로직 시험
+        run: flutter test
+
+      # ── 📸 스크린샷: 시뮬레이터에서 «체험 모드»로 찍는다 ───────────────
+      # 심사원이 보는 것과 같은 화면이라 스토어 자료로 그대로 쓸 수 있다.
+      - name: 시뮬레이터 준비
+        if: ${{ inputs.screenshots }}
+        run: |
+          xcrun simctl list devices available | head -40
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          for rt,ds in d.items():
+              if 'iOS' not in rt: continue
+              for x in ds:
+                  if x['name'] in ('iPhone 16 Pro Max','iPhone 15 Pro Max','iPhone 16 Plus'):
+                      print(x['udid']); raise SystemExit
+          ")
+          echo "SIM_UDID=$UDID" >> $GITHUB_ENV
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: 시뮬레이터에서 앱 실행 + 스크린샷
+        if: ${{ inputs.screenshots }}
+        run: |
+          flutter build ios --simulator --debug
+          APP=$(find build/ios/iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          xcrun simctl install "$SIM_UDID" "$APP"
+          BUNDLE=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist")
+          xcrun simctl launch "$SIM_UDID" "$BUNDLE"
+          sleep 25
+          mkdir -p shots
+          # 첫 화면(가입) → 「둘러보기」는 좌표가 기기마다 달라, 여기서는 첫 화면만 남기고
+          # 나머지는 사람이 확인한 뒤 찍는다. (틀린 화면을 스토어에 올리는 것보다 낫다)
+          xcrun simctl io "$SIM_UDID" screenshot shots/01_start.png
+          ls -la shots
+
+      - name: 스크린샷 보관
+        if: ${{ inputs.screenshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots
+          path: shots/*.png
+
+      # ── 🍎 서명 → 아카이브 → IPA → 업로드 ────────────────────────────
+      - name: 배포 인증서 설치 (계정 공용 dist.p12)
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.DIST_P12_BASE64 }}
+          p12-password: ${{ secrets.DIST_P12_PASSWORD }}
+
+      - name: 프로비저닝 프로파일 받기
+        uses: apple-actions/download-provisioning-profiles@v4
+        with:
+          bundle-id: com.taejinsoft.woorimoim
+          profile-type: IOS_APP_STORE
+          issuer-id: ${{ secrets.ASC_ISSUER_ID }}
+          api-key-id: ${{ secrets.ASC_KEY_ID }}
+          api-private-key: ${{ secrets.ASC_PRIVATE_KEY }}
+
+      - name: 빌드 번호 = 실행 번호
+        # ⚠️ 같은 빌드 번호를 두 번 올리면 애플이 거절한다. 실행 번호를 그대로 쓴다.
+        run: |
+          cd ios
+          agvtool new-version -all ${{ github.run_number }}
+
+      - name: 아카이브
+        run: |
+          flutter build ipa --release \
+            --build-number=${{ github.run_number }} \
+            --export-options-plist=/dev/null || true
+          # flutter build ipa 가 서명에서 멈추면 xcodebuild 로 직접 아카이브한다
+          if [ ! -d build/ios/archive/Runner.xcarchive ]; then
+            flutter build ios --release --no-codesign
+            xcodebuild archive \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -archivePath build/ios/archive/Runner.xcarchive \
+              -destination 'generic/platform=iOS' \
+              -allowProvisioningUpdates
+          fi
+
+      - name: IPA 내보내기
+        run: |
+          cat > ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>593WGP65C8</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates
+          ls -la build/ipa
+
+      - name: App Store Connect 업로드 (TestFlight)
+        run: |
+          mkdir -p ~/private_keys
+          echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          xcrun altool --upload-app -f build/ipa/*.ipa -t ios \
+            --apiKey ${{ secrets.ASC_KEY_ID }} \
+            --apiIssuer ${{ secrets.ASC_ISSUER_ID }}
+
+      - name: IPA 보관
+        uses: actions/upload-artifact@v4
+        with:
+          name: woorimoim-ipa
+          path: build/ipa/*.ipa

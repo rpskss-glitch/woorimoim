@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>앞산 배드민턴</string>
+	<string>우리 모임</string>
 	<!-- ⚠️ **꾸러미 이름(PRODUCT_BUNDLE_IDENTIFIER)은 그대로 둔다.**
 	     Firebase 에 등록된 아이폰 앱이 com.taejinsoft.woorimoim 이라,
 	     여기를 바꾸면 등록과 어긋나 **알림이 아예 안 온다.**
