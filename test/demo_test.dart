@@ -41,8 +41,29 @@ void main() {
       expect(st.by('ledger'), isNotEmpty);
       expect(st.by('diary'), isNotEmpty);
       // 그 달 회비를 낸 것으로 보여야 회비 화면이 «쓰는 모습»으로 보인다
-      final month = st.by('ledger').firstWhere((x) => x['kind'] == 'in');
-      expect((month['feeMonths'] as List), isNotEmpty);
+      // (수입에는 «이월금»처럼 회비가 아닌 것도 있으므로 «회비인 것»을 찾아 본다)
+      final dues = st.by('ledger').where((x) => x['kind'] == 'in' && x['feeMonths'] != null);
+      expect(dues, isNotEmpty, reason: '회비를 낸 기록이 없으면 회비 화면이 텅 비어 보인다');
+      expect((dues.first['feeMonths'] as List), isNotEmpty);
+    });
+
+    test('통장이 «마이너스»로 보이지 않는다', () {
+      /* 체험 모드는 심사원이 보는 화면이자 스토어 그림이다.
+         수입보다 지출이 크면 통장이 «-216,000원»(빨간 글씨)으로 떠서 빚진 모임처럼 보인다.
+         실제 동호회도 지난달 잔액을 이월해서 시작한다 — 그 이월금을 샘플에 둔다. */
+      Demo.start();
+      var bal = 0;
+      for (final x in AppState.i.by('ledger')) {
+        final amt = (x['amount'] as num).toInt();
+        bal += x['kind'] == 'in' ? amt : -amt;
+      }
+      expect(bal, greaterThan(0), reason: '샘플 통장이 $bal 원 — 빚진 모임처럼 보인다');
+    });
+
+    test('게시판이 «만들다 만» 것처럼 비어 보이지 않는다', () {
+      Demo.start();
+      expect(AppState.i.by('diary').length, greaterThanOrEqualTo(3),
+          reason: '글이 한둘이면 심사원 눈에 미완성(2.1)으로 보인다');
     });
 
     test('나가면 흔적이 남지 않는다', () {

@@ -100,22 +100,32 @@ jobs:
           xcrun simctl status_bar "$SIM_UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
           xcrun simctl launch "$SIM_UDID" "$BUNDLE"
           mkdir -p raw shots
-          # ⚠️ 시각을 맞추려 들지 않는다. 앱이 서는 시간은 판마다 달라 몇 초만 어긋나도
-          #    같은 화면이 두 장 찍힌다. 그래서 계속 찍어 두고 «똑같은 그림끼리» 묶어 고른다.
-          for i in $(seq -w 1 45); do
+          # ⚠️ 시각을 맞추려 들지 않는다. 앱이 서는 시간이 판마다 달라 몇 초만 어긋나면
+          #    같은 화면이 두 장 찍힌다. 계속 찍어 두고 «똑같은 그림끼리» 묶어 고른다.
+          #    ⚠️ 골라내기가 어긋나도 **원본은 반드시 남긴다** — 안 남기면 왜 어긋났는지
+          #       알 길이 없어 50분짜리 판을 또 돌려야 한다(2026-08-25 실제로 그랬다).
+          for i in $(seq -w 1 60); do
             xcrun simctl io "$SIM_UDID" screenshot "raw/$i.png" >/dev/null 2>&1 || true
             sleep 2
           done
-          python3 tool/pick_shots.py
-          for f in shots/*.png; do echo "$f $(sips -g pixelWidth -g pixelHeight "$f" | tail -2 | awk '{print $2}' | paste -sd x -)"; done
-          test $(ls shots/*.png | wc -l) -eq 5 || { echo "다섯 장이 안 나왔다"; exit 1; }
+          ls raw | wc -l
+          python3 tool/pick_shots.py || echo '골라내기 실패 — 원본은 남겼다'
 
-      - name: 스크린샷 보관
-        if: ${{ inputs.screenshots }}
+      - name: 스크린샷 보관 (고른 것)
+        if: ${{ always() && inputs.screenshots }}
         uses: actions/upload-artifact@v4
         with:
           name: ios-screenshots
           path: shots/*.png
+          if-no-files-found: ignore
+
+      - name: 스크린샷 보관 (원본 전부)
+        if: ${{ always() && inputs.screenshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-screenshots-raw
+          path: raw/*.png
+          if-no-files-found: ignore
 
       # ── 🍎 서명 → 아카이브 → IPA → 업로드 ────────────────────────────
       - name: 배포 인증서 설치 (계정 공용 dist.p12)
