@@ -24,6 +24,10 @@ on:
         description: '스크린샷도 찍기 (시뮬레이터)'
         type: boolean
         default: true
+      upload:
+        description: 'TestFlight 에 올리기 (끄면 스크린샷만 찍는다)'
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -32,8 +36,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ⚠️ 판(version)을 못 박는다.
+      #    «최신 stable»로 두었더니 3.47 이 CocoaPods 대신 Swift Package Manager 로 갈아타면서
+      #    "The sandbox is not in sync with the Podfile.lock" 로 빌드가 멈췄다.
+      #    이 앱을 실제로 만들고 안드로이드까지 낸 판이 3.44.5 다 — 같은 판으로 짓는다.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: 3.44.5
           channel: stable
           cache: true
 
@@ -57,11 +66,14 @@ jobs:
           UDID=$(xcrun simctl list devices available -j | python3 -c "
           import json,sys
           d=json.load(sys.stdin)['devices']
+          cand={}
           for rt,ds in d.items():
               if 'iOS' not in rt: continue
               for x in ds:
-                  if x['name'] in ('iPhone 16 Pro Max','iPhone 15 Pro Max','iPhone 16 Plus'):
-                      print(x['udid']); raise SystemExit
+                  cand[x['name']] = x['udid']
+          for want in ('iPhone 17 Pro Max','iPhone 16 Pro Max','iPhone 15 Pro Max','iPhone 16 Plus'):
+              if want in cand:
+                  print(cand[want]); raise SystemExit
           ")
           echo "SIM_UDID=$UDID" >> $GITHUB_ENV
           xcrun simctl boot "$UDID" || true
@@ -70,17 +82,31 @@ jobs:
       - name: 시뮬레이터에서 앱 실행 + 스크린샷
         if: ${{ inputs.screenshots }}
         run: |
-          flutter build ios --simulator --debug
+          # SHOTS=1 로 지으면 앱이 스스로 체험 모임을 세우고 6초마다 다음 탭으로 넘어간다.
+          # 그래서 여기서는 «좌표를 누르지 않고» 시간만 재서 찍는다 — 기기가 바뀌어도 안 어긋난다.
+          flutter build ios --simulator --debug --dart-define=SHOTS=1
           APP=$(find build/ios/iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           xcrun simctl install "$SIM_UDID" "$APP"
           BUNDLE=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist")
+          xcrun simctl status_bar "$SIM_UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
           xcrun simctl launch "$SIM_UDID" "$BUNDLE"
-          sleep 25
+          T0=$(date +%s)
           mkdir -p shots
-          # 첫 화면(가입) → 「둘러보기」는 좌표가 기기마다 달라, 여기서는 첫 화면만 남기고
-          # 나머지는 사람이 확인한 뒤 찍는다. (틀린 화면을 스토어에 올리는 것보다 낫다)
-          xcrun simctl io "$SIM_UDID" screenshot shots/01_start.png
-          ls -la shots
+          # ⚠️ `sleep 10` 을 이어 붙이면 찍는 데 걸린 시간만큼 «밀려서» 앱보다 뒤처진다.
+          #    그래서 매번 «시작한 때로부터 몇 초»를 다시 재서 기다린다.
+          shot () {  # shot <몇초뒤> <파일이름>
+            local left=$(( T0 + $1 - $(date +%s) ))
+            [ $left -gt 0 ] && sleep $left
+            xcrun simctl io "$SIM_UDID" screenshot "shots/$2.png"
+          }
+          shot 25 01_home
+          shot 35 02_chat
+          shot 45 03_calendar
+          shot 55 04_wallet
+          shot 65 05_board
+          # 크기가 애플 규격인지 여기서 확인한다 (틀린 크기는 올릴 때가 아니라 지금 걸러야 한다)
+          for f in shots/*.png; do sips -g pixelWidth -g pixelHeight "$f" | tr '
+' ' '; echo; done
 
       - name: 스크린샷 보관
         if: ${{ inputs.screenshots }}
@@ -91,12 +117,14 @@ jobs:
 
       # ── 🍎 서명 → 아카이브 → IPA → 업로드 ────────────────────────────
       - name: 배포 인증서 설치 (계정 공용 dist.p12)
+        if: ${{ inputs.upload }}
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.DIST_P12_BASE64 }}
           p12-password: ${{ secrets.DIST_P12_PASSWORD }}
 
       - name: 프로비저닝 프로파일 받기
+        if: ${{ inputs.upload }}
         uses: apple-actions/download-provisioning-profiles@v4
         with:
           bundle-id: com.taejinsoft.woorimoim
@@ -106,12 +134,14 @@ jobs:
           api-private-key: ${{ secrets.ASC_PRIVATE_KEY }}
 
       - name: 빌드 번호 = 실행 번호
+        if: ${{ inputs.upload }}
         # ⚠️ 같은 빌드 번호를 두 번 올리면 애플이 거절한다. 실행 번호를 그대로 쓴다.
         run: |
           cd ios
           agvtool new-version -all ${{ github.run_number }}
 
       - name: 아카이브
+        if: ${{ inputs.upload }}
         run: |
           flutter build ipa --release \
             --build-number=${{ github.run_number }} \
@@ -129,6 +159,7 @@ jobs:
           fi
 
       - name: IPA 내보내기
+        if: ${{ inputs.upload }}
         run: |
           cat > ExportOptions.plist << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -148,6 +179,7 @@ jobs:
           ls -la build/ipa
 
       - name: App Store Connect 업로드 (TestFlight)
+        if: ${{ inputs.upload }}
         run: |
           mkdir -p ~/private_keys
           echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
@@ -156,6 +188,7 @@ jobs:
             --apiIssuer ${{ secrets.ASC_ISSUER_ID }}
 
       - name: IPA 보관
+        if: ${{ inputs.upload }}
         uses: actions/upload-artifact@v4
         with:
           name: woorimoim-ipa
