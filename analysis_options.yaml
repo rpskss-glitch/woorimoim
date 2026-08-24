@@ -1,0 +1,47 @@
+# This file configures the analyzer, which statically analyzes Dart code to
+# check for errors, warnings, and lints.
+#
+# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
+# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
+# invoked from the command line by running `flutter analyze`.
+
+# The following line activates a set of recommended lints for Flutter apps,
+# packages, and plugins designed to encourage good coding practices.
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  # The lint rules applied to this project can be customized in the
+  # section below to disable rules from the `package:flutter_lints/flutter.yaml`
+  # included above or to enable additional rules. A list of all available lints
+  # and their documentation is published at https://dart.dev/lints.
+  #
+  # Instead of disabling a lint rule for the entire project in the
+  # section below, it can also be suppressed for a single line of code
+  # or a specific dart file by using the `// ignore: name_of_lint` and
+  # `// ignore_for_file: name_of_lint` syntax on the line or in the file
+  # producing the lint.
+  rules:
+    # ── 이 루프에서 «실제로 났던 병»에 맞춰 켜 둔 규칙들 ──────────────
+    # 켜기 전에 하나씩 재보고, 지금 코드가 이미 지키고 있는 것만 골랐다.
+
+    # 76·81회차: 결과를 안 받는 Future 안에서 오류가 새어 나가 «아무 말 없이» 끝났다.
+    # 일부러 그런 자리는 `unawaited(...)` 로 그렇다고 적는다.
+    - unawaited_futures
+
+    # 구독·싱크를 안 끊으면 방을 옮겨도 옛 방 소식이 계속 들어온다 (지금은 0곳 — 지키려고 켠다)
+    - cancel_subscriptions
+    - close_sinks
+
+    # 53·56회차: 값이 망가지면 `dynamic` 호출이 그 자리에서 터졌다
+    - avoid_dynamic_calls
+
+    # 87회차: finally 안에서 던지면 원래 오류가 «통째로» 사라진다
+    - throw_in_finally
+
+    # 사람이 잘 못 보는 것들
+    - avoid_empty_else
+    - no_adjacent_strings_in_list
+    - literal_only_boolean_expressions
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options

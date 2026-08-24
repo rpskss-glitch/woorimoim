@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "267251126205",
+    "project_id": "wedding-246e7",
+    "storage_bucket": "wedding-246e7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267251126205:android:a90f52e90c6b8ffc5accd4",
+        "android_client_info": {
+          "package_name": "com.taejinsoft.woorimoim"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfcPqqeVz2STcl-yiHqZLJ2KSa0uPvFHY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

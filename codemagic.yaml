@@ -1,0 +1,87 @@
+# 맥 없이 아이폰 앱을 만드는 설정 (Codemagic — 클라우드에 있는 맥을 빌려 씀)
+#
+# 쓰는 법
+#  1. 이 폴더를 GitHub에 올린다 (비공개 저장소로)
+#  2. codemagic.io 에 GitHub 계정으로 로그인 → 이 저장소를 고른다
+#  3. Codemagic 화면에서 애플 개발자 계정을 연결한다 (App Store Connect API 키)
+#  4. [Start new build] 를 누르면 클라우드 맥이 아이폰 앱(.ipa)을 만들어 준다
+#
+# ⚠️ 애플 개발자 프로그램(연 $99, 약 13만원)에 가입돼 있어야 아이폰 앱을 배포할 수 있다.
+#    가입 전에도 안드로이드 쪽(android-release)은 그대로 만들어진다.
+
+workflows:
+  ios-release:
+    name: 아이폰 앱 만들기
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        # Codemagic 화면에서 만든 서명 파일 이름을 여기에 적는다
+        distribution_type: app_store
+        bundle_identifier: com.taejinsoft.woorimoim
+    scripts:
+      - name: 패키지 받기
+        script: flutter pub get
+      - name: 코드 점검 (오류 있으면 여기서 멈춤)
+        script: flutter analyze --no-fatal-infos
+      - name: 계산 로직 시험
+        script: flutter test
+      - name: CocoaPods 설치
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: 아이폰 앱 빌드
+        script: flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - flutter_drive.log
+    publishing:
+      # 다 만들어지면 앱스토어 커넥트(테스트플라이트)에 자동으로 올린다
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  android-release:
+    name: 안드로이드 앱 만들기
+    instance_type: linux_x2
+    max_build_duration: 45
+    environment:
+      flutter: stable
+      java: 17
+      # ⚠️ 서명 열쇠는 저장소에 «안 올라간다» (android/.gitignore 가 막는다 — 그게 맞다).
+      #    Codemagic 화면 [Teams > Code signing identities] 에 woorimoim.keystore 를 올리고
+      #    그 «참조 이름»을 여기에 적어야 한다. 그러면 android/key.properties 를 만들어 준다.
+      android_signing:
+        - woorimoim_keystore
+    scripts:
+      - name: 서명 열쇠 확인 (없으면 여기서 멈춘다)
+        # 열쇠가 없어도 빌드는 «성공»한다 — 다만 서명이 안 된 앱이 나온다.
+        # 그건 폰에 안 깔리고 스토어도 안 받는데, 아무 경고가 없어 나중에야 안다.
+        script: |
+          if [ ! -f android/key.properties ]; then
+            echo "서명 열쇠가 없습니다 (android/key.properties)."
+            echo "Codemagic 의 Code signing identities 에 woorimoim.keystore 를 올리고"
+            echo "위 android_signing 의 참조 이름을 맞춰주세요."
+            exit 1
+          fi
+      - name: 패키지 받기
+        script: flutter pub get
+      - name: 코드 점검
+        script: flutter analyze --no-fatal-infos
+      - name: 계산 로직 시험
+        script: flutter test
+      # ⚠️ 이 앱은 «갈래»가 둘이라(woori/apsan) 갈래를 반드시 골라야 한다.
+      #    안 고르면 Flutter 는 `app-release.apk` 를 찾는데 갈래가 있으면 그 이름이 안 생겨
+      #    「.apk 를 못 찾겠다」며 **여기서 멈춘다.**
+      - name: APK 만들기 (판매용 · 앞산용)
+        script: |
+          flutter build apk --release --flavor woori
+          flutter build apk --release --flavor apsan
+      - name: 플레이스토어용 AAB 만들기 (판매용)
+        script: flutter build appbundle --release --flavor woori
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      # 갈래가 있으면 AAB 는 `bundle/wooriRelease/` 처럼 갈래 이름이 낀 곳에 나온다
+      - build/app/outputs/bundle/*/*.aab
