@@ -90,9 +90,10 @@ jobs:
       - name: 시뮬레이터에서 앱 실행 + 스크린샷
         if: ${{ inputs.screenshots }}
         run: |
-          # SHOTS=1 로 지으면 앱이 스스로 체험 모임을 세우고 6초마다 다음 탭으로 넘어간다.
+          # SHOTS=true 로 지으면 앱이 스스로 체험 모임을 세우고 10초마다 다음 탭으로 넘어간다.
+          # («1» 로 주면 안 켜진다 — bool.fromEnvironment 는 «true» 만 참으로 읽는다)
           # 그래서 여기서는 «좌표를 누르지 않고» 시간만 재서 찍는다 — 기기가 바뀌어도 안 어긋난다.
-          flutter build ios --simulator --debug --dart-define=SHOTS=1
+          flutter build ios --simulator --debug --dart-define=SHOTS=true
           APP=$(find build/ios/iphonesimulator -maxdepth 1 -name "*.app" | head -1)
           xcrun simctl install "$SIM_UDID" "$APP"
           BUNDLE=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist")
