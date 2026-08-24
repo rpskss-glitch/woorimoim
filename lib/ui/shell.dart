@@ -112,7 +112,8 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
       body: Column(
         children: [
           // 🔍 체험 중이라는 표시 — 어느 탭에서나 같은 자리에 (샘플을 실제 모임으로 오해하지 않게)
-          if (Demo.on) const _DemoBar(),
+          // 스토어 그림을 찍을 때는 감춘다 — 실제 회원은 이 띠를 볼 일이 없다
+          if (Demo.on && !Cfg.shotMode) const _DemoBar(),
           // 💳 이용권이 꺼졌을 때 — 읽기는 그대로, 새로 쓰는 것만 멈춘다
           if (!Demo.on && Fee.locked) const _LockBar(),
           Expanded(child: IndexedStack(index: _tab, children: pages)),

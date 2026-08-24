@@ -99,22 +99,16 @@ jobs:
           BUNDLE=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" "$APP/Info.plist")
           xcrun simctl status_bar "$SIM_UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 || true
           xcrun simctl launch "$SIM_UDID" "$BUNDLE"
-          T0=$(date +%s)
-          mkdir -p shots
-          # ⚠️ `sleep 10` 을 이어 붙이면 찍는 데 걸린 시간만큼 «밀려서» 앱보다 뒤처진다.
-          #    그래서 매번 «시작한 때로부터 몇 초»를 다시 재서 기다린다.
-          shot () {  # shot <몇초뒤> <파일이름>
-            local left=$(( T0 + $1 - $(date +%s) ))
-            [ $left -gt 0 ] && sleep $left
-            xcrun simctl io "$SIM_UDID" screenshot "shots/$2.png"
-          }
-          shot 25 01_home
-          shot 35 02_chat
-          shot 45 03_calendar
-          shot 55 04_wallet
-          shot 65 05_board
-          # 크기가 애플 규격인지 여기서 확인한다 (틀린 크기는 올릴 때가 아니라 지금 걸러야 한다)
+          mkdir -p raw shots
+          # ⚠️ 시각을 맞추려 들지 않는다. 앱이 서는 시간은 판마다 달라 몇 초만 어긋나도
+          #    같은 화면이 두 장 찍힌다. 그래서 계속 찍어 두고 «똑같은 그림끼리» 묶어 고른다.
+          for i in $(seq -w 1 45); do
+            xcrun simctl io "$SIM_UDID" screenshot "raw/$i.png" >/dev/null 2>&1 || true
+            sleep 2
+          done
+          python3 tool/pick_shots.py
           for f in shots/*.png; do echo "$f $(sips -g pixelWidth -g pixelHeight "$f" | tail -2 | awk '{print $2}' | paste -sd x -)"; done
+          test $(ls shots/*.png | wc -l) -eq 5 || { echo "다섯 장이 안 나왔다"; exit 1; }
 
       - name: 스크린샷 보관
         if: ${{ inputs.screenshots }}
@@ -150,21 +144,11 @@ jobs:
 
       - name: 아카이브
         if: ${{ inputs.upload }}
+        # ⚠️ 러너에는 Xcode 로그인 계정이 없다. 자동 서명을 쓰면 "No Accounts / No profiles" 로 멈춘다.
+        #    앞 단계에서 받아 둔 프로파일을 «손으로» 지정해 수동 서명한다.
         run: |
-          flutter build ipa --release \
-            --build-number=${{ github.run_number }} \
-            --export-options-plist=/dev/null || true
-          # flutter build ipa 가 서명에서 멈추면 xcodebuild 로 직접 아카이브한다
-          if [ ! -d build/ios/archive/Runner.xcarchive ]; then
-            flutter build ios --release --no-codesign
-            xcodebuild archive \
-              -workspace ios/Runner.xcworkspace \
-              -scheme Runner \
-              -configuration Release \
-              -archivePath build/ios/archive/Runner.xcarchive \
-              -destination 'generic/platform=iOS' \
-              -allowProvisioningUpdates
-          fi
+          flutter build ios --release --no-codesign
+          xcodebuild archive             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -archivePath build/ios/archive/Runner.xcarchive             -destination 'generic/platform=iOS'             CODE_SIGN_STYLE=Manual             DEVELOPMENT_TEAM=593WGP65C8             CODE_SIGN_IDENTITY="Apple Distribution"             PROVISIONING_PROFILE_SPECIFIER="WooriMoim AppStore"
 
       - name: IPA 내보내기
         if: ${{ inputs.upload }}
@@ -175,15 +159,13 @@ jobs:
           <plist version="1.0"><dict>
             <key>method</key><string>app-store-connect</string>
             <key>teamID</key><string>593WGP65C8</string>
-            <key>signingStyle</key><string>automatic</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict><key>com.taejinsoft.woorimoim</key><string>WooriMoim AppStore</string></dict>
             <key>uploadSymbols</key><true/>
           </dict></plist>
           PLIST
-          xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportPath build/ipa \
-            -exportOptionsPlist ExportOptions.plist \
-            -allowProvisioningUpdates
+          xcodebuild -exportArchive             -archivePath build/ios/archive/Runner.xcarchive             -exportPath build/ipa             -exportOptionsPlist ExportOptions.plist
           ls -la build/ipa
 
       - name: App Store Connect 업로드 (TestFlight)

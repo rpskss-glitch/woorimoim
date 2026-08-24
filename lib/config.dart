@@ -45,6 +45,11 @@ class Cfg {
   /// 절대 바꾸면 안 된다: 바꾸는 순간 기존 모임 데이터가 안 보인다.
   static const appId = 'apsan-badminton-v1';
 
+  /* 📸 «스토어 스크린샷 찍기» 모드 — `--dart-define=SHOTS=true` 로 지을 때만 참.
+     ⚠️ `SHOTS=1` 로 주면 «안 켜진다» — `bool.fromEnvironment` 는 «true» 라는 글자만 참으로 읽는다.
+        2026-08-25 이것 때문에 다섯 장이 전부 가입 화면으로 똑같이 찍혔다(빌드 45분을 날렸다). */
+  static const shotMode = bool.fromEnvironment('SHOTS');
+
   /// 총괄 관리자 비밀번호 — 가입 화면의 모임 이름 칸에 넣으면 숨은 콘솔이 열린다.
   static const adminPass = '123123';
 

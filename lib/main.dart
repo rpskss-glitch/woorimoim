@@ -63,33 +63,22 @@ Future<bool> _bootstrapOnce() async {
   }
 }
 
-/* 📸 «스토어 스크린샷 찍기» 모드 — `--dart-define=SHOTS=true` 로 지을 때만 켜진다.
-   ⚠️ `SHOTS=1` 로 주면 «안 켜진다» — `bool.fromEnvironment` 는 «true» 라는 글자만 참으로 읽는다.
-      2026-08-25 이것 때문에 다섯 장이 전부 가입 화면으로 똑같이 찍혔다(빌드 45분을 통째로 날렸다).
-   평소 빌드에서는 상수가 false 라 아래 길이 통째로 컴파일에서 빠진다(회원에게는 없는 기능).
-
-   왜 두는가: 애플은 아이폰 화면 규격의 스크린샷을 요구하는데, 맥 없이 시뮬레이터에서 찍으려면
-   «어디를 눌러라»를 좌표로 적어야 한다. 좌표는 기기·글자 크기가 바뀌면 엉뚱한 데를 눌러
-   **틀린 화면을 스토어에 올리게 된다.** 그래서 앱이 스스로 탭을 넘기고, 밖에서는 시간만 재서 찍는다. */
-const _shotMode = bool.fromEnvironment('SHOTS');
 
 /* 체험 모임을 세운 뒤 홈→대화→일정→회비→게시판 순서로 스스로 넘어간다.
 
-   ⚠️ 시각을 밖(워크플로)과 맞춰야 한다 — 앱이 넘어가기 «전에» 찍으면 같은 화면이 두 장 나온다.
-      앱이 서는 데 걸리는 시간을 넉넉히 두고(28초), 10초에 한 칸씩 넘긴다.
-      밖에서는 25·35·45·55·65초에 찍는다 → 넘어간 뒤 5초 지난 «가운데»를 찍는 셈이라 어긋나지 않는다. */
+   ⚠️ 밖(워크플로)과 «시각을 맞추려 들지 않는다». 앱이 서는 데 걸리는 시간은 판마다 달라서,
+      「25초에 홈, 35초에 대화」식으로 맞추면 몇 초만 어긋나도 **같은 화면이 두 장** 찍힌다
+      (2026-08-25 실제로 그렇게 찍혔다). 그래서 밖에서는 2초마다 계속 찍고,
+      **똑같은 그림끼리 묶어** 다섯 덩이를 골라낸다. 여기서는 «머무는 시간»만 넉넉히 준다. */
 void _startShotTour() {
   Demo.start();
   var i = 0;
-  Timer(const Duration(seconds: 28), () {
+  Timer.periodic(const Duration(seconds: 12), (t) {
+    if (i >= 4) {
+      t.cancel();
+      return;
+    }
     AppState.i.openTab.value = ++i;
-    Timer.periodic(const Duration(seconds: 10), (t) {
-      if (i >= 4) {
-        t.cancel();
-        return;
-      }
-      AppState.i.openTab.value = ++i;
-    });
   });
 }
 
@@ -97,7 +86,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 시각 지킴이는 `bootstrap` 안에 있다 — 여기서 또 재면 두 겹이라 어느 쪽이 잘랐는지 못 읽는다
   final ready = await bootstrap();
-  if (ready && _shotMode) _startShotTour();
+  if (ready && Cfg.shotMode) _startShotTour();
   runApp(ready ? const WooriApp() : const NeedNetworkApp());
 }
 

@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('워크플로가 넘기는 값과 앱이 읽는 이름이 맞다', () {
     final yml = File('.github/workflows/ios.yml').readAsStringSync();
-    final src = File('lib/main.dart').readAsStringSync();
+    final src = File('lib/config.dart').readAsStringSync();
 
     final name = RegExp(r"bool\.fromEnvironment\('([^']+)'\)").firstMatch(src)?.group(1);
     expect(name, isNotNull, reason: '앱에서 스크린샷 스위치를 못 찾았다');
