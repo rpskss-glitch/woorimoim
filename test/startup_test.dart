@@ -41,7 +41,7 @@ void main() {
   final src = stripComments(File('lib/main.dart').readAsStringSync());
 
   test('시작하다 터져도 «흰 화면»이 되지 않는다', () {
-    final boot = bodyOf(src, 'Future<bool> bootstrap(');
+    final boot = bodyOf(src, 'Future<bool> _bootstrapOnce(');
     expect(boot, isNotEmpty, reason: 'bootstrap 을 못 찾았다');
     expect(boot.contains('try {'), isTrue);
     expect(boot.contains('catch'), isTrue);
@@ -65,7 +65,7 @@ void main() {
        ② 그릇 준비(Store.init) → 프로필 읽기(loadProfile)
           `loadProfile` 은 `Store.i.getStr` 로 기기 저장을 읽는데, 그 저장은 `Store.init` 에서 선다.
           뒤집히면 **회원의 «모임 기억»이 조용히 사라져** 앱을 켤 때마다 가입 화면이 뜬다. */
-    final boot = bodyOf(src, 'Future<bool> bootstrap(');
+    final boot = bodyOf(src, 'Future<bool> _bootstrapOnce(');
     final brand = boot.indexOf('Cfg.detectBrand()');
     final fb = boot.indexOf('Firebase.initializeApp');
     final init = boot.indexOf('Store.i.init()');
@@ -79,6 +79,25 @@ void main() {
     expect(init, lessThan(prof),
         reason: '기기 저장을 «먼저» 세워야 프로필을 읽는다 — '
             '뒤집히면 회원의 모임 기억이 조용히 사라져 앱을 켤 때마다 가입 화면이 뜬다');
+  });
+
+  test('시작이 «끝나지 않을» 때도 흰 화면에 갇히지 않는다', () {
+    /* try/catch 로는 못 막는 길: 인터넷이 반쯤 죽은 곳에서는 Firebase 가
+       **던지지도 끝나지도 않는다.** 그러면 runApp 이 영영 안 불려 흰 화면이 된다.
+       애플 심사장이 막힌 망 뒤에 있는 일이 잦아 이 자리가 2.1(미완성) 반려로 이어진다.
+       그래서 `bootstrap` 은 시간을 재고, 넘으면 «안 됐다»로 돌려 안내 화면으로 보낸다. */
+    final wrap = bodyOf(src, 'Future<bool> bootstrap(');
+    expect(wrap, isNotEmpty, reason: 'bootstrap 을 못 찾았다');
+    expect(wrap.contains('timeout('), isTrue,
+        reason: '시간을 안 재면 매달린 채로 흰 화면이 된다');
+    expect(wrap.contains('_bootstrapOnce()'), isTrue,
+        reason: '지킴이가 실제 시작 절차를 감싸고 있어야 뜻이 있다');
+    expect(wrap.contains('return false;'), isTrue,
+        reason: '시간을 넘겼으면 «안 됐다»로 돌려줘야 안내 화면으로 간다');
+    // main 은 그 «하나»만 기다린다 — 밖에서 또 재면 어느 쪽이 잘랐는지 못 읽는다
+    final body = bodyOf(src, 'void main(');
+    expect(body.contains('.timeout('), isFalse,
+        reason: 'main 에서 또 재고 있다 — 지킴이가 두 겹이다');
   });
 
   test('프로필 읽기가 «기기 저장»에 기대고 있다 — 그래서 차례가 중요하다', () {
@@ -112,7 +131,7 @@ void main() {
 
   test('뒤에서 오는 알림 걸기는 «한 번»만 한다', () {
     // bootstrap 은 「다시 시도」에서 또 불린다 — 그때마다 걸면 겹겹이 쌓인다
-    final boot = bodyOf(src, 'Future<bool> bootstrap(');
+    final boot = bodyOf(src, 'Future<bool> _bootstrapOnce(');
     final at = boot.indexOf('onBackgroundMessage');
     expect(at, greaterThan(0));
     expect(boot.substring(0, at).contains('_bgBound'), isTrue,

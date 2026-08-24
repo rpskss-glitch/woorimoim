@@ -46,6 +46,14 @@ jobs:
           channel: stable
           cache: true
 
+      # ⚠️ Swift Package Manager 를 끈다.
+      #    켜져 있으면 Flutter 가 라이브러리를 SPM 으로 가져가면서 Podfile 은 «빈 채»로 남는데,
+      #    Xcode 안에는 CocoaPods 검사(Check Pods Manifest.lock)가 그대로 있어
+      #    "The sandbox is not in sync with the Podfile.lock" 로 빌드가 멈춘다.
+      #    이 프로젝트는 Podfile 에 최소버전·권한 매크로 같은 설정이 들어 있으므로 CocoaPods 쪽을 쓴다.
+      - name: Swift Package Manager 끄기
+        run: flutter config --no-enable-swift-package-manager
+
       - name: 패키지 받기
         run: flutter pub get
 

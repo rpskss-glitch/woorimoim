@@ -27,7 +27,23 @@ bool _bgBound = false;
       그래서 통째로 받아 내고 「다시 시도」 화면으로 보낸다.
    ⚠️ 「다시 시도」가 `Store.init` 만 다시 부르면, Firebase 가 안 선 경우에는
       아무리 눌러도 살아나지 않는다 — 그래서 이 함수를 통째로 다시 부른다. */
-Future<bool> bootstrap() async {
+/* ⏱️ 시작 시각 지킴이 — 이만큼 안에 못 서면 «안 선 것»으로 친다.
+
+   ⚠️ `try/catch` 만으로는 못 막는 길이 있다: 인터넷이 반쯤 죽은 곳(응답이 «오지 않는» 곳)에서는
+      Firebase 가 **던지지도, 끝나지도 않는다.** 그러면 `runApp` 이 영영 안 불려 **흰 화면**이 된다.
+      실제로 애플 심사장은 막힌 망 뒤에 있는 경우가 많아, 이 자리가 2.1(미완성) 반려로 이어진다.
+      그래서 시간을 재고, 넘으면 「인터넷 확인」 화면으로 보낸다 — 거기서 다시 시도할 수 있다. */
+const _bootLimit = Duration(seconds: 15);
+
+Future<bool> bootstrap() {
+  return _bootstrapOnce().timeout(_bootLimit, onTimeout: () {
+    // ignore: avoid_print
+    print('앱 시작이 $_bootLimit 안에 안 끝났다 — 인터넷 확인 화면으로 보낸다');
+    return false;
+  });
+}
+
+Future<bool> _bootstrapOnce() async {
   try {
     // 어느 앱인지 «먼저» 알아야 한다 — Firebase 열쇠가 앱마다 다르기 때문
     await Cfg.detectBrand();
@@ -77,6 +93,7 @@ void _startShotTour() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 시각 지킴이는 `bootstrap` 안에 있다 — 여기서 또 재면 두 겹이라 어느 쪽이 잘랐는지 못 읽는다
   final ready = await bootstrap();
   if (ready && _shotMode) _startShotTour();
   runApp(ready ? const WooriApp() : const NeedNetworkApp());
