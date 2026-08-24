@@ -28,8 +28,10 @@ print('머문 구간 길이:', [len(r) for r in runs])
 runs = [r for r in runs if len(r) >= 2]
 print('쓸 만한 구간:', len(runs))
 
-# 앞쪽에 «가입 화면·첫 그리기» 같은 군더더기가 있을 수 있으니 뒤에서 다섯 덩이를 쓴다
-picked = runs[-len(NAMES):] if len(runs) >= len(NAMES) else runs
+# 앞에서부터 차례대로 — 앱이 홈→대화→일정→회비→게시판 순서로 스스로 넘어간다
+picked = runs[:len(NAMES)]
+if len(picked) < len(NAMES):
+    print('⚠️ 화면이 %d개뿐이다 — 원본(raw)을 받아 눈으로 고를 것' % len(picked))
 os.makedirs(OUT, exist_ok=True)
 for name, r in zip(NAMES, picked):
     shutil.copy(os.path.join(RAW, r[len(r) // 2]), os.path.join(OUT, name + '.png'))

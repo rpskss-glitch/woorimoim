@@ -73,12 +73,18 @@ Future<bool> _bootstrapOnce() async {
 void _startShotTour() {
   Demo.start();
   var i = 0;
-  Timer.periodic(const Duration(seconds: 12), (t) {
-    if (i >= 4) {
-      t.cancel();
-      return;
-    }
+  /* ⚠️ 첫 화면(홈)에 «오래» 머문다. 앱이 서는 데 12초쯤 걸리는데 바로 넘겨 버리면
+     밖에서 첫 장을 찍기도 전에 대화 탭으로 가 있어 **홈이 통째로 안 찍힌다**
+     (2026-08-25 실제로 그랬다 — 채팅·일정·회비·게시판 넷만 나왔다). */
+  Timer(const Duration(seconds: 40), () {
     AppState.i.openTab.value = ++i;
+    Timer.periodic(const Duration(seconds: 12), (t) {
+      if (i >= 4) {
+        t.cancel();
+        return;
+      }
+      AppState.i.openTab.value = ++i;
+    });
   });
 }
 

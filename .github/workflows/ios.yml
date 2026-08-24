@@ -154,11 +154,13 @@ jobs:
 
       - name: 아카이브
         if: ${{ inputs.upload }}
-        # ⚠️ 러너에는 Xcode 로그인 계정이 없다. 자동 서명을 쓰면 "No Accounts / No profiles" 로 멈춘다.
-        #    앞 단계에서 받아 둔 프로파일을 «손으로» 지정해 수동 서명한다.
+        # ⚠️ 서명 설정은 여기(명령줄)가 아니라 **Runner 대상의 Release 설정**에 박아 두었다.
+        #    명령줄로 주면 Pods 의 라이브러리 대상까지 걸려
+        #    "PromisesObjC does not support provisioning profiles" 로 통째로 멈춘다.
+        #    (러너에는 Xcode 로그인 계정이 없어 자동 서명은 애초에 못 쓴다)
         run: |
           flutter build ios --release --no-codesign
-          xcodebuild archive             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -archivePath build/ios/archive/Runner.xcarchive             -destination 'generic/platform=iOS'             CODE_SIGN_STYLE=Manual             DEVELOPMENT_TEAM=593WGP65C8             CODE_SIGN_IDENTITY="Apple Distribution"             PROVISIONING_PROFILE_SPECIFIER="WooriMoim AppStore"
+          xcodebuild archive             -workspace ios/Runner.xcworkspace             -scheme Runner             -configuration Release             -archivePath build/ios/archive/Runner.xcarchive             -destination 'generic/platform=iOS'
 
       - name: IPA 내보내기
         if: ${{ inputs.upload }}

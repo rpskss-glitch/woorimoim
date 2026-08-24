@@ -585,7 +585,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = 593WGP65C8;
+				PROVISIONING_PROFILE_SPECIFIER = "WooriMoim AppStore";
 				PRODUCT_BUNDLE_IDENTIFIER = com.taejinsoft.woorimoim;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
