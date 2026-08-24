@@ -105,8 +105,7 @@ jobs:
           shot 55 04_wallet
           shot 65 05_board
           # 크기가 애플 규격인지 여기서 확인한다 (틀린 크기는 올릴 때가 아니라 지금 걸러야 한다)
-          for f in shots/*.png; do sips -g pixelWidth -g pixelHeight "$f" | tr '
-' ' '; echo; done
+          for f in shots/*.png; do echo "$f $(sips -g pixelWidth -g pixelHeight "$f" | tail -2 | awk '{print $2}' | paste -sd x -)"; done
 
       - name: 스크린샷 보관
         if: ${{ inputs.screenshots }}
