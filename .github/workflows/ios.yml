@@ -40,8 +40,10 @@ jobs:
       - name: 패키지 받기
         run: flutter pub get
 
-      - name: 코드 점검 (오류 있으면 여기서 멈춤)
-        run: flutter analyze lib
+      - name: 코드 점검 (오류·경고 있으면 여기서 멈춤)
+        # ⚠️ `--no-fatal-infos` 가 없으면 «정보»(스타일 제안)까지 실패로 쳐서 빌드가 멈춘다.
+        #    우리는 오류·경고 0을 지키고, 스타일 제안은 막지 않는다.
+        run: flutter analyze lib --no-fatal-infos
 
       - name: 계산 로직 시험
         run: flutter test
