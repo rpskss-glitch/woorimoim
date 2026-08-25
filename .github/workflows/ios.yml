@@ -31,10 +31,22 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    # ⚠️ macos-15 를 쓰면 안 된다 — 거기 있는 Xcode 는 16.4(iOS 18.5 SDK)뿐이라
+    #    애플이 업로드를 거절한다: "iOS 26 SDK 이상으로 지은 것만 받는다"(409).
+    #    macos-26 에는 Xcode 26.x 가 있다.
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+
+      - name: Xcode 판 고르기 (가장 새것)
+        # 애플은 «가장 새 SDK»로 지은 것만 받는다. 기본값이 옛 판일 수 있어 여기서 못 박는다.
+        run: |
+          NEW=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "고른 Xcode: $NEW"
+          sudo xcode-select -s "$NEW"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i "iOS " || true
 
       # ⚠️ 판(version)을 못 박는다.
       #    «최신 stable»로 두었더니 3.47 이 CocoaPods 대신 Swift Package Manager 로 갈아타면서
