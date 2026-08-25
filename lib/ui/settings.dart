@@ -289,8 +289,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.person_remove_outlined, color: dangerText(context)),
-                  title: Text('내 자료 지우기', style: TextStyle(color: dangerText(context))),
-                  subtitle: const Text('이 모임에서 내 이름·생년월일·아바타를 지워요',
+                  title: Text('모임 탈퇴 · 내 자료 지우기',
+                      style: TextStyle(color: dangerText(context))),
+                  subtitle: const Text('회원 자리와 내 개인정보를 지워요 (쓴 글은 모임 기록으로 남아요)',
                       style: TextStyle(fontSize: 12)),
                   onTap: _deleteMyData,
                 ),
@@ -455,8 +456,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() {});
   }
 
-  /* 🗑 내 자료 지우기 — 스토어가 요구하는 «앱 안에서의 계정 삭제»(애플 5.1.1(v)).
-     ⚠️ 무엇이 지워지고 무엇이 남는지 **먼저 정직하게** 알린다. */
+  /* 🗑 모임 탈퇴 — 스토어가 요구하는 «앱 안에서의 계정 삭제»(애플 5.1.1(v)).
+
+     ⚠️ 무엇이 지워지고 무엇이 남는지 **먼저 정직하게** 알린다.
+        회비 장부와 대화는 «모임이 함께 쓴 기록»이라 한 사람이 나갔다고 지우지 않는다.
+        옛 글의 글쓴이 이름·아바타도 남긴다 — 지우면 「알 수 없는 사람」이 되어
+        지난 대화를 읽을 수 없다 (`Store.deleteMyData` 의 `former` 가 그 몫).
+     ⚠️ 그러니 «이름·아바타를 지운다»고 적으면 **거짓말이 된다.**
+        2026-08-25 실제로 그렇게 적혀 있었다 — 화면 글과 코드가 어긋나면
+        스토어에 내는 «데이터 삭제» 신고까지 함께 거짓이 된다. */
   Future<void> _deleteMyData() async {
     final st = AppState.i;
     final code = st.code;
@@ -466,10 +474,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     final ok = await confirmSheet(
       context,
-      '내 자료를 지울까요?',
-      '지워지는 것: 내 이름·생년월일·아바타·알림 설정, 이 모임의 회원 자리.\n'
-      '남는 것: 이미 쓴 대화·글·사진 (모임이 함께 쓴 기록이라 지우면 남의 대화에 구멍이 나요).\n'
-      '그 글까지 모두 지우고 싶으시면 설정의 「운영자에게 연락」으로 알려주세요.',
+      '이 모임에서 탈퇴할까요?',
+      '지워지는 것: 이 모임의 회원 자리(더는 들어올 수 없어요), 생년월일, 알림 설정, 읽음·접속 기록.\n'
+      '남는 것: 이미 쓴 대화·글·사진, 그리고 그 글에 «글쓴이»로 보이는 이름과 아바타 '
+      '(모임이 함께 쓴 기록이라, 지우면 남의 대화에 구멍이 나고 누가 쓴 글인지 알 수 없게 돼요).\n'
+      '그 글과 이름까지 모두 지우려면 설정의 「운영자에게 연락」으로 알려주세요.',
       okLabel: '지우기',
       danger: true,
     );
