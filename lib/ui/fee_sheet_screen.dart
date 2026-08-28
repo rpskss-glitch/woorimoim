@@ -29,6 +29,29 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
   int _tab = 0; // 0=회비 1=지출
   bool _busy = false;
 
+  /* ⚠️ 열자마자 «이번 달»이 보여야 한다.
+     달은 왼쪽(옛날) → 오른쪽(이번 달) 차례라, 그냥 두면 화면에는 옛 달만 보이고
+     총무가 가장 보고 싶은 이번 달은 오른쪽 밖에 있다.
+     2026-08-28 에뮬레이터에서 실제로 «텅 빈 표»처럼 보였다 — 값은 다 있었는데도. */
+  final _hScroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
+  }
+
+  @override
+  void dispose() {
+    _hScroll.dispose();
+    super.dispose();
+  }
+
+  void _toNow() {
+    if (!_hScroll.hasClients) return;
+    _hScroll.jumpTo(_hScroll.position.maxScrollExtent);
+  }
+
   static const _headStyle = TextStyle(fontWeight: FontWeight.w700, fontSize: 13);
   static const _cellStyle = TextStyle(fontSize: 13);
   static const _headBg = Color(0xFFD8D2EC); // 종이 표와 같은 연보라 머리글
@@ -45,7 +68,11 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
           PopupMenuButton<int>(
             tooltip: '몇 달치를 볼지',
             initialValue: _months,
-            onSelected: (v) => setState(() => _months = v),
+            onSelected: (v) {
+              setState(() => _months = v);
+              // 달 수를 바꿔도 «이번 달»이 보이게
+              WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 3, child: Text('최근 3개월')),
               PopupMenuItem(value: 6, child: Text('최근 6개월')),
@@ -65,17 +92,20 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
                 ButtonSegment(value: 1, label: Text('지출')),
               ],
               selected: {_tab},
-              onSelectionChanged: (s) => setState(() => _tab = s.first),
+              onSelectionChanged: (s) {
+                setState(() => _tab = s.first);
+                /* ⚠️ 탭을 바꿀 때도 «이번 달»로 옮겨야 한다.
+                   회비 표는 좁아서 한 화면에 들어가 스크롤이 0인데, 지출 표는 칸이 넓어
+                   넘친다 — 그대로 두면 지출로 바꾸는 순간 «텅 빈 옛 달»만 보인다
+                   (2026-08-28 에뮬레이터에서 실제로 그랬다). */
+                WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
+              },
             ),
           ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 90),
-              // ⚠️ 표는 옆으로도 넘친다 — 가로 스크롤이 없으면 달이 많을 때 잘려 보인다
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: _tab == 0 ? _feeTable(months) : _outTable(months),
-              ),
+              child: _tab == 0 ? _feeTable(months) : _outTable(months),
             ),
           ),
         ],
@@ -109,38 +139,76 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
         child: child,
       );
 
-  Widget _feeTable(List<String> months) {
-    final members = AppState.i.memberList;
-    return Column(
+  /* 표 한 판을 그린다.
+
+     ⚠️ **첫 칸(회원명·갈래)은 고정**한다. 옆으로 밀 때 이름까지 같이 밀려 나가면
+        무슨 줄인지 알 수 없는 숫자판이 된다 — 2026-08-28 에뮬레이터에서 실제로 그랬다.
+     ⚠️ 대화방에 올릴 그림은 `scroll: false` 로 그린다 — 스크롤 없이 통째로 그려야
+        달이 12개여도 잘리지 않는다. */
+  Widget _grid({
+    required List<Widget> firstCol,
+    required List<List<Widget>> monthRows,
+    bool scroll = true,
+  }) {
+    final right = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      children: [for (final r in monthRows) Row(children: r)],
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          _box(const Text('회원명', style: _headStyle), w: 96, bg: _headBg),
-          for (final m in months)
-            _box(Text(FeeSheet.monthLabel(m), style: _headStyle), bg: _headBg),
-        ]),
-        for (var i = 0; i < members.length; i++)
-          Row(children: [
-            _box(
-              Text('${i + 1}. ${members[i]['name'] ?? '회원'}',
-                  style: _cellStyle, overflow: TextOverflow.ellipsis),
-              w: 96,
-              bg: i.isEven ? _altBg : null,
-              align: Alignment.centerLeft,
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: firstCol),
+        if (scroll)
+          Flexible(
+            child: SingleChildScrollView(
+              controller: _hScroll,
+              scrollDirection: Axis.horizontal,
+              child: right,
             ),
+          )
+        else
+          right,
+      ],
+    );
+  }
+
+  Widget _feeTable(List<String> months, {bool scroll = true}) {
+    final members = AppState.i.memberList;
+    return _grid(
+      scroll: scroll,
+      firstCol: [
+        _box(const Text('회원명', style: _headStyle), w: 96, bg: _headBg),
+        for (var i = 0; i < members.length; i++)
+          _box(
+            Text('${i + 1}. ${members[i]['name'] ?? '회원'}',
+                style: _cellStyle, overflow: TextOverflow.ellipsis),
+            w: 96,
+            bg: i.isEven ? _altBg : null,
+            align: Alignment.centerLeft,
+          ),
+        // 합계 줄 — 「이번 달 몇 명이 냈는지」가 총무가 가장 자주 보는 값이다
+        _box(const Text('납부', style: _headStyle), w: 96, bg: _headBg),
+      ],
+      monthRows: [
+        [
+          for (final m in months)
+            _box(Text(FeeSheet.monthLabel(m), style: _headStyle), bg: _headBg)
+        ],
+        for (var i = 0; i < members.length; i++)
+          [
             for (final m in months)
               _box(
                 Text(FeeSheet.cell(FeeSheet.mark(members[i]['uid'] as String, m)),
                     style: _cellStyle),
                 bg: i.isEven ? _altBg : null,
-              ),
-          ]),
-        // 합계 줄 — 「이번 달 몇 명이 냈는지」가 총무가 가장 자주 보는 값이다
-        Row(children: [
-          _box(const Text('납부', style: _headStyle), w: 96, bg: _headBg),
+              )
+          ],
+        [
           for (final m in months)
-            _box(Text('${FeeSheet.paidCount(members, m)}', style: _headStyle), bg: _headBg),
-        ]),
+            _box(Text('${FeeSheet.paidCount(members, m)}', style: _headStyle),
+                bg: _headBg)
+        ],
       ],
     );
   }
@@ -149,7 +217,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
   static String _won(int v) =>
       v == 0 ? '' : '${(v / 10000).toStringAsFixed(v % 10000 == 0 ? 0 : 1)}만';
 
-  Widget _outTable(List<String> months) {
+  Widget _outTable(List<String> months, {bool scroll = true}) {
     final table = FeeSheet.outByCat(months);
     final cats = table.keys.toList()..sort();
     if (cats.isEmpty) {
@@ -159,32 +227,34 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
             style: TextStyle(color: Theme.of(context).hintColor)),
       );
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          _box(const Text('갈래', style: _headStyle), w: 96, bg: _headBg),
-          for (final m in months)
-            _box(Text(FeeSheet.monthLabel(m), style: _headStyle), w: 60, bg: _headBg),
-        ]),
+    return _grid(
+      scroll: scroll,
+      firstCol: [
+        _box(const Text('갈래', style: _headStyle), w: 96, bg: _headBg),
         for (var i = 0; i < cats.length; i++)
-          Row(children: [
-            _box(Text(cats[i], style: _cellStyle),
-                w: 96, bg: i.isEven ? _altBg : null, align: Alignment.centerLeft),
+          _box(Text(cats[i], style: _cellStyle),
+              w: 96, bg: i.isEven ? _altBg : null, align: Alignment.centerLeft),
+        _box(const Text('합계', style: _headStyle), w: 96, bg: _headBg),
+      ],
+      monthRows: [
+        [
+          for (final m in months)
+            _box(Text(FeeSheet.monthLabel(m), style: _headStyle), w: 60, bg: _headBg)
+        ],
+        for (var i = 0; i < cats.length; i++)
+          [
             for (final m in months)
               _box(Text(_won(table[cats[i]]?[m] ?? 0), style: _cellStyle),
-                  w: 60, bg: i.isEven ? _altBg : null),
-          ]),
-        Row(children: [
-          _box(const Text('합계', style: _headStyle), w: 96, bg: _headBg),
+                  w: 60, bg: i.isEven ? _altBg : null)
+          ],
+        [
           for (final m in months)
             _box(
-              Text(_won(cats.fold<int>(0, (a, c) => a + (table[c]?[m] ?? 0))),
-                  style: _headStyle),
-              w: 60,
-              bg: _headBg,
-            ),
-        ]),
+                Text(_won(cats.fold<int>(0, (a, c) => a + (table[c]?[m] ?? 0))),
+                    style: _headStyle),
+                w: 60,
+                bg: _headBg)
+        ],
       ],
     );
   }
@@ -204,7 +274,9 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
 
     setState(() => _busy = true);
     try {
-      final bytes = await _capture(_tab == 0 ? _feeTable(months) : _outTable(months));
+      final bytes = await _capture(_tab == 0
+              ? _feeTable(months, scroll: false)
+              : _outTable(months, scroll: false));
       if (bytes == null) {
         if (mounted) toast(context, '표를 그림으로 만들지 못했어요');
         return;
