@@ -39,7 +39,7 @@ class Cfg {
   /// 화면에 보여줄 버전. **pubspec.yaml의 version과 같아야 한다.**
   /// (어긋나면 회원에게 버전을 물어봤을 때 엉뚱한 답을 듣고 엉뚱한 데를 찾게 된다)
   /// 시험(test/store_test.dart)이 둘을 견줘서 어긋나면 알려준다.
-  static const version = '1.2.0';
+  static const version = '1.3.0';
 
   /// Firestore 경로 구분자 — 커플앱(hana-couple-v1)과 데이터가 섞이지 않게 하는 열쇠.
   /// 절대 바꾸면 안 된다: 바꾸는 순간 기존 모임 데이터가 안 보인다.
