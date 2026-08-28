@@ -113,10 +113,22 @@ void main() {
         .replaceAll(RegExp(r'//.*'), '');
 
     test('① 신고 — 대화에서 사유를 골라 신고할 수 있다', () {
+      /* 203회차: 신고·차단이 게시판 «댓글»에도 있어야 해서(애플 1.2)
+         common.dart 의 `reportSheet` 한 곳으로 모았다. 길이 둘이면 한쪽만 고쳐진다.
+         그래서 «메뉴는 대화 화면», «실제 신고는 공용 함수»를 나눠서 본다. */
       final chat = bare('lib/ui/chat.dart');
+      final shared = bare('lib/ui/common.dart');
       expect(chat.contains("Navigator.pop(c, 'report')"), isTrue, reason: '신고 메뉴가 없다');
-      expect(chat.contains('Store.i.reportContent('), isTrue, reason: '신고가 서버에 안 남는다');
-      expect(chat.contains('Moderation.reasons'), isTrue, reason: '무엇을 신고하는지 못 고른다');
+      expect(chat.contains('reportSheet('), isTrue, reason: '고른 뒤 신고로 이어지지 않는다');
+      expect(shared.contains('Store.i.reportContent('), isTrue, reason: '신고가 서버에 안 남는다');
+      expect(shared.contains('Moderation.reasons'), isTrue, reason: '무엇을 신고하는지 못 고른다');
+    });
+
+    test('①-2 신고·차단이 «댓글»에도 있다 (애플 1.2)', () {
+      // 이용자 글이 보이는 자리마다 있어야 한다 — 한 자리만 빠져도 그것으로 반려된다
+      final post = bare('lib/ui/post_screen.dart');
+      expect(post.contains('reportSheet('), isTrue, reason: '댓글에 신고가 없다');
+      expect(post.contains('blockSheet('), isTrue, reason: '댓글에 차단이 없다');
     });
 
     test('② 차단 — 대화에서 차단할 수 있고, 설정에서 풀 수 있다', () {

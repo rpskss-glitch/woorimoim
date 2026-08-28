@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../config.dart';
+import '../moderation.dart';
 import '../state.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -718,4 +719,64 @@ Future<int?> askMonths(
       ),
     ),
   );
+}
+
+/* 🚩 신고 — 사유를 고르게 한다 (스토어가 「무엇을 신고하는지」를 본다).
+   🚫 차단 — 그 사람 글이 내 화면에서만 사라진다.
+
+   ⚠️ 이 둘은 애플 1.2 가 요구하는 것이라 «이용자 글이 보이는 모든 자리»에 있어야 한다.
+      대화방에만 두고 게시판 댓글에 빠뜨리면 그 자리가 반려 사유가 된다.
+      그래서 화면마다 따로 짜지 않고 여기 한 곳에 둔다 — 길이 둘이면 한쪽만 고쳐진다. */
+Future<void> reportSheet(BuildContext context, Map<String, dynamic> item,
+    {String? snippet}) async {
+  final code = AppState.i.code;
+  if (code == null) return;
+  final reason = await showModalBottomSheet<String>(
+    context: context,
+    showDragHandle: true,
+    builder: (c) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(18, 0, 18, 8),
+            child: Text('무엇이 문제인가요?',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          ),
+          for (final r in Moderation.reasons)
+            ListTile(title: Text(r), onTap: () => Navigator.pop(c, r)),
+        ],
+      ),
+    ),
+  );
+  if (reason == null || !context.mounted) return;
+  final ok = await Store.i.reportContent(
+    code,
+    targetId: item['id'] as String,
+    targetBy: (item['by'] as String?) ?? '',
+    reason: reason,
+    // 무엇을 신고했는지 운영진이 알아볼 만큼만 (긴 글은 잘라 보낸다)
+    snippet: snippet ?? ((item['text'] as String?) ?? '').trim(),
+  );
+  if (!context.mounted) return;
+  if (!ok) return toast(context, '신고하지 못했어요 — 잠시 후 다시 해주세요');
+  toast(context, '신고했어요 — 운영진이 확인합니다');
+}
+
+Future<void> blockSheet(BuildContext context, String? uid, VoidCallback onChanged) async {
+  final code = AppState.i.code;
+  if (code == null || uid == null) return;
+  final name = AppState.i.nameOf(uid);
+  final ok = await confirmSheet(
+    context,
+    '$name님을 차단할까요?',
+    '이제부터 그분의 대화·글·사진이 내 화면에서 안 보여요.\n\n남의 화면에는 그대로 보이고, 설정에서 언제든 풀 수 있어요.',
+    okLabel: '차단',
+    danger: true,
+  );
+  if (!ok || !context.mounted) return;
+  final done = await Store.i.setBlocked(code, Moderation.nextBlocked(uid, true));
+  if (!context.mounted) return;
+  toast(context, done ? '$name님을 차단했어요' : '차단하지 못했어요 — 다시 시도해주세요');
+  onChanged();
 }

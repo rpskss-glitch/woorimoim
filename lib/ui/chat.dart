@@ -463,59 +463,14 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     }
   }
 
-  /* 🚩 신고 — 사유를 고르게 한다(스토어가 「무엇을 신고하는지」를 본다).
-     신고는 그 방 운영진이 보고 처리한다. */
-  Future<void> _report(Map<String, dynamic> m) async {
-    final code = AppState.i.code;
-    if (code == null) return;
-    final reason = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (c) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(18, 0, 18, 8),
-              child: Text('무엇이 문제인가요?',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-            ),
-            for (final r in Moderation.reasons)
-              ListTile(title: Text(r), onTap: () => Navigator.pop(c, r)),
-          ],
-        ),
-      ),
-    );
-    if (reason == null || !mounted) return;
-    final ok = await Store.i.reportContent(
-      code,
-      targetId: m['id'] as String,
-      targetBy: (m['by'] as String?) ?? '',
-      reason: reason,
-      snippet: msgLabel(m),
-    );
-    if (!mounted) return;
-    if (!ok) return toast(context, '신고하지 못했어요 — 잠시 후 다시 해주세요');
-    toast(context, '신고했어요 — 운영진이 확인합니다');
-  }
+  /* 🚩🚫 신고·차단은 «이용자 글이 보이는 모든 자리»가 같은 길을 쓴다(common.dart).
+     여기서 따로 짜면 게시판 댓글 쪽과 어긋나고, 한쪽만 고쳐진다. */
+  Future<void> _report(Map<String, dynamic> m) =>
+      reportSheet(context, m, snippet: msgLabel(m));
 
-  /* 🚫 차단 — 내 화면에서만 가린다. 남의 화면에서는 그대로 보인다. */
-  Future<void> _block(String? uid) async {
-    final code = AppState.i.code;
-    if (code == null || uid == null) return;
-    final name = AppState.i.nameOf(uid);
-    final ok = await confirmSheet(
-      context,
-      '$name님을 차단할까요?',
-      '이제부터 그분의 대화·글·사진이 내 화면에서 안 보여요.\n\n남의 화면에는 그대로 보이고, 설정에서 언제든 풀 수 있어요.',
-      okLabel: '차단',
-      danger: true,
-    );
-    if (!ok || !mounted) return;
-    final done = await Store.i.setBlocked(code, Moderation.nextBlocked(uid, true));
-    if (!mounted) return;
-    toast(context, done ? '$name님을 차단했어요' : '차단하지 못했어요 — 다시 시도해주세요');
-  }
+  Future<void> _block(String? uid) => blockSheet(context, uid, () {});
+
+
 
   @override
   Widget build(BuildContext context) {

@@ -3,9 +3,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../logic.dart';
 import '../moderation.dart';
+import '../comments.dart';
 import '../state.dart';
 import '../store.dart';
 import 'common.dart';
+import 'post_screen.dart';
 
 /// 📔 게시판 + 📸 사진첩.
 class BoardTab extends StatefulWidget {
@@ -206,7 +208,16 @@ class _PostCard extends StatelessWidget {
        서버는 글에 적힌 번호만 보므로 지우기를 거절한다(눌러도 안 되는 헛단추가 된다). */
     final mine = item['by'] == Store.i.myUid;
     final notice = item['notice'] == true;
-    return SectionCard(
+    final id = item['id'] as String?;
+    /* 📄 글을 누르면 «글 안»으로 들어간다 — 거기서 전문을 읽고 댓글을 단다.
+       목록에서는 글이 잘려 보이므로, 들어갈 길이 없으면 뒷내용을 읽을 방법이 아예 없다. */
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: id == null
+          ? null
+          : () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => PostScreen(postId: id))),
+      child: SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -240,6 +251,9 @@ class _PostCard extends StatelessWidget {
                     if (!context.mounted) return;
                     if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
                     Store.i.dropPhotos(Store.photoIdsOf(item));
+                    // 딸린 댓글도 함께 — 안 지우면 «주인 없는 댓글»이 영영 남는다
+                    await Comments.removeAllOf(item['id'] as String);
+                    if (!context.mounted) return;
                     toast(context, '글을 지웠어요');
                     onChanged();
                   },
@@ -265,8 +279,27 @@ class _PostCard extends StatelessWidget {
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
           ],
-          Text((item['text'] as String?) ?? '', style: const TextStyle(height: 1.6)),
+          /* 목록에서는 «앞부분만» 보인다 — 길면 글 하나가 화면을 통째로 먹어
+             다음 글이 있는지조차 알 수 없다. 전문은 눌러 들어가서 읽는다. */
+          Text((item['text'] as String?) ?? '',
+              style: const TextStyle(height: 1.6),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.mode_comment_outlined,
+                  size: 15, color: Theme.of(context).hintColor),
+              const SizedBox(width: 5),
+              Text('댓글 ${id == null ? 0 : Comments.count(id)}',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+              const Spacer(),
+              Text('눌러서 읽기',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+            ],
+          ),
         ],
+      ),
       ),
     );
   }
