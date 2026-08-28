@@ -780,3 +780,97 @@ Future<void> blockSheet(BuildContext context, String? uid, VoidCallback onChange
   toast(context, done ? '$name님을 차단했어요' : '차단하지 못했어요 — 다시 시도해주세요');
   onChanged();
 }
+
+/* ✏️ 「한 줄 물어보는 창」 — 이름·금액·계좌처럼 짧은 값을 받는다.
+
+   ⚠️ **입력 그릇(TextEditingController)을 창이 스스로 들고 있어야 한다.**
+      바깥에서 만들어 `Navigator.pop` 뒤에 버리면, 창이 닫히는 «몇 프레임» 동안
+      아직 살아 있는 입력칸이 죽은 그릇을 읽어 **앱이 빨간 화면으로 터진다**
+      (`A TextEditingController was used after being disposed`).
+      2026-08-29 설정에서 「월 회비」를 저장하는 순간 실제로 터졌고,
+      **이미 나간 판에도 그대로 들어 있었다** — 시험 940개가 다 통과하는데도.
+
+   창이 들고 있으면 창이 사라질 때 Flutter 가 알아서 버린다 — 우리가 시각을 맞출 필요가 없다. */
+Future<String?> askText(
+  BuildContext context, {
+  required String title,
+  String initial = '',
+  String? hint,
+  String? helper,
+  String? suffix,
+  int maxLength = 60,
+  TextInputType? keyboard,
+  String okLabel = '저장',
+  bool obscure = false,
+}) =>
+    showDialog<String>(
+      context: context,
+      builder: (_) => _AskTextDialog(
+        title: title,
+        initial: initial,
+        hint: hint,
+        helper: helper,
+        suffix: suffix,
+        maxLength: maxLength,
+        keyboard: keyboard,
+        okLabel: okLabel,
+        obscure: obscure,
+      ),
+    );
+
+class _AskTextDialog extends StatefulWidget {
+  final String title, initial, okLabel;
+  final String? hint, helper, suffix;
+  final int maxLength;
+  final TextInputType? keyboard;
+  final bool obscure;
+  const _AskTextDialog({
+    required this.title,
+    required this.initial,
+    required this.okLabel,
+    required this.maxLength,
+    this.hint,
+    this.helper,
+    this.suffix,
+    this.keyboard,
+    this.obscure = false,
+  });
+  @override
+  State<_AskTextDialog> createState() => _AskTextDialogState();
+}
+
+class _AskTextDialogState extends State<_AskTextDialog> {
+  late final TextEditingController _c = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    // 창이 «다 사라진 뒤»에 불린다 — 입력칸은 이미 없다
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: Text(widget.title),
+        content: TextField(
+          controller: _c,
+          autofocus: true,
+          obscureText: widget.obscure,
+          maxLength: widget.maxLength,
+          keyboardType: widget.keyboard,
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            helperText: widget.helper,
+            suffixText: widget.suffix,
+            counterText: '', // 글자 수는 자리를 먹는다 — 한계는 저장할 때 알린다
+          ),
+          onSubmitted: (v) => Navigator.pop(context, v),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, _c.text),
+              child: Text(widget.okLabel)),
+        ],
+      );
+}

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../fee_book.dart';
 import '../logic.dart';
@@ -54,6 +55,12 @@ class _WalletTabState extends State<WalletTab> {
       backgroundColor: Colors.transparent,
       floatingActionButton: st.isTreasurer
           ? FloatingActionButton.extended(
+              /* ⚠️ «달리는 이름(heroTag)»을 안 주면 Flutter 가 모두 같은 이름을 쓴다.
+                 탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둔그란 단추가 여럿이다.
+                 그러면 화면을 옮길 때 「같은 이름이 둘」이라며 **앱이 빨간 화면으로 터진다** —
+                 2026-08-29 설정에서 「월 회비」을 저장하는 순간 실제로 터졌고,
+                 이미 나간 판에도 그대로 들어 있었다. */
+              heroTag: 'wallet-add',  // 회비 기록하기
               onPressed: () => _openForm(context),
               icon: const Icon(Icons.add),
               label: const Text('기록하기'),
@@ -132,6 +139,7 @@ class _WalletTabState extends State<WalletTab> {
               const SizedBox(height: 10),
               Text('입금은 총무님께 하시면 총무님이 기록해요',
                   style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+              _AccountBar(),
             ],
           ),
         )
@@ -147,6 +155,7 @@ class _WalletTabState extends State<WalletTab> {
             style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
         child: Column(
           children: [
+            _AccountBar(),
             Row(
               children: [
                 Expanded(
@@ -671,6 +680,50 @@ class _LedgerFormState extends State<_LedgerForm> {
               child: Text(_busy ? '저장 중…' : '저장'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/* 🏦 「회비 보내는 곳」 — 눌러서 복사한다.
+
+   ⚠️ 없으면 아무것도 그리지 않는다 (빈 줄이 남으면 «뭔가 빠진 화면»으로 보인다).
+   ⚠️ 복사한 뒤 반드시 말해 준다 — 눌렀는데 아무 일도 안 일어나면 안 된 줄 알고 또 누른다. */
+class _AccountBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final acc =
+        (((AppState.i.couple?['fee'] as Map?)?['account'] as String?) ?? '').trim();
+    if (acc.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () async {
+          await Clipboard.setData(ClipboardData(text: acc));
+          if (context.mounted) toast(context, '계좌를 복사했어요');
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              const Text('🏦 ', style: TextStyle(fontSize: 14)),
+              Expanded(
+                child: Text(acc,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.copy, size: 16, color: Theme.of(context).hintColor),
+            ],
+          ),
         ),
       ),
     );

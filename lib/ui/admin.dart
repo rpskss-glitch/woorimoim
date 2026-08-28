@@ -345,29 +345,14 @@ class _AdminConsoleState extends State<AdminConsole> {
     }
   }
 
-  Future<String?> _askText(String title, String label, {String initial = ''}) async {
-    final c = TextEditingController(text: initial);
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(title),
-          content: TextField(
-            controller: c,
-            autofocus: true,
-            maxLength: 14,
-            decoration: InputDecoration(labelText: label, counterText: ''),
-          ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('확인')),
-        ],
-        ),
-      );
-    } finally {
-      c.dispose();   // 안 치우면 방 이름을 고칠 때마다 조금씩 쌓인다
-    }
-  }
+  /* ✏️ 한 줄 물어보기 — 그릇은 «창이» 들고 있는 공용 창을 쓴다.
+     여기서 그릇을 만들어 창이 닫힌 뒤 버리면, 닫히는 몇 프레임 동안
+     아직 살아 있는 입력칸이 죽은 그릇을 읽어 앱이 터진다(2026-08-29 실제로 터졌다). */
+  Future<String?> _askText(String title, String label, {String initial = ''}) =>
+      askText(context,
+          title: title, initial: initial, hint: label, maxLength: 14, okLabel: '확인');
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -383,6 +368,12 @@ class _AdminConsoleState extends State<AdminConsole> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+          /* ⚠️ «달리는 이름(heroTag)»을 안 주면 Flutter 가 모두 같은 이름을 쓴다.
+             탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둔그란 단추가 여럿이다.
+             그러면 화면을 옮길 때 「같은 이름이 둘」이라며 **앱이 빨간 화면으로 터진다** —
+             2026-08-29 설정에서 「월 회비」을 저장하는 순간 실제로 터졌고,
+             이미 나간 판에도 그대로 들어 있었다. */
+          heroTag: 'admin-new',  // 총괄 새 모임
         onPressed: _create,
         icon: const Icon(Icons.add),
         label: const Text('새 모임'),

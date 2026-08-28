@@ -60,6 +60,12 @@ class _CalendarTabState extends State<CalendarTab> {
       backgroundColor: Colors.transparent,
       floatingActionButton: AppState.i.isAdmin
           ? FloatingActionButton.extended(
+              /* ⚠️ «달리는 이름(heroTag)»을 안 주면 Flutter 가 모두 같은 이름을 쓴다.
+                 탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둔그란 단추가 여럿이다.
+                 그러면 화면을 옮길 때 「같은 이름이 둘」이라며 **앱이 빨간 화면으로 터진다** —
+                 2026-08-29 설정에서 「월 회비」을 저장하는 순간 실제로 터졌고,
+                 이미 나간 판에도 그대로 들어 있었다. */
+              heroTag: 'calendar-add',  // 일정 만들기
               onPressed: () => _openForm(context),
               icon: const Icon(Icons.add),
               label: const Text('모임 만들기'),

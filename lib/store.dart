@@ -1000,6 +1000,17 @@ class Store {
     if (fee != null) {
       if (fee['amount'] != null) fee['amount'] = money(fee['amount']);
       _num(fee, 'day'); // 「내는 날」이 글자면 회비 화면이 터진다
+      /* 🏦 회비 보내는 곳 — 「은행·계좌번호·예금주」를 한 줄로 적어 둔 글자.
+         ⚠️ 글자가 아니면 버린다. 백업을 손으로 고쳤거나 옛 자료면 숫자·배열이 들어올 수 있는데,
+            그대로 두면 `as String?` 로 읽는 자리에서 터져 **회비 화면이 통째로 안 뜬다.**
+         ⚠️ 길이도 자른다 — 한 줄 자리에 그리므로 긴 글이 들어오면 화면 밖으로 넘친다. */
+      final acc = fee['account'];
+      if (acc is String) {
+        final t = acc.trim();
+        fee['account'] = t.length > 60 ? t.substring(0, 60) : t;
+      } else if (acc != null) {
+        fee.remove('account');
+      }
     }
     /* 모임 상징은 **홈 맨 위**에서 그린다 — 여기가 터지면 홈 화면이 통째로 안 뜬다.
        크기·회전은 숫자, 갈래·이모지·사진은 글자라야 한다. */

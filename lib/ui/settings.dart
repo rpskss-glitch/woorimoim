@@ -165,6 +165,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _editFee,
                   ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('회비 보내는 곳'),
+                    subtitle: Text(
+                      _accountOf(st).isEmpty
+                          ? '아직 없어요 — 적어두면 회원이 바로 복사해요'
+                          : _accountOf(st),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _editAccount,
+                  ),
                   if (st.isOwner)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -330,29 +342,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // 입력칸은 대화상자 «밖»에서 만들어 쓰고 끝나면 치운다.
                 // 안에서 만들면 화면이 다시 그려질 때마다 새로 생겨 쌓이고,
                 // 그때 이미 친 글자도 날아간다
-                final ctl = TextEditingController();
-                final String? pass;
-                try {
-                  pass = await showDialog<String>(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: const Text('관리자'),
-                      content: TextField(
-                        controller: ctl,
-                        obscureText: true,
-                        autofocus: true,
-                        decoration: const InputDecoration(labelText: '비밀번호'),
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(c), child: const Text('취소')),
-                        FilledButton(
-                            onPressed: () => Navigator.pop(c, ctl.text), child: const Text('확인')),
-                      ],
-                    ),
-                  );
-                } finally {
-                  ctl.dispose();
-                }
+                /* ⚠️ 그릇은 «창이» 들고 있어야 한다 — 여기서 만들어 창이 닫힌 뒤 버리면
+                   닫히는 몇 프레임 동안 살아 있는 입력칸이 죽은 그릇을 읽어 앱이 터진다. */
+                final pass = await askText(
+                  context,
+                  title: '관리자',
+                  hint: '비밀번호',
+                  obscure: true,
+                  maxLength: 20,
+                  okLabel: '확인',
+                );
                 if (pass != Cfg.adminPass) return;
                 if (!context.mounted) return;
                 await tryAdminLogin(context);
@@ -713,24 +712,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _editTitle() async {
     final st = AppState.i;
-    final c = TextEditingController(text: st.couple?['title'] as String? ?? '');
-    final String? typed = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('모임 이름'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          maxLength: 14,
-          decoration: const InputDecoration(counterText: '', helperText: '회원들이 이 이름으로 들어와요'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('저장')),
-        ],
-      ),
+    final typed = await askText(
+      context,
+      title: '모임 이름',
+      initial: st.couple?['title'] as String? ?? '',
+      helper: '회원들이 이 이름으로 들어와요',
+      maxLength: 14,
     );
-    c.dispose();
     if (typed == null || typed.trim().isEmpty) return;
     final title = typed.trim();
     if (title == st.couple?['title']) return;
@@ -763,27 +751,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// 회비 보내는 곳 — 없으면 빈 글자
+  static String _accountOf(AppState st) =>
+      (((st.couple?['fee'] as Map?)?['account'] as String?) ?? '').trim();
+
+  /* 🏦 회비 보내는 곳 — 「은행 계좌번호 예금주」를 한 줄로.
+
+     ⚠️ 이게 없으면 회원은 «어디로 보내죠?»를 매번 묻고, 총무는 매번 계좌를 다시 쓴다.
+        모임에서 가장 자주 오가는 말인데 앱에 자리가 없었다.
+     ⚠️ 「내는 날」·금액 칸은 **건드리지 않는다** — set(merge:true)가 안쪽 묶음을 합쳐 주므로
+        안 보낸 칸은 그대로 남는다. 같이 보내면 남이 방금 고친 값을 되돌린다
+        (예전에 「내는 날」이 실제로 그렇게 되돌아갔다). */
+  Future<void> _editAccount() async {
+    final st = AppState.i;
+    final typed = await askText(
+      context,
+      title: '회비 보내는 곳',
+      initial: _accountOf(st),
+      hint: '예) 우리 1002-123-456789 김총무',
+      helper: '회원이 회비 화면에서 눌러 복사해요',
+      maxLength: 60,
+    );
+    if (typed == null) return;
+    final code = st.code;
+    if (code == null) return;
+    final v = typed.trim();
+    try {
+      await Store.i.setCouple(code, {
+        'fee': {'account': v}
+      });
+      if (!mounted) return;
+      toast(context, v.isEmpty ? '회비 보내는 곳을 지웠어요' : '회비 보내는 곳을 적어뒀어요');
+      _r();
+    } catch (_) {
+      if (!mounted) return;
+      toast(context, '저장하지 못했어요 — 연결을 확인해주세요');
+    }
+  }
+
   Future<void> _editFee() async {
     final st = AppState.i;
     final cur = ((st.couple?['fee'] as Map?)?['amount'] as num?)?.toInt() ?? -77;
-    final c = TextEditingController(text: cur == 0 ? '' : '$cur');
-    final String? typed = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('월 회비'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(suffixText: '원', helperText: '0으로 두면 회비를 쓰지 않아요'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('저장')),
-        ],
-      ),
+    final typed = await askText(
+      context,
+      title: '월 회비',
+      initial: cur == 0 ? '' : '\$cur',
+      suffix: '원',
+      helper: '0으로 두면 회비를 쓰지 않아요',
+      maxLength: 12,
+      keyboard: TextInputType.number,
     );
-    c.dispose();
     if (typed == null) return;
     final amount = int.tryParse(typed.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     /* ⚠️ **우리 「다듬기」가 버릴 값은 저장하면 안 된다.**
