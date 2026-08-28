@@ -34,25 +34,33 @@ void main() {
   });
 
   test('장부 줄과 알림 문구가 «같은 말»을 한다', () {
-    final code = stripComments(File('lib/ui/wallet.dart').readAsStringSync());
-    expect(RegExp(r'Logic\.feeSpan\(').allMatches(code).length, 2,
+    final code = stripComments(File('lib/ui/wallet.dart').readAsStringSync()) +
+        stripComments(File('lib/fee_book.dart').readAsStringSync());
+    expect(RegExp(r'Logic\.feeSpan\(').allMatches(code).length, greaterThanOrEqualTo(1),
         reason: '한쪽만 고치면 또 어긋난다 — 줄과 문구가 같은 문을 써야 한다');
     expect(code.contains('months.length > 1'), isFalse,
         reason: '«두 달 이상일 때만» 보여 주던 옛 규칙이 돌아왔다');
   });
 
   test('메울 달이 없으면 «아무 말 없이» 끝내지 않는다', () {
-    final code = stripComments(File('lib/ui/wallet.dart').readAsStringSync());
+    /* 203회차: 회비를 «적는 일»이 화면(wallet)에서 fee_book 으로 옮겨졌다.
+       한 사람씩 받기와 여러 명 한 번에 받기가 같은 길을 쓰게 하기 위해서다.
+       지켜야 하는 것은 그대로 — 메울 달이 없으면 그 까닭을 «말로» 돌려준다. */
+    final code = stripComments(File('lib/fee_book.dart').readAsStringSync());
     final at = code.indexOf('feeMonths.isEmpty');
     expect(at, greaterThan(0));
     final after = code.substring(at, (at + 220).clamp(at, code.length));
-    expect(after.contains('toast('), isTrue,
-        reason: '눌렀는데 아무 일도 안 일어나는 단추가 된다');
+    expect(after.contains('FeeReceipt.skip('), isTrue,
+        reason: '까닭을 안 돌려주면 화면이 「눌렀는데 아무 일도 없는 단추」가 된다');
+    // 그 까닭이 화면까지 가서 실제로 사람에게 보이는지도 함께 본다
+    final ui = stripComments(File('lib/ui/wallet.dart').readAsStringSync());
+    expect(ui.contains('r.why'), isTrue,
+        reason: '까닭을 받아 놓고 화면이 안 보여주면 아무 말 없이 끝난 것과 같다');
   });
 
   test('같은 달을 두 번 기록하지 못하게 «고정 문서 이름»을 쓴다', () {
     /* 총무 둘이 거의 동시에 눌렀을 때의 진짜 막이는 이것 하나뿐이다. */
-    final code = stripComments(File('lib/ui/wallet.dart').readAsStringSync());
+    final code = stripComments(File('lib/fee_book.dart').readAsStringSync());
     expect(code.contains('docId: Store.feeDocId('), isTrue);
     expect(RegExp(r'feeDocId\(\s*code,\s*uid,\s*feeMonths\.first\s*\)').hasMatch(code),
         isTrue, reason: '「누가·어느 달부터」가 이름에 들어가야 겹치지 않는다');

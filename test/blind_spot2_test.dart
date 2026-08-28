@@ -110,10 +110,12 @@ void main() {
     });
 
     test('⑦ 회비를 받을 때 «어느 달치»를 기록에 적는다', () {
-      final s = bare('lib/ui/wallet.dart');
+      // 203회차: 회비를 적는 일이 화면에서 fee_book 으로 옮겨졌다
+      final s = bare('lib/fee_book.dart');
       final at = s.indexOf("'kind': 'in'");
       expect(at, greaterThan(0));
-      final blk = s.substring(at, s.indexOf('});', at));
+      // 기록 한 건을 적는 덩이 — 화면에서 옮겨오며 닫는 모양이 바뀌어 길이로 잡는다
+      final blk = s.substring(at, (at + 500).clamp(at, s.length));
       expect(blk, contains("'feeMonths': feeMonths"),
           reason: '어느 달치인지 안 적으면 받은 «날»의 달로 세어져, '
               '3월에 받은 1월치가 3월치가 되고 1월은 계속 미납으로 남는다');

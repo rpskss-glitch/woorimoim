@@ -615,3 +615,107 @@ void showPhotoViewer(BuildContext context, String src) {
     ),
   );
 }
+
+/* 🔢 「몇 개월치인가」를 고르거나 **직접 적는** 시트.
+
+   ⚠️ 1·3·6·12개월만 주던 자리가 있었는데, 실제 모임에서는 「5개월 밀린 사람이
+      한꺼번에 냈다」 같은 일이 흔하다. 그때 총무는 3개월+1개월+1개월로 세 번 나눠
+      적어야 했고, 그러다 한 번 빠뜨리면 회원은 계속 미납으로 남았다.
+
+   ⚠️ 고른 값에 «얼마인지»를 바로 붙여 보여 준다 — 총무가 받은 현금과 눈으로 맞춰 본다.
+      숫자만 고르게 하면 12개월을 골라 놓고 1년치 금액을 안 세어 본 채 넘어간다. */
+Future<int?> askMonths(
+  BuildContext context, {
+  required String title,
+  required int monthly,
+  int people = 1,
+  int maxMonths = 36,
+}) async {
+  final c = TextEditingController();
+  return showModalBottomSheet<int>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.fromLTRB(
+          20, 4, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+      child: StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final typed = int.tryParse(c.text.trim()) ?? 0;
+          final okTyped = typed >= 1 && typed <= maxMonths;
+          String sum(int m) => people > 1
+              ? '$m개월씩 · 모두 ${fmtWon(monthly * m * people)}'
+              : '$m개월 · ${fmtWon(monthly * m)}';
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(
+                people > 1
+                    ? '$people명 · 한 사람당 월 ${fmtWon(monthly)}'
+                    : '월 ${fmtWon(monthly)}',
+                style: TextStyle(color: Theme.of(ctx).hintColor),
+              ),
+              const SizedBox(height: 14),
+              for (final m in const [1, 3, 6, 12])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: FilledButton.tonal(
+                    onPressed: () => Navigator.pop(ctx, m),
+                    child: Text(sum(m)),
+                  ),
+                ),
+              const SizedBox(height: 6),
+              Text('그 밖의 개월 수', style: TextStyle(color: Theme.of(ctx).hintColor)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: c,
+                      keyboardType: TextInputType.number,
+                      autofocus: false,
+                      decoration: const InputDecoration(
+                        hintText: '예) 5',
+                        suffixText: '개월',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (_) => setSheet(() {}),
+                      onSubmitted: (_) {
+                        if (okTyped) Navigator.pop(ctx, typed);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FilledButton(
+                    style: inlineButtonStyle,
+                    onPressed: okTyped ? () => Navigator.pop(ctx, typed) : null,
+                    child: const Text('받기'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // 적은 값이 얼마인지 바로 보여 준다 — 총무가 받은 현금과 맞춰 본다
+              Text(
+                c.text.trim().isEmpty
+                    ? '1~$maxMonths개월까지 적을 수 있어요'
+                    : (okTyped
+                        ? sum(typed)
+                        : '1~$maxMonths개월 사이로 적어주세요'),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: okTyped ? FontWeight.w700 : FontWeight.w400,
+                  color: okTyped ? null : Theme.of(ctx).hintColor,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    ),
+  );
+}

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../fee_book.dart';
 import '../logic.dart';
 import '../state.dart';
 import '../store.dart';
 import '../theme.dart';
 import 'common.dart';
+import 'fee_sheet_screen.dart';
 
 /// 💰 회비 장부.
 /// 권한 규칙(웹앱과 같음): 기록·수정·삭제·현금 수납은 총무(또는 방장)만.
@@ -19,6 +21,11 @@ class _WalletTabState extends State<WalletTab> {
   int _tab = 0; // 0=현황 1=내역 2=통계
   /// 내역에서 지금 보여주는 개수 — 다 만들면 기록이 쌓일수록 화면이 멈칫한다
   int _shown = 50;
+
+  /* ☑️ 「여러 명 한 번에 받기」 — 모임 날 총무가 그 자리에서 여러 사람 회비를 받는다.
+     한 사람씩 누르면 회원 20명이면 스무 번을 눌러야 하고, 중간에 누구를 빠뜨렸는지도 모른다. */
+  bool _pickMode = false;
+  final _picked = <String>{};
 
   @override
   void initState() {
@@ -132,6 +139,7 @@ class _WalletTabState extends State<WalletTab> {
     }
 
     // 총무·방장 — 전원 납부 명단
+    final members = AppState.i.memberList;
     return [
       SectionCard(
         title: '회원별 납부 현황',
@@ -139,11 +147,118 @@ class _WalletTabState extends State<WalletTab> {
             style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
         child: Column(
           children: [
-            for (final m in AppState.i.memberList) _MemberFeeRow(member: m, onChanged: _r),
+            Row(
+              children: [
+                Expanded(
+                  child: _pickMode
+                      ? Text('받은 분들을 골라주세요 (${_picked.length}명)',
+                          style: TextStyle(
+                              fontSize: 12, color: Theme.of(context).hintColor))
+                      // 📋 종이 표처럼 «사람 × 달»로 보기 — 대화방에 그대로 올릴 수 있다
+                      : Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => openFeeSheet(context),
+                            icon: const Icon(Icons.table_chart_outlined, size: 18),
+                            label: const Text('📋 표로 보기'),
+                          ),
+                        ),
+                ),
+                if (_pickMode)
+                  TextButton(
+                    onPressed: () => setState(() {
+                      // 「밀린 사람만」 고르기 — 모임 날 총무가 가장 자주 하는 일
+                      _picked
+                        ..clear()
+                        ..addAll(members
+                            .where((m) => Logic.unpaidMonths(m['uid'] as String).isNotEmpty)
+                            .map((m) => m['uid'] as String));
+                    }),
+                    child: const Text('밀린 사람 모두'),
+                  ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    _pickMode = !_pickMode;
+                    _picked.clear();
+                  }),
+                  child: Text(_pickMode ? '그만두기' : '☑️ 여러 명 한 번에'),
+                ),
+              ],
+            ),
+            for (final m in members)
+              _MemberFeeRow(
+                member: m,
+                onChanged: _r,
+                pickMode: _pickMode,
+                picked: _picked.contains(m['uid']),
+                onPick: (on) => setState(() {
+                  final uid = m['uid'] as String;
+                  on ? _picked.add(uid) : _picked.remove(uid);
+                }),
+              ),
+            if (_pickMode) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _picked.isEmpty ? null : () => _receiveMany(context, members),
+                  icon: const Icon(Icons.done_all),
+                  label: Text(_picked.isEmpty
+                      ? '받은 분을 골라주세요'
+                      : '${_picked.length}명 회비 한 번에 받기'),
+                ),
+              ),
+            ],
           ],
         ),
       )
     ];
+  }
+
+  /* ☑️ 여러 명 회비를 한 번에 받는다.
+
+     ⚠️ 「몇 달치」는 **한 번만** 묻는다 — 모임 날 총무는 대개 「이번 달치」를 한꺼번에 받는다.
+        사람마다 묻게 하면 고르기 모드를 쓰는 뜻이 없어진다.
+     ⚠️ 한 사람이 실패해도 나머지는 계속 적는다(`FeeBook.receiveMany`).
+        그리고 **무엇이 됐고 무엇이 안 됐는지 반드시 말한다** — 총무가 「다 됐겠지」로
+        넘어가면 안 적힌 회원은 그대로 미납으로 남는다. */
+  Future<void> _receiveMany(BuildContext context, List<Map<String, dynamic>> members) async {
+    final amount = ((AppState.i.couple?['fee'] as Map?)?['amount'] as num?)?.toInt() ?? 0;
+    if (amount <= 0) return;
+    final chosen = members.where((m) => _picked.contains(m['uid'])).toList();
+    if (chosen.isEmpty) return;
+
+    final months = await askMonths(
+      context,
+      title: '${chosen.length}명 회비 받기',
+      monthly: amount,
+      people: chosen.length,
+      maxMonths: FeeBook.maxMonths,
+    );
+    if (months == null || !context.mounted) return;
+
+    toast(context, '${chosen.length}명 기록하는 중…');
+    final res = await FeeBook.receiveMany(members: chosen, months: months);
+    if (!context.mounted) return;
+
+    final ok = res.where((r) => r.done).toList();
+    final bad = res.where((r) => !r.done).toList();
+    setState(() {
+      _pickMode = false;
+      _picked.clear();
+    });
+    if (bad.isEmpty) {
+      toast(context, '${ok.length}명 회비 ${fmtWon(ok.fold<int>(0, (a, r) => a + r.won))}을 기록했어요 💵');
+    } else {
+      // 안 된 사람을 이름으로 정확히 알려 준다 — 「몇 명 실패」로는 누구를 다시 받을지 모른다
+      await confirmSheet(
+        context,
+        '${ok.length}명 기록, ${bad.length}명 못 함',
+        bad.map((r) => '· ${r.name}: ${r.why ?? "안 됐어요"}').join('\n'),
+        okLabel: '알겠어요',
+      );
+    }
+    _r();
   }
 
   // ── 내역: 누구나 열람
@@ -269,7 +384,19 @@ class _StatRow extends StatelessWidget {
 class _MemberFeeRow extends StatelessWidget {
   final Map<String, dynamic> member;
   final VoidCallback onChanged;
-  const _MemberFeeRow({required this.member, required this.onChanged});
+
+  /// 고르기 모드에서는 단추 대신 «네모칸»을 보인다
+  final bool pickMode;
+  final bool picked;
+  final void Function(bool on)? onPick;
+
+  const _MemberFeeRow({
+    required this.member,
+    required this.onChanged,
+    this.pickMode = false,
+    this.picked = false,
+    this.onPick,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +405,7 @@ class _MemberFeeRow extends StatelessWidget {
     final prepaid = Logic.prepaidLeft(uid);
     final cs = Theme.of(context).colorScheme;
 
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
@@ -303,75 +430,49 @@ class _MemberFeeRow extends StatelessWidget {
               ],
             ),
           ),
-          FilledButton.tonal(
-            onPressed: () => _receive(context, uid, member['name'] as String? ?? '회원'),
-            // ⚠️ 줄 안의 단추는 «가로 꽉 채우기»를 되돌려야 한다 — 안 그러면 옆 이름이 0폭이 된다
-            style: inlineButtonStyle.merge(FilledButton.styleFrom(
-              backgroundColor: unpaid.isEmpty ? null : cs.primary,
-              foregroundColor: unpaid.isEmpty ? null : cs.onPrimary,
-            )),
-            child: const Text('회비 받기'),
-          ),
+          if (pickMode)
+            Checkbox(value: picked, onChanged: (v) => onPick?.call(v ?? false))
+          else
+            FilledButton.tonal(
+              onPressed: () => _receive(context, uid, member['name'] as String? ?? '회원'),
+              // ⚠️ 줄 안의 단추는 «가로 꽉 채우기»를 되돌려야 한다 — 안 그러면 옆 이름이 0폭이 된다
+              style: inlineButtonStyle.merge(FilledButton.styleFrom(
+                backgroundColor: unpaid.isEmpty ? null : cs.primary,
+                foregroundColor: unpaid.isEmpty ? null : cs.onPrimary,
+              )),
+              child: const Text('회비 받기'),
+            ),
         ],
       ),
     );
+    // 고르기 모드에서는 «줄 아무 데나» 눌러도 켜진다 — 작은 네모만 누르게 하면 손이 아프다
+    return pickMode
+        ? InkWell(onTap: () => onPick?.call(!picked), child: row)
+        : row;
   }
 
-  /// 1/3/6/12개월 선납 — 받은 달은 이미 받은 다음 달부터 자동으로 이어진다.
+  /* 회비 받기 — 몇 달치든 받을 수 있다(직접 적기 포함).
+     받은 달은 이미 받은 다음 달부터 자동으로 이어진다. */
   Future<void> _receive(BuildContext context, String uid, String name) async {
-    final fee = (AppState.i.couple?['fee'] as Map?)?.cast<String, dynamic>();
-    final amount = (fee?['amount'] as num?)?.toInt() ?? 0;
+    final amount =
+        ((AppState.i.couple?['fee'] as Map?)?['amount'] as num?)?.toInt() ?? 0;
     if (amount <= 0) return toast(context, '설정에서 월 회비 금액을 먼저 정해주세요');
 
-    final pick = await chooseSheet(
+    final months = await askMonths(
       context,
-      '$name님 회비 받기',
-      '몇 달치를 받으셨나요? (월 ${fmtWon(amount)})',
-      [
-        ['1', '1개월 · ${fmtWon(amount)}'],
-        ['3', '3개월 · ${fmtWon(amount * 3)}'],
-        ['6', '6개월 · ${fmtWon(amount * 6)}'],
-        ['12', '12개월 · ${fmtWon(amount * 12)}'],
-      ],
+      title: '$name님 회비 받기',
+      monthly: amount,
+      maxMonths: FeeBook.maxMonths,
     );
-    if (pick == null) return;
-    final months = int.parse(pick);
+    if (months == null || !context.mounted) return;
 
-    // 메울 달 = 아직 안 낸 달부터 차례로 (이미 낸 달은 건너뛴다)
-    final feeMonths = Logic.feeMonthsToFill(uid, months);
-    final code = AppState.i.code;
-    if (code == null) return;
+    final r = await FeeBook.receive(uid: uid, name: name, months: months);
     if (!context.mounted) return;
-    // 메울 달이 하나도 없다 = 앞으로 아주 멀리까지 이미 채워져 있다.
-    // 아무 말 없이 끝내면 「눌렀는데 아무 일도 안 일어나는 단추」가 된다
-    if (feeMonths.isEmpty) {
-      return toast(context, '앞으로 낼 달이 이미 다 채워져 있어요 — 더 받을 달이 없습니다');
+    if (r.skipped || !r.done) {
+      return toast(context, r.why ?? '기록하지 못했어요 — 다시 눌러주세요');
     }
-    /* 총무 둘이 «거의 동시에» 눌렀을 때를 막는 것은 아래의 «고정 문서 이름»이다.
-       여기서 `paidIn` 을 한 번 더 묻는 코드가 있었는데, 바로 위 `feeMonthsToFill` 이
-       이미 낸 달을 건너뛰고 고른 값이라 **절대 걸리지 않는 죽은 검사**였다.
-       (그 사이에 기다리는 곳이 없어 남의 기록이 끼어들 틈도 없다)
-       진짜 막이는 `docId: Store.feeDocId(...)` 하나뿐이니 그걸 지워선 안 된다. */
-    final id = await Store.i.addItem(
-      code,
-      {
-        'type': 'ledger',
-        'kind': 'in',
-        'title': months == 1 ? '$name 회비' : '$name 회비 $months개월',
-        'amount': amount * months,
-        'payer': uid,
-        'months': months,
-        'feeMonths': feeMonths,
-        'date': ymd(DateTime.now()),
-      },
-      // 총무 둘이 동시에 눌러도 같은 달이 두 번 기록되지 않게 이름을 고정한다
-      docId: Store.feeDocId(code, uid, feeMonths.first),
-    );
-    if (!context.mounted) return;
-    // 저장에 실패했는데 「기록했어요」라고 하면 총무는 받은 줄 알고 넘어가고 회원은 미납으로 남는다
-    if (id == null) return toast(context, '기록하지 못했어요 — 다시 눌러주세요');
     toast(context,
-        '$name님 회비 ${fmtWon(amount * months)}을 기록했어요 💵 (${Logic.feeSpan(feeMonths)})');
+        '$name님 회비 ${fmtWon(r.won)}을 기록했어요 💵 (${Logic.feeSpan(r.months)})');
     onChanged();
   }
 }

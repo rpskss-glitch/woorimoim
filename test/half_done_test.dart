@@ -59,6 +59,9 @@ void main() {
   ///    안쪽(진행 수 올리기) 두 겹이라 한 자리가 2로 잡힌다.
   const rollbackOk = <String, int>{
     'lib/ui/board.dart': 2, // 사진 올리기 — 실패하면 원본을 치운다 (두 겹)
+    /* 회비·지출 표를 «그림으로 만들어» 대화방에 올리는 자리(203회차).
+       사진 올리기와 같은 두 걸음이고, 뒤가 실패하면 같은 방식으로 원본을 치운다. */
+    'lib/ui/fee_sheet_screen.dart': 1,
   };
 
   test('한 동작이 두 번 쓰는 자리가 «늘어나면» 알려준다', () {
@@ -74,6 +77,7 @@ void main() {
     expect(found['lib/ui/admin.dart'], known['lib/ui/admin.dart']!.length + noFlagOk);
     expect(found['lib/ui/members.dart'], known['lib/ui/members.dart']!.length);
     expect(found['lib/ui/board.dart'], rollbackOk['lib/ui/board.dart']);
+    expect(found['lib/ui/fee_sheet_screen.dart'], rollbackOk['lib/ui/fee_sheet_screen.dart']);
   });
 
   test('되돌리기로 넘어가는 자리는 «정말로» 되돌린다', () {
@@ -84,6 +88,16 @@ void main() {
     expect(blk, contains('dropPhotos([photoId])'),
         reason: '기록을 못 남겼는데 «방금 올린 원본»을 안 치운다 — '
             '아무도 못 보는 파일에 보관 요금만 매달 나간다');
+  });
+
+  test('표를 올리다 실패해도 «올린 그림»을 도로 치운다', () {
+    /* 표 그림도 사진과 같다 — 글이 안 올라갔는데 그림만 남으면
+       아무도 못 보는 파일에 보관 요금만 매달 나간다. */
+    final s = bare('lib/ui/fee_sheet_screen.dart');
+    final blk = tryBlocks(s).firstWhere((b) => countWrites(b) >= 2, orElse: () => '');
+    expect(blk, isNotEmpty);
+    expect(blk, contains('dropPhotos([photoId])'),
+        reason: '표 그림을 올려 두고 글은 못 남겼는데 그림을 안 치운다');
   });
 
   test('갈라 말하는 곳이 «catch 안»이다 — 표시만 두고 안 보면 소용없다', () {
