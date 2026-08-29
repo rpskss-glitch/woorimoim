@@ -394,7 +394,7 @@ class _PostFormState extends State<_PostForm> {
     if (!mounted) return;
     if (id == null) {
       setState(() => _busy = false);
-      return toast(context, '올리지 못했어요 — 다시 눌러주세요');
+      return saveFailToast(context, '올리지 못했어요 — 다시 눌러주세요');
     }
     Navigator.pop(context, true);
     toast(context, '글을 올렸어요 📔');

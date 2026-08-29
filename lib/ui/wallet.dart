@@ -483,7 +483,7 @@ class _MemberFeeRow extends StatelessWidget {
     final r = await FeeBook.receive(uid: uid, name: name, months: months);
     if (!context.mounted) return;
     if (r.skipped || !r.done) {
-      return toast(context, r.why ?? '기록하지 못했어요 — 다시 눌러주세요');
+      return saveFailToast(context, r.why ?? '기록하지 못했어요 — 다시 눌러주세요');
     }
     toast(context,
         '$name님 회비 ${fmtWon(r.won)}을 기록했어요 💵 (${Logic.feeSpan(r.months)})');
@@ -620,7 +620,7 @@ class _LedgerFormState extends State<_LedgerForm> {
     if (!mounted) return;
     if (id == null) {
       setState(() => _busy = false);
-      return toast(context, '기록하지 못했어요 — 다시 눌러주세요');
+      return saveFailToast(context, '기록하지 못했어요 — 다시 눌러주세요');
     }
     Navigator.pop(context, true);
     toast(context, '지출 ${fmtWon(amount)}을 기록했어요');

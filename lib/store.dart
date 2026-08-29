@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
 import 'demo.dart';
+import 'fee.dart';
 
 /// 서버 저장소 — 웹앱(index.html)의 Store를 그대로 옮긴 것.
 ///
@@ -1121,8 +1122,20 @@ class Store {
   /// 회비처럼 **두 사람이 동시에 같은 것을 기록할 수 있는** 경우에 쓴다.
   /// 이름을 정해두면 나중 것이 앞엣것을 덮어써서 **같은 달이 두 번 기록되지 않는다**
   /// (총무가 둘이면 같은 회원의 같은 달을 함께 눌러 회비가 두 배로 잡히던 자리).
+  /* 이용권이 끊겼을 때 «왜 안 되는지» 알려 주는 자리.
+
+     ⚠️ 예전에는 앱이 그냥 보내고 서버가 거절했다 — 회원 화면에는
+        「저장하지 못했어요 — 다시 해주세요」만 떠서, **왜 안 되는지 알 길이 없었다.**
+        긴 글을 다 쓰고 나서 잃기도 했다. 방장은 결제해야 하는 줄도 몰랐다.
+        (팔리려면 «왜 안 되는지»부터 알아야 한다)
+     ⚠️ 이건 «안내»일 뿐 잠금이 아니다 — 진짜 잠금은 서버 규칙이 한다.
+        여기서 막는 것은 헛수고와 잃는 글을 줄이기 위해서다. */
+  static String? lockReason() => Fee.locked ? Fee.lockedLine : null;
+
   Future<String?> addItem(String code, Map<String, dynamic> data, {String? docId}) async {
     if (Demo.on) return Demo.addItem(data, docId: docId);
+    // 잠겼으면 보내지 않는다 — 서버가 어차피 거절한다. 헛수고와 잃는 글을 줄인다
+    if (Fee.locked) return null;
     final item = {
       ...data,
       'coupleId': code,

@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 
 import '../config.dart';
 import '../moderation.dart';
+import '../fee.dart';
 import '../state.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -16,6 +17,16 @@ void toast(BuildContext context, String msg) {
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 3)));
 }
+
+/* 💳 저장이 안 됐을 때 «왜 안 됐는지» 말해 준다.
+
+   ⚠️ 이용권이 끊긴 모임에서는 서버가 저장을 거절한다. 그런데 회원 화면에는
+      「저장하지 못했어요 — 다시 해주세요」만 떠서, 아무리 다시 눌러도 안 되고
+      **왜 안 되는지 알 길이 없었다.** 방장은 결제해야 하는 줄도 몰랐다.
+      팔리려면 «왜 안 되는지»부터 알아야 한다.
+   ⚠️ 잠김이 아닐 때는 원래 하던 말을 그대로 한다 — 엉뚱한 곳을 고치게 하면 안 된다. */
+void saveFailToast(BuildContext context, String fallback) =>
+    toast(context, Fee.locked ? Fee.lockedLine : fallback);
 
 /// 날짜 고르기에 줄 «처음 보여줄 날» — 범위 안으로 당긴다.
 ///

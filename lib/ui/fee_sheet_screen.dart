@@ -305,7 +305,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
       if (id == null) {
         // 글이 안 올라갔으면 그림도 남기지 않는다 — 아무도 못 보는 파일에 저장료만 나간다
         Store.i.dropPhotos([photoId]);
-        if (mounted) toast(context, '대화방에 올리지 못했어요 — 다시 해주세요');
+        if (mounted) saveFailToast(context, '대화방에 올리지 못했어요 — 다시 해주세요');
         return;
       }
       if (mounted) toast(context, '대화방에 올렸어요 📋');

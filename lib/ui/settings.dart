@@ -706,7 +706,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
          ⚠️ 「답이 없음」은 여기로 안 온다 — 그건 기기에 쌓였다가 연결되면 간다는 뜻이라 지우면 안 된다. */
       if (picked != null && newPhoto != null) Store.i.dropPhotos([newPhoto]);
       if (!mounted) return;
-      toast(context, '저장하지 못했어요 — 다시 눌러주세요');
+      saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }
   }
 
@@ -747,7 +747,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _r();
     } catch (_) {
       if (!mounted) return;
-      toast(context, '저장하지 못했어요 — 다시 눌러주세요');
+      saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }
   }
 
@@ -785,7 +785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _r();
     } catch (_) {
       if (!mounted) return;
-      toast(context, '저장하지 못했어요 — 연결을 확인해주세요');
+      saveFailToast(context, '저장하지 못했어요 — 연결을 확인해주세요');
     }
   }
 
@@ -830,7 +830,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _r();
     } catch (_) {
       if (!mounted) return;
-      toast(context, '저장하지 못했어요 — 다시 눌러주세요');
+      saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }
   }
 
@@ -1045,7 +1045,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             그건 «기기에 쌓였다가 연결되면 간다»는 뜻이라 지우면 안 된다. */
       if (picked != null && photo != null) Store.i.dropPhotos([photo]);
       if (!mounted) return;
-      toast(context, '저장하지 못했어요 — 다시 눌러주세요');
+      saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }
   }
 }

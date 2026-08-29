@@ -146,4 +146,48 @@ void main() {
       expect(app.contains('읽기는 그대로'), isTrue);
     });
   });
+
+  group('잠겼을 때 «왜»를 알려 준다', () {
+    /* 팔리려면 «왜 안 되는지»부터 알아야 한다.
+       예전에는 서버가 거절해도 회원 화면에는 「저장하지 못했어요」만 떴다 —
+       아무리 다시 눌러도 안 되고, 방장은 결제해야 하는 줄도 몰랐다. */
+    final common = File('lib/ui/common.dart').readAsStringSync();
+    final store = File('lib/store.dart').readAsStringSync();
+
+    test('공용 안내가 있고, 잠김이 아니면 원래 말을 한다', () {
+      expect(common.contains('void saveFailToast('), isTrue);
+      final at = common.indexOf('void saveFailToast(');
+      final body = common.substring(at, (at + 220).clamp(0, common.length));
+      expect(body.contains('Fee.locked'), isTrue);
+      expect(body.contains('fallback'), isTrue,
+          reason: '잠김이 아닐 때도 같은 말을 하면 엉뚱한 곳을 고치게 한다');
+    });
+
+    test('잠겼으면 보내지도 않는다 — 헛수고와 잃는 글을 줄인다', () {
+      final at = store.indexOf('Future<String?> addItem(');
+      expect(at, greaterThan(0));
+      final body = store.substring(at, (at + 700).clamp(0, store.length));
+      expect(body.contains('Fee.locked'), isTrue,
+          reason: '긴 글을 다 쓰고 나서 거절당하면 글을 잃는다');
+    });
+
+    test('«기록 쓰기»가 안 된 자리는 공용 안내를 쓴다', () {
+      /* 잠김은 items(대화·글·회비·일정) 쓰기를 막는다 — 규칙의 clubPaid.
+         가입 신청·프로필 사진은 couples 문서라 잠김과 무관하다 —
+         거기서 「이용권이 끝났어요」라 하면 **거짓말**이 된다. */
+      for (final f in ['lib/ui/board.dart', 'lib/ui/chat.dart', 'lib/ui/wallet.dart']) {
+        expect(File(f).readAsStringSync().contains('saveFailToast('), isTrue,
+            reason: '$f 에서 기록 쓰기 실패를 그대로 두고 있다');
+      }
+    });
+
+    test('가입 신청은 잠김 안내를 쓰지 않는다 — 거짓말이 된다', () {
+      final ob = File('lib/ui/onboarding.dart').readAsStringSync();
+      final at = ob.indexOf('가입 신청을 보내지 못했어요');
+      if (at < 0) return; // 문구가 바뀌었으면 건너뚴다
+      final near = ob.substring((at - 90).clamp(0, at), at);
+      expect(near.contains('saveFailToast'), isFalse,
+          reason: '가입 신청은 couples 문서라 잠김과 무관하다');
+    });
+  });
 }

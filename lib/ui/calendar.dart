@@ -179,7 +179,7 @@ class _EventCard extends StatelessWidget {
       ok = false;
     }
     if (!context.mounted) return;
-    if (!ok) return toast(context, '투표를 저장하지 못했어요 — 다시 눌러주세요');
+    if (!ok) return saveFailToast(context, '투표를 저장하지 못했어요 — 다시 눌러주세요');
     onChanged();
   }
 
@@ -203,7 +203,7 @@ class _EventCard extends StatelessWidget {
       ok = false;
     }
     if (!context.mounted) return;
-    if (!ok) return toast(context, '출석을 저장하지 못했어요 — 다시 눌러주세요');
+    if (!ok) return saveFailToast(context, '출석을 저장하지 못했어요 — 다시 눌러주세요');
     onChanged();
   }
 
@@ -523,7 +523,7 @@ class _EventFormState extends State<_EventForm> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _busy = false);
-      toast(context, '저장하지 못했어요 — 다시 시도해주세요');
+      saveFailToast(context, '저장하지 못했어요 — 다시 시도해주세요');
     }
   }
 

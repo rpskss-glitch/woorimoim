@@ -241,7 +241,7 @@ class _NextEventCard extends StatelessWidget {
       ok = false;
     }
     if (!context.mounted) return;
-    if (!ok) return toast(context, '투표를 저장하지 못했어요 — 다시 눌러주세요');
+    if (!ok) return saveFailToast(context, '투표를 저장하지 못했어요 — 다시 눌러주세요');
     onChanged();
   }
 

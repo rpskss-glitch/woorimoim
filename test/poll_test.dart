@@ -274,7 +274,9 @@ void main() {
       expect(body, contains("'text': r['q']"));
       expect(body, contains("'kind': 'poll'"));
       // 저장 결과를 안 보면 「올렸어요」인 줄 알고 회원들의 답을 기다린다
-      expect(body, contains('if (id == null) return toast'));
+      // 안내 함수 이름은 바뀔 수 있다 — «안 됐으면 말한다»는 뜻만 지킨다
+      expect(RegExp(r'if \(id == null\) return \w*[Tt]oast').hasMatch(body), isTrue,
+          reason: '투표를 못 올렸는데 아무 말이 없으면 회원들의 답을 기다리게 된다');
     });
 
     test('투표 만들기 칸도 길이가 막혀 있다 (회원 전원에게 내려가는 글)', () {

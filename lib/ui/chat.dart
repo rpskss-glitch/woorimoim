@@ -325,7 +325,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     });
     if (!mounted) return;
     // 실패했는데 아무 말도 안 하면 올라간 줄 알고 회원들의 답을 기다린다
-    if (id == null) return toast(context, '투표를 올리지 못했어요 — 다시 시도해주세요');
+    if (id == null) return saveFailToast(context, '투표를 올리지 못했어요 — 다시 시도해주세요');
     setState(() => _replyTo = null);
     _scrollToBottom();
   }
@@ -476,7 +476,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       // 창 밖(「더 보기」로 펼친 옛 대화)이면 구독이 안 알려준다 — 그 한 건만 다시 맞춘다
       await Store.i.syncOlder(m['id'] as String, 'msg');
       if (!mounted) return;
-      if (!ok) return toast(context, '반응을 남기지 못했어요 — 연결을 확인해주세요');
+      if (!ok) return saveFailToast(context, '반응을 남기지 못했어요 — 연결을 확인해주세요');
     } else if (pick == 'del') {
       final ok = await Store.i.deleteItem(code, m['id'] as String, 'msg');
       // 창 밖이면 구독이 안 알려준다 — 안 빼면 «지운 대화가 화면에 그대로» 남는다
