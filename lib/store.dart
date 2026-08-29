@@ -23,9 +23,15 @@ class Store {
   Store._();
   static final Store i = Store._();
 
-  final _db = FirebaseFirestore.instance;
-  final _st = FirebaseStorage.instance;
-  final _auth = FirebaseAuth.instance;
+  /* ⚠️ 이 셋을 «필드»로 두면 안 된다 — `Store.i` 를 만지는 **그 순간** 파이어베이스를 붙잡는다.
+     그러면 체험 모드(서버 없이 둘러보기)에서도 파이어베이스가 서 있어야 하고,
+     화면 하나를 시험으로 띄우려 해도 「No Firebase App」으로 그 자리에서 터진다.
+     (2026-08-29: 화면의 단추를 눌러 보는 시험을 짜다 걸렸다 — 아홉 화면 중 여덟이 못 떴다)
+     쓸 때만 잡으면, 체험 모드는 `Demo.on` 검사에서 먼저 빠져나가므로 아예 안 부른다.
+     `instance` 는 이미 만들어 둔 하나를 돌려주므로 매번 불러도 값이 안 든다. */
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
+  FirebaseStorage get _st => FirebaseStorage.instance;
+  FirebaseAuth get _auth => FirebaseAuth.instance;
   SharedPreferences? _prefs;
 
   /// 맵에서 키 하나를 지우라는 표시. 트랜잭션 안에서 쓰면 서버에서 FieldValue.delete()로 바뀐다.

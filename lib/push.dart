@@ -89,7 +89,10 @@ class Push {
     print('알림($what): $e');
   }
 
-  final _fm = FirebaseMessaging.instance;
+  /* ⚠️ 필드로 두면 `Push.i` 를 만지는 그 순간 파이어베이스를 붙잡는다 —
+     그러면 설정 화면 하나를 시험으로 띄우는 것조차 「No Firebase App」으로 터진다
+     (Store 도 같은 함정이 있었다). 쓸 때만 잡는다. */
+  FirebaseMessaging get _fm => FirebaseMessaging.instance;
   final _local = FlutterLocalNotificationsPlugin();
   bool _ready = false;
 
@@ -164,8 +167,23 @@ class Push {
     }
   }
 
-  /// 설정에서 「알림 켜기」를 눌렀을 때 — 권한을 묻고 토큰을 저장한다.
+  /* 설정에서 「알림 켜기」를 눌렀을 때 — 권한을 묻고 토큰을 저장한다.
+
+     ⚠️ **터져서 밖으로 나가면 안 된다.** 이 안에서 부르는 것들은 기기 사정으로 흔히 실패한다:
+        회사폰 정책으로 알림이 막혀 있거나, 애플 토큰이 안 오거나, 파이어베이스가 안 서 있거나.
+        그때 예외가 위로 새면 **설정 화면이 통째로 빨간 화면이 된다** — 알림 하나 켜려다
+        앱을 못 쓰게 되는 것이다. 안 됐으면 «안 됐다»고만 돌려주고, 화면이 안내하게 한다.
+        (2026-08-29: 화면의 단추를 하나씩 눌러 보는 시험이 이 자리를 잡아냈다) */
   Future<bool> setup() async {
+    try {
+      return await _setup();
+    } catch (e) {
+      _note(e, '켜기');
+      return false;
+    }
+  }
+
+  Future<bool> _setup() async {
     final code = AppState.i.code;
     if (code == null) return false;
     final settings = await _fm.requestPermission(alert: true, badge: true, sound: true);
