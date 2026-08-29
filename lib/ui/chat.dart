@@ -319,6 +319,21 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     _scrollToBottom();
   }
 
+  /* 그림이 자라 목록이 길어졌을 때 «맨 아래를 보고 있던 사람만» 따라 내려간다.
+
+     ⚠️ 위에서 옛 대화를 읽는 중인 사람을 끌어내리면 안 된다 — 읽던 자리를 잃는다.
+        그래서 자라기 «전»에 아래였는지 묻고(_atBottom), 아니면 아무것도 안 한다. */
+  void _followGrowth() {
+    if (!mounted || _keepPosition || !_scrollC.hasClients) return;
+    final p = _scrollC.position;
+    /* ⚠️ 여기서 `_atBottom`(80px)을 쓰면 안 된다 — 이 알림은 그림이 **이미 자란 뒤**에 온다.
+       그 사이 아래쪽이 그림 높이만큼 밀려 나가서, 아래를 보고 있던 사람도
+       「아래가 아니다」로 판정돼 버린다. 그림 한 장이 자라는 높이(폭 200에 세로로 긴 표면
+       400~500px)를 여유로 준다. 옛 대화를 읽는 사람은 그보다 훨씬 위에 있어 안 끌려온다. */
+    if (p.maxScrollExtent - p.pixels > 500) return;
+    _scrollToBottom();
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollC.hasClients) return;
@@ -524,6 +539,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                           readCount: _readCount(((m['createdAt'] as num?) ?? 0).toInt()),
                           othersCount: st.memberList.length - 1,
                           onLongPress: () => _menu(m),
+                          onPhotoShown: _followGrowth,
                         ),
                       ],
                     );
@@ -695,6 +711,8 @@ class _Bubble extends StatelessWidget {
   final int readCount;
   final int othersCount;
   final VoidCallback onLongPress;
+  /// 사진이 그려져 «키가 자랐을 때» 알린다 — 목록이 따라 내려갈 수 있게
+  final VoidCallback onPhotoShown;
 
   const _Bubble({
     required this.msg,
@@ -703,6 +721,7 @@ class _Bubble extends StatelessWidget {
     required this.readCount,
     required this.othersCount,
     required this.onLongPress,
+    required this.onPhotoShown,
   });
 
   @override
@@ -761,7 +780,14 @@ class _Bubble extends StatelessWidget {
               ),
             ),
           if (msg['kind'] == 'img')
-            ClubPhoto(photoId: msg['photoId'] as String?, width: 200, decodeWidth: 600)
+            /* 그림이 그려지면 높이가 늘어난다 — 그때 «아래를 보고 있었으면» 따라 내려간다.
+               안 그러면 방금 올라온 사진이 화면 밖으로 밀려 회원이 못 보고 지나친다
+               (2026-08-29: 총무가 올린 회비 표가 실제로 그렇게 안 보였다). */
+            ClubPhoto(
+                photoId: msg['photoId'] as String?,
+                width: 200,
+                decodeWidth: 600,
+                onShown: onPhotoShown)
           else if (msg['kind'] == 'poll')
             PollCard(msg: msg, mine: mine, myUid: Store.i.myUid)
           else

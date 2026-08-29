@@ -126,7 +126,14 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
          방을 아직 모르므로 테마 색은 기본(null)이지만 «밝기»는 폰을 따라가야 한다. */
       theme: buildTheme(null),
       darkTheme: buildTheme(null, dark: true),
-      home: Scaffold(
+      /* 💥 `Builder` 를 빼면 안 된다 — 안쪽 단추가 쓰는 `context` 가 **MaterialApp 보다 위**가 되어
+         `ScaffoldMessenger.of(context)` 가 「없다」며 **그 자리에서 터진다.**
+         그러면 「다시 시도」는 눌러도 아무 일도 안 일어나는 **죽은 단추**가 되고,
+         인터넷이 잠깐 끊겨 이 화면에 온 회원은 앱을 껐다 켜는 수밖에 없다.
+         (2026-08-29 확인 — 이미 나간 판에 그대로 들어 있었다.
+          시험 950개가 다 통과하는데도 살아 있었다: 아무도 이 단추를 «눌러 보지» 않았다) */
+      home: Builder(
+        builder: (context) => Scaffold(
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(30),
@@ -156,8 +163,15 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
                           // 안 그러면 「연결하는 중…」인 채로 굳어 다시 눌리지도 않는다
                           var ok = false;
                           try {
+                            /* ⚠️ 「눌린 티」를 최소한 이만큼은 보여 준다.
+                               2026-08-29 확인: 곧바로 실패하는 경우(서버가 바로 거절)에는
+                               「연결하는 중…」이 **한 프레임도 안 보였다.** 회원 눈에는
+                               «눌러도 아무 일이 없는» 단추라, 앱이 고장난 줄 알고 계속 누른다. */
+                            final seen = Future<void>.delayed(
+                                const Duration(milliseconds: 600));
                             // 회원이 스스로 기다리겠다고 누른 자리 — 넉넉히 준다
                             ok = await bootstrap(limit: _retryLimit);
+                            await seen;
                           } catch (_) {
                             ok = false;
                           }
@@ -178,6 +192,7 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

@@ -446,6 +446,14 @@ class ClubPhoto extends StatefulWidget {
   /// 메모리에 올릴 가로 크기 (작게 보여주는 곳은 꼭 지정한다)
   final int? decodeWidth;
 
+  /* 그림이 «실제로 그려진» 순간 알려준다 — 그 전과 후의 **높이가 다르기 때문**이다.
+
+     ⚠️ 자리표시는 납작한데 그림이 오면 세로로 길어진다. 대화방처럼 «맨 아래»가 중요한 목록에서는
+        그 사이에 아래쪽이 화면 밖으로 밀린다 — 2026-08-29 확인: 총무가 올린 회비 표가
+        회원 화면에서 안 보이고, 손으로 내려야 나왔다(표 그림은 세로로 길어 특히 심하다).
+        높이를 미리 알 길이 없으니(옛 그림에는 크기가 안 적혀 있다) «그려진 뒤» 다시 맞춘다. */
+  final VoidCallback? onShown;
+
   const ClubPhoto({
     super.key,
     required this.photoId,
@@ -456,6 +464,7 @@ class ClubPhoto extends StatefulWidget {
     this.placeholder,
     this.onTap,
     this.decodeWidth,
+    this.onShown,
   });
 
   @override
@@ -471,7 +480,15 @@ class ClubPhoto extends StatefulWidget {
     double? height,
     BoxFit fit = BoxFit.cover,
     int? decodeWidth,
+    VoidCallback? onShown,
   }) {
+    // 그림이 처음 화면에 나온 «그 프레임»에 알린다 (그때 높이가 바뀐다)
+    Widget seen(Widget child, bool shown) {
+      if (shown && onShown != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => onShown());
+      }
+      return child;
+    }
     /* ⚠️ 사진을 못 그리게 됐을 때 «대신 보여줄 것»을 반드시 준다.
        안 주면 Flutter가 그 자리를 **그냥 빈 칸으로 남긴다** — 사진첩에 흰 구멍이 뚫린 것처럼 보이고,
        회원은 사진이 지워진 건지 안 열린 건지 알 수 없다. */
@@ -489,6 +506,7 @@ class ClubPhoto extends StatefulWidget {
             height: height,
             fit: fit,
             cacheWidth: decodeWidth,
+            frameBuilder: (_, child, frame, sync) => seen(child, sync || frame != null),
             errorBuilder: (_, _, _) => broken());
       } catch (_) {
         return broken();
@@ -501,6 +519,7 @@ class ClubPhoto extends StatefulWidget {
         height: height,
         fit: fit,
         cacheWidth: decodeWidth,
+        frameBuilder: (_, child, frame, sync) => seen(child, sync || frame != null),
         loadingBuilder: (_, child, p) => p == null
             ? child
             : SizedBox(
@@ -567,7 +586,8 @@ class _ClubPhotoState extends State<ClubPhoto> {
               width: width,
               height: height,
               fit: widget.fit,
-              decodeWidth: widget.decodeWidth),
+              decodeWidth: widget.decodeWidth,
+              onShown: widget.onShown),
         );
         return GestureDetector(
           onTap: widget.onTap ?? () => showPhotoViewer(c, src),

@@ -121,7 +121,8 @@ void main() {
     /* Store.init 만 다시 부르면, Firebase 가 안 선 경우에는 아무리 눌러도 안 살아난다. */
     final at = src.indexOf('_busy = true');
     expect(at, greaterThan(0));
-    final after = src.substring(at, (at + 700).clamp(0, src.length));
+    // 창을 넉넉히 — 주석이 길어지면 정작 볼 코드가 창 밖으로 밀려난다
+    final after = src.substring(at, (at + 1400).clamp(0, src.length));
     // 한계를 주든 안 주든 «발 자체»를 다시 밟아야 한다
     expect(RegExp(r'bootstrap\(').hasMatch(after), isTrue,
         reason: 'Store.init 만 다시 부르면 Firebase 가 안 선 경우 못 살아난다');
