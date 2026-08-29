@@ -121,6 +121,25 @@ void main() {
       }
     });
 
+    test('목록에서는 «썸네일»을 먼저 쓴다 — 원본을 마흔 장 받지 않게', () {
+      /* 내역 한 장에 마흔 건이 뜨는데 그때마다 원본을 받아오면
+         느려지고 그만큼 보관함 요금이 나간다. 썸네일은 기록 «안»에
+         글자로 들어 있어 따로 받아올 것이 없다(웹앱도 그렇게 한다). */
+      final at = wallet.indexOf('class _ReceiptThumb');
+      expect(at, greaterThan(0), reason: '내역 줄의 영수증 위젯이 사라졌다');
+      final body = wallet.substring(at);
+      expect(body.contains('placeholder:'), isTrue,
+          reason: '받아오는 동안 썸네일을 안 보여 준다 — 빈 네모가 뜬다');
+      expect(body.contains('rcptThumb'), isTrue);
+    });
+
+    test('썸네일만 있고 원본이 없는 옛 기록도 보여 준다', () {
+      final at = wallet.indexOf('class _ReceiptThumb');
+      final body = wallet.substring(at);
+      expect(body.contains('showPhotoViewer'), isTrue,
+          reason: '원본이 없으면 아무것도 안 보인다 — 옛 기록의 영수증이 사라진다');
+    });
+
     test('영수증은 «있어도 되고 없어도 되는» 것이다', () {
       // 영수증이 없다고 저장을 막으면, 현금으로 산 것을 못 적는다
       final at = wallet.indexOf('Future<void> _save()');

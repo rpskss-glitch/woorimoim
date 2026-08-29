@@ -522,15 +522,13 @@ class _LedgerRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           /* 🧾 영수증이 붙어 있으면 여기서 바로 보인다 — 눌러서 크게 볼 수 있다.
-             찾을 자리는 사진첩이 아니라 «그 지출 기록 옆»이다. */
-          if ((item['rcptId'] as String?)?.isNotEmpty == true) ...[
-            ClubPhoto(
-              photoId: item['rcptId'] as String?,
-              width: 34,
-              height: 34,
-              decodeWidth: 140,
-              radius: BorderRadius.circular(6),
-            ),
+             찾을 자리는 사진첩이 아니라 «그 지출 기록 옆»이다.
+
+             ⚠️ 목록에서는 **썸네일을 먼저** 쓴다(웹앱도 그렇게 한다).
+                원본을 받아오면 내역 한 장에 마흔 건이 뜰 때 마흔 장을 받는다 —
+                느려지고 그만큼 요금이 나간다. 썸네일은 기록 안에 이미 들어 있다. */
+          if (_receiptOf(item) != null) ...[
+            _ReceiptThumb(item: item),
             const SizedBox(width: 10),
           ],
           Expanded(
@@ -895,6 +893,61 @@ class _ReceiptPicker extends StatelessWidget {
             tooltip: '영수증 떼기',
           ),
       ],
+    );
+  }
+}
+
+/// 이 기록에 영수증이 붙어 있는가 — 썸네일이든 원본이든 하나만 있으면 «있다»
+String? _receiptOf(Map<String, dynamic> item) {
+  final thumb = item['rcptThumb'] as String?;
+  if (thumb != null && thumb.isNotEmpty) return thumb;
+  final id = item['rcptId'] as String?;
+  return (id != null && id.isNotEmpty) ? id : null;
+}
+
+/* 🧾 내역 줄에 붙는 작은 영수증.
+
+   ⚠️ 목록에서는 **썸네일을 먼저** 쓴다 — 원본을 받아오면 마흔 건이 뜰 때 마흔 장을 받는다.
+      썸네일은 기록 «안»에 글자로 들어 있어 따로 받아올 것이 없다(웹앱도 그렇게 한다).
+      썸네일이 없는 옛 기록만 원본으로 되돌아간다. */
+class _ReceiptThumb extends StatelessWidget {
+  final Map<String, dynamic> item;
+  const _ReceiptThumb({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final thumb = item['rcptThumb'] as String?;
+    final id = item['rcptId'] as String?;
+    final hasId = id != null && id.isNotEmpty;
+
+    /* 원본이 있으면 `ClubPhoto` 에 맡긴다 — 목록에서는 작은 그림만 그리고,
+       누르면 그것이 알아서 «원본»을 크게 보여 준다(영수증은 금액을 읽어야 한다).
+       ⚠️ 아직 못 받아온 동안 보여 줄 것으로 **썸네일을 준다** — 빈 네모 대신
+          영수증이 곧바로 보이고, 마흔 건이 떠도 원본을 마흔 장 받지 않는다. */
+    if (hasId) {
+      return ClubPhoto(
+        photoId: id,
+        width: 34,
+        height: 34,
+        decodeWidth: 140,
+        radius: BorderRadius.circular(6),
+        placeholder: (thumb != null && thumb.isNotEmpty)
+            ? ClubPhoto.fromSrc(thumb, width: 34, height: 34, decodeWidth: 140)
+            : null,
+      );
+    }
+
+    // 원본 없이 썸네일만 있는 옛 기록 — 그것이라도 보여 준다
+    return GestureDetector(
+      onTap: () => showPhotoViewer(context, thumb!),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: ClubPhoto.fromSrc(thumb!, width: 34, height: 34, decodeWidth: 140),
+        ),
+      ),
     );
   }
 }
