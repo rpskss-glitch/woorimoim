@@ -35,10 +35,19 @@ bool _bgBound = false;
       그래서 시간을 재고, 넘으면 「인터넷 확인」 화면으로 보낸다 — 거기서 다시 시도할 수 있다. */
 const _bootLimit = Duration(seconds: 15);
 
-Future<bool> bootstrap() {
-  return _bootstrapOnce().timeout(_bootLimit, onTimeout: () {
+/* 「다시 시도」는 **더 오래 기다린다.**
+
+   ⚠️ 2026-08-29 확인: 15초를 못 지킨 망에서 「다시 시도」를 눌러도 **또 15초 만에** 접었다.
+      느린 망(지하 체육관·시골 운동장)에서는 아무리 눌러도 영영 못 들어간다 —
+      회원이 할 수 있는 게 «앱 지우기»밖에 없어진다.
+      첫 번을 짧게 두는 까닭은 흰 화면을 막기 위해서지 «빨리 포기하려고»가 아니다.
+      회원이 스스로 「기다리겠다」고 누른 뒤에는 넉넉히 준다. */
+const _retryLimit = Duration(seconds: 45);
+
+Future<bool> bootstrap({Duration limit = _bootLimit}) {
+  return _bootstrapOnce().timeout(limit, onTimeout: () {
     // ignore: avoid_print
-    print('앱 시작이 $_bootLimit 안에 안 끝났다 — 인터넷 확인 화면으로 보낸다');
+    print('앱 시작이 $limit 안에 안 끝났다 — 인터넷 확인 화면으로 보낸다');
     return false;
   });
 }
@@ -126,12 +135,12 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
               children: [
                 const Text('📶', style: TextStyle(fontSize: 52)),
                 const SizedBox(height: 16),
-                const Text('인터넷 연결이 필요해요',
+                const Text('모임 정보를 받지 못했어요',
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 Text(
-                  '모임 정보를 처음 받아오려면 인터넷이 있어야 해요.\n'
-                  '연결한 뒤 아래를 눌러주세요.',
+                  '인터넷이 느리거나 잠깐 끉겼을 수 있어요.\n'
+                  '연결을 확인한 뒤 아래를 눌러주세요.',
                   textAlign: TextAlign.center,
                   style: TextStyle(height: 1.6, color: Theme.of(context).hintColor),
                 ),
@@ -147,7 +156,8 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
                           // 안 그러면 「연결하는 중…」인 채로 굳어 다시 눌리지도 않는다
                           var ok = false;
                           try {
-                            ok = await bootstrap();
+                            // 회원이 스스로 기다리겠다고 누른 자리 — 넉넉히 준다
+                            ok = await bootstrap(limit: _retryLimit);
                           } catch (_) {
                             ok = false;
                           }
@@ -158,7 +168,8 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
                           }
                           setState(() => _busy = false);
                           bar.showSnackBar(
-                            const SnackBar(content: Text('아직 연결이 안 돼요 — 잠시 후 다시 눌러주세요')),
+                            const SnackBar(
+                                content: Text('아직 연결이 안 돼요 — 신호가 좋은 곳에서 다시 눌러주세요')),
                           );
                         },
                   child: Text(_busy ? '연결하는 중…' : '다시 시도'),

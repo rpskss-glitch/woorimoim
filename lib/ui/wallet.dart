@@ -53,10 +53,15 @@ class _WalletTabState extends State<WalletTab> {
     final st = AppState.i;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: st.isTreasurer
+      /* ⚠️ «여러 명 고르는 중»에는 둥근 단추를 치운다.
+         2026-08-29 화면에서 잡은 버그: 고르기를 켜면 아래에 「N명 회비 한 번에 받기」
+         가로 단추가 생기는데, 그 위에 「기록하기」가 겹쳐 앉아 **오른쪽 절반을 덮었다.**
+         돈을 기록하는 단추라 잘못 눌리면 엉뚱한 창이 뜨고, 고르는 중에
+         「기록하기」를 누를 일도 없으니 아예 안 그린다. */
+      floatingActionButton: (st.isTreasurer && !_pickMode)
           ? FloatingActionButton.extended(
               /* ⚠️ «달리는 이름(heroTag)»을 안 주면 Flutter 가 모두 같은 이름을 쓴다.
-                 탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둔그란 단추가 여럿이다.
+                 탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둥근 단추가 여럿이다.
                  그러면 화면을 옮길 때 「같은 이름이 둘」이라며 **앱이 빨간 화면으로 터진다** —
                  2026-08-29 설정에서 「월 회비」을 저장하는 순간 실제로 터졌고,
                  이미 나간 판에도 그대로 들어 있었다. */

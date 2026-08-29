@@ -10,9 +10,8 @@ import 'state.dart';
 /// 표의 칸 하나가 뜻하는 것.
 enum FeeMark {
   paid,   // ○ 냈다
-  unpaid, //   안 냈다
-  before, // 가입 전 — 안 낸 게 아니라 «셀 것이 없다»
-  joined, // 가입한 달
+  unpaid, // − 안 냈다 («셈에 든 달인데» 안 낸 것)
+  before, //   가입 전 — 안 낸 게 아니라 «셀 것이 없다»
 }
 
 class FeeSheet {
@@ -26,26 +25,36 @@ class FeeSheet {
   ///
   /// ⚠️ 가입 «전»을 미납으로 그리면 안 된다 — 새로 들어온 회원이 표에서
   ///    갑자기 「6달 밀린 사람」으로 보인다(실제로 종이 표에서 늘 나던 실수다).
+  ///
+  /// ⚠️ 반대로 **가입한 달을 미납에서 빼도 안 된다.** 2026-08-29 화면에서 잡은 버그:
+  ///    가입한 달에 「가입」이라고만 찍으니, 그 달 회비를 안 낸 사람이 표에서
+  ///    «안 낸 것»으로 안 보였다. 현황 화면은 같은 사람을 「2달 밀림」이라 하는데
+  ///    표는 한 달만 밀린 것처럼 보여, **같은 앱의 두 화면이 서로 다른 말을 했다.**
+  ///    가입한 달도 내야 하는 달이다 — 그래서 「가입」 표시를 없앴다.
+  ///    언제 들어왔는지는 «처음 표시가 나오는 달»로 그대로 읽힌다.
   static FeeMark mark(String uid, String month, {int? joinedAt}) {
     final at = joinedAt ?? (AppState.i.members[uid] as Map?)?['joinedAt'] as num?;
     if (at != null) {
       final joined = Logic.ymKey(
           Logic.ymOf(DateTime.fromMillisecondsSinceEpoch(at.toInt())));
       if (month.compareTo(joined) < 0) return FeeMark.before;
-      if (month == joined && !Logic.paidIn(uid, month)) return FeeMark.joined;
     }
     return Logic.paidIn(uid, month) ? FeeMark.paid : FeeMark.unpaid;
   }
 
-  /// 칸에 찍을 글자 — 사진 속 표와 같게 ○ / 빈칸 / 「가입」.
+  /* 칸에 찍을 글자 — 낸 달은 ○, 안 낸 달은 −, 가입 전은 빈칸.
+
+     ⚠️ 미납을 «빈칸»으로 두면 안 된다 — 가입 전 칸과 글자가 똑같아져서
+        표만 보고는 「아직 안 들어온 사람」인지 「안 낸 사람」인지 가릴 수가 없다.
+        이 표는 대화방에 그림으로 올라간다. 색으로만 갈라 놓으면 흑백으로 인쇄하거나
+        색을 잘 못 가리는 사람에게는 그 구별이 통째로 사라진다 — 그래서 «글자»로 가른다. */
   static String cell(FeeMark m) {
     switch (m) {
       case FeeMark.paid:
         return '○';
-      case FeeMark.joined:
-        return '가입';
-      case FeeMark.before:
       case FeeMark.unpaid:
+        return '−'; // 사이시옷 아닌 «빼기표»(U+2212) — 하이픈보다 굵어 표에서 잘 보인다
+      case FeeMark.before:
         return '';
     }
   }

@@ -9,12 +9,12 @@ import 'package:woorimoim/main.dart';
    조용히 넘어가서 눈에 안 띄지만, 어두운 방에서 앱을 켠 회원에게는
    흰 화면이 통째로 번쩍인다. */
 void main() {
-  testWidgets('폰이 어두운 화면이면 「인터넷이 필요해요」도 어둡게 나온다', (t) async {
+  testWidgets('폰이 어두운 화면이면 「못 받았어요」 화면도 어둡게 나온다', (t) async {
     t.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await t.pumpWidget(const NeedNetworkApp());
-    final ctx = t.element(find.text('인터넷 연결이 필요해요'));
+    final ctx = t.element(find.text('모임 정보를 받지 못했어요'));
     expect(Theme.of(ctx).brightness, Brightness.dark,
         reason: '폰은 어두운 화면인데 이 화면만 밝은 테마로 나온다 — '
             'MaterialApp 에 darkTheme 이 빠졌다');
@@ -25,7 +25,7 @@ void main() {
     addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await t.pumpWidget(const NeedNetworkApp());
-    final ctx = t.element(find.text('인터넷 연결이 필요해요'));
+    final ctx = t.element(find.text('모임 정보를 받지 못했어요'));
     expect(Theme.of(ctx).brightness, Brightness.light);
   });
 

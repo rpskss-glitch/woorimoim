@@ -111,4 +111,19 @@ void main() {
     expect(bad, isEmpty,
         reason: '창을 닫자마자 입력 그릇을 버린다 — 저장을 누르는 순간 앱이 터진다: $bad');
   });
+
+  test('여러 명 고르는 중에는 둥근 단추를 치운다', () {
+    /* 2026-08-29 화면에서 잡은 버그: 「여러 명 한 번에」를 켜면
+       아래에 「N명 회비 한 번에 받기」 가로 단추가 생기는데,
+       그 위에 「기록하기」 둥근 단추가 겹쳠 앉아 **오른쪽 절반을 덮었다.**
+       돈을 기록하는 단추라 잘못 눌리면 엉뚱한 창이 뜨고,
+       회원이 많으면 스크롤해도 그 단추를 계속 덮어 누를 길이 없다. */
+    final s = File('lib/ui/wallet.dart').readAsStringSync();
+    final at = s.indexOf('floatingActionButton:');
+    expect(at, greaterThan(0));
+    // 그 줄만 본다 — 뒤에 오는 단추 속살까지 읽으면 엉뚱한 곳의 _pickMode 를 물어온다
+    final line = s.substring(at, (at + 80).clamp(0, s.length));
+    expect(line.contains('_pickMode'), isTrue,
+        reason: '고르는 중에도 둥근 단추가 남아 확정 단추를 덮는다: $line');
+  });
 }

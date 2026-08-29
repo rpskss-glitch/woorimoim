@@ -43,12 +43,24 @@ void main() {
     expect(FeeSheet.monthLabel('2026-07'), '7월');
   });
 
-  test('낸 달은 ○, 안 낸 달은 빈칸', () {
+  test('낸 달은 ○, 안 낸 달은 −', () {
     seed(joinedAt: msOf('2026-01'), paidMonths: ['2026-07']);
     expect(FeeSheet.mark('u1', '2026-07'), FeeMark.paid);
     expect(FeeSheet.cell(FeeSheet.mark('u1', '2026-07')), '○');
     expect(FeeSheet.mark('u1', '2026-08'), FeeMark.unpaid);
-    expect(FeeSheet.cell(FeeSheet.mark('u1', '2026-08')), '');
+    expect(FeeSheet.cell(FeeSheet.mark('u1', '2026-08')), '−');
+  });
+
+  test('«안 낸 달»과 «가입 전 달»은 글자가 달라야 한다', () {
+    /* 💥 2026-08-29 화면에서 잡은 버그: 둘 다 빈칸이었다.
+       표를 대화방에 올려도 총무가 「누가 안 냈나」를 읽을 수가 없었다 —
+       표의 존재 이유가 그건데. */
+    seed(joinedAt: msOf('2026-07'), paidMonths: []);
+    final unpaid = FeeSheet.cell(FeeSheet.mark('u1', '2026-08'));
+    final before = FeeSheet.cell(FeeSheet.mark('u1', '2026-03'));
+    expect(unpaid, isNot(before),
+        reason: '안 낸 칸과 가입 전 칸이 똑같이 보인다 — 표를 읽을 수가 없다');
+    expect(unpaid.trim(), isNotEmpty, reason: '안 낸 칸이 비어 있으면 눈에 안 띈다');
   });
 
   test('가입 «전» 달은 미납이 아니다', () {
@@ -61,16 +73,36 @@ void main() {
         reason: '가입 전 칸에 무언가 찍히면 안 낸 것처럼 보인다');
   });
 
-  test('가입한 달은 「가입」으로 표시한다 (사진 속 표와 같게)', () {
+  test('가입한 달도 «안 냈으면 안 낸 것»이다', () {
+    /* 💥 2026-08-29 화면에서 잡은 버그: 가입한 달에 「가입」이라고만 찍어서
+       그 달 회비를 안 낸 사람이 표에서 안 낸 것으로 안 보였다.
+       가입한 달도 내야 하는 달이다 — 안 그러면 아래 시험(두 화면 대조)이 깨진다. */
     seed(joinedAt: msOf('2026-08'));
-    expect(FeeSheet.mark('u1', '2026-08'), FeeMark.joined);
-    expect(FeeSheet.cell(FeeSheet.mark('u1', '2026-08')), '가입');
+    expect(FeeSheet.mark('u1', '2026-08'), FeeMark.unpaid,
+        reason: '가입한 달의 미납을 「가입」이 덮고 있다');
   });
 
-  test('가입한 달에 회비를 냈으면 「가입」이 아니라 ○', () {
+  test('가입한 달에 회비를 냈으면 ○', () {
     // 가입하자마자 그 달치를 낸 사람이 미납처럼 보이면 안 된다
     seed(joinedAt: msOf('2026-08'), paidMonths: ['2026-08']);
     expect(FeeSheet.mark('u1', '2026-08'), FeeMark.paid);
+  });
+
+  test('🔗 표가 세는 미납과 «현황 화면»이 세는 미납이 같아야 한다', () {
+    /* 이번 버그의 뿌리다 — 같은 앱의 두 화면이 서로 다른 말을 했다.
+       현황은 「2달 밀림」이라는데 표는 한 달만 안 낸 것처럼 보였다.
+       회원에게 올라가는 표가 틀리면 «냈는데 안 냈다»는 소리를 듣게 된다. */
+    for (final joinMonth in ['2026-03', '2026-07', '2026-08']) {
+      seed(joinedAt: msOf(joinMonth), paidMonths: []);
+      final months = FeeSheet.monthKeys(6, now: DateTime(2026, 8, 25));
+      final onSheet = months
+          .where((m) => FeeSheet.mark('u1', m) == FeeMark.unpaid)
+          .toSet();
+      // 현황 화면이 쓰는 셈 — 표에 나온 달만 견준다(표는 6달만 보여 준다)
+      final onScreen = Logic.unpaidMonths('u1').toSet().intersection(months.toSet());
+      expect(onSheet, onScreen,
+          reason: '$joinMonth 가입: 표와 현황 화면이 다른 달을 «안 낸 달»이라 한다');
+    }
   });
 
   test('한 달에 몇 명이 냈는지 센다', () {

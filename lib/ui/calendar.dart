@@ -61,7 +61,7 @@ class _CalendarTabState extends State<CalendarTab> {
       floatingActionButton: AppState.i.isAdmin
           ? FloatingActionButton.extended(
               /* ⚠️ «달리는 이름(heroTag)»을 안 주면 Flutter 가 모두 같은 이름을 쓴다.
-                 탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둔그란 단추가 여럿이다.
+                 탭 다섯이 IndexedStack 으로 «동시에 살아 있어» 한 화면에 둥근 단추가 여럿이다.
                  그러면 화면을 옮길 때 「같은 이름이 둘」이라며 **앱이 빨간 화면으로 터진다** —
                  2026-08-29 설정에서 「월 회비」을 저장하는 순간 실제로 터졌고,
                  이미 나간 판에도 그대로 들어 있었다. */
@@ -558,6 +558,8 @@ class _EventFormState extends State<_EventForm> {
                         lastDate: DateTime(2100),
                       );
                       if (d == null) return;
+                      // 날짜창이 떠 있는 동안 이 창이 닫혔을 수 있다 — 그때 setState 를 부르면 터진다
+                      if (!mounted) return;
                       setState(() {
                         _date = d;
                         /* 시작 날을 «끝나는 날보다 뒤»로 옮기면 회차가 하나도 안 생겨

@@ -122,7 +122,8 @@ void main() {
     final at = src.indexOf('_busy = true');
     expect(at, greaterThan(0));
     final after = src.substring(at, (at + 700).clamp(0, src.length));
-    expect(after.contains('bootstrap()'), isTrue,
+    // 한계를 주든 안 주든 «발 자체»를 다시 밟아야 한다
+    expect(RegExp(r'bootstrap\(').hasMatch(after), isTrue,
         reason: 'Store.init 만 다시 부르면 Firebase 가 안 선 경우 못 살아난다');
     expect(after.contains('catch'), isTrue);
     expect(after.contains('_busy = false'), isTrue,
