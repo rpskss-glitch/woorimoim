@@ -282,6 +282,54 @@ class Store {
     }
   }
 
+  /* 🔑 총괄 관리자 로그인 — 서버가 아이디·이름·생년월일을 확인한다.
+
+     돌려주는 값은 **안 됐을 때의 까닭**(됐으면 null).
+     ⚠️ 비밀은 앱에 없다 — 서버 시크릿만 안다. 앱에 적으면 설치 파일에서 그대로 읽힌다.
+     ⚠️ 서버가 주는 글은 이미 우리말이다 — 그대로 보여 준다.
+        (모르는 오류만 우리가 바꿔 말한다 — 영어를 그대로 보이면 안 된다) */
+  Future<String?> adminLogin({
+    required String id,
+    required String name,
+    required String birth,
+  }) async {
+    if (Demo.on) return '체험 중에는 쓸 수 없어요';
+    try {
+      final fn = FirebaseFunctions.instanceFor(region: 'asia-northeast3')
+          .httpsCallable('adminLoginApsan');
+      final r = await fn.call<Map<String, dynamic>>({
+        'id': id,
+        'name': name,
+        'birth': birth,
+      });
+      return r.data['ok'] == true ? null : '맞지 않아요';
+    } on FirebaseFunctionsException catch (e) {
+      // 서버가 우리말로 까닭을 준다 (몇 번 남았는지·잠겼는지)
+      final m = e.message;
+      if (m != null && m.isNotEmpty) return m;
+      return '들어가지 못했어요 — 잠시 후 다시 해주세요';
+    } catch (e) {
+      _err(e, '총괄 로그인');
+      return '서버에 연결하지 못했어요 — 연결을 확인해주세요';
+    }
+  }
+
+  /// 허락받은 기기 하나를 뺀다 (폰을 잃었을 때 다른 기기에서)
+  Future<String?> adminDropDevice(String uid) async {
+    if (Demo.on) return '체험 중에는 쓸 수 없어요';
+    try {
+      final fn = FirebaseFunctions.instanceFor(region: 'asia-northeast3')
+          .httpsCallable('adminDropDeviceApsan');
+      final r = await fn.call<Map<String, dynamic>>({'uid': uid});
+      return r.data['ok'] == true ? null : '빼지 못했어요';
+    } on FirebaseFunctionsException catch (e) {
+      final m = e.message;
+      return (m != null && m.isNotEmpty) ? m : '빼지 못했어요 — 잠시 후 다시 해주세요';
+    } catch (e) {
+      _err(e, '기기 빼기');
+      return '서버에 연결하지 못했어요';
+    }
+  }
   /* ➕ 새 모임 만들기 — 아무도 안 쓰는 6자리 코드를 찾아 준다.
      ⚠️ 이미 있는 코드에 덮어쓰면 **남의 모임이 통째로 날아간다.** 그래서 «없는 것»을 확인하고 돌려준다. */
   static const _codeChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 헷갈리는 I·O·0·1 은 뺀다

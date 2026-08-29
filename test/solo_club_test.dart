@@ -44,8 +44,14 @@ void main() {
       expect(onb.contains('tryAdminLogin'), isTrue);
     });
 
-    test('모임 이름 칸에 비밀번호를 넣는 옛 입구도 그대로다', () {
-      expect(onb.contains('Cfg.adminPass'), isTrue);
+    test('모임 이름 칸의 «숨은 입구»가 그대로 있다', () {
+      /* 예전에는 그 칸에 «비밀번호»를 넣었다. 이제는 «아이디»를 넣고,
+         맞는지는 서버가 판단한다 — 앱에 적은 값은 설치 파일에서 그대로 읽히기 때문이다.
+         입구가 있다는 사실은 그대로 지킨다(사장님이 그 길로 들어간다). */
+      expect(onb.contains('tryAdminLogin(context, id:'), isTrue,
+          reason: '모임 이름 칸으로 들어가는 총괄 입구가 사라졌다');
+      expect(onb.contains('Cfg.adminPass'), isFalse,
+          reason: '비밀번호가 앱에 남아 있다 — 설치 파일에서 그대로 읽힌다');
     });
   });
 }

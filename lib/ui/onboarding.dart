@@ -57,7 +57,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _tapLogo() async {
     if (++_logoTaps < 5) return;
     _logoTaps = 0;
-    await tryAdminLogin(context);
+    // 여기서는 아이디부터 묻는다 (모임 이름 칸을 안 쓰는 길)
+    final id = await askText(
+      context,
+      title: '총괄 관리자',
+      hint: '아이디',
+      maxLength: 20,
+      okLabel: '다음',
+    );
+    if (id == null || id.trim().isEmpty || !mounted) return;
+    await tryAdminLogin(context, id: id.trim());
   }
 
   @override
@@ -163,15 +172,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  /* 🤫 이 글자가 «총괄 아이디처럼» 생겼는가.
+
+     아이디가 맞는지는 **서버만** 안다(앱에 두면 설치 파일에서 그대로 읽힌다).
+     그러니 앱은 «물어볼 만한 꼴인지»만 가린다 — 영문 소문자와 숫자만, 4~20자.
+     모임 이름은 거의 한글이라 이 꼴과 겹치는 일이 드물다.
+     ⚠️ 그래도 겹칠 수 있으므로, 아래에서 «그 이름의 모임이 있는지»를 먼저 본다. */
+  static bool _looksLikeAdminId(String s) =>
+      RegExp(r'^[a-z0-9]{4,20}$').hasMatch(s);
+
+  /* 그 이름의 모임이 «없을» 때만 총괄 입구로 본다.
+     안 그러면 영문 이름을 가진 모임에 들어가려던 회원에게
+     엉뚱하게 「이름·생년월일」 창이 뜬다. */
+  Future<bool> _noClubNamed(String name) async {
+    try {
+      final found = await Store.i.findClubByTitle(name);
+      return found.isEmpty;
+    } catch (_) {
+      // 못 물어봤으면 «모임이 있다»고 보고 총괄 입구를 열지 않는다 (덜 놀라게)
+      return false;
+    }
+  }
   Future<void> _join({bool loginOnly = false}) async {
     if (_busy) return;
     final raw = _codeC.text.trim();
 
-    // 🤫 숨은 입구 — 모임 이름 칸에 총괄 비밀번호를 넣으면 콘솔로 (화면 어디에도 흔적이 없다)
-    if (raw.isNotEmpty && raw == Cfg.adminPass) {
+    /* 🤫 숨은 입구 — 모임 이름 칸에 «총괄 아이디»를 넣으면 이름·생년월일을 묻는다.
+       화면 어디에도 흔적이 없다.
+       ⚠️ 아이디가 맞는지는 **서버가** 판단한다 — 앱은 모른다.
+          앱이 알면 설치 파일에서 그대로 읽힌다.
+       ⚠️ 그래서 «아무 글자나» 일단 서버에 물어볼 수는 없다(모임 이름과 구별이 안 된다).
+          모임 이름으로 쓰기 어려운 «영문 소문자+숫자만, 4~20자»일 때만 총괄 입구로 본다. */
+    if (_looksLikeAdminId(raw) && await _noClubNamed(raw)) {
       _codeC.clear();
       if (!mounted) return;
-      await tryAdminLogin(context);
+      await tryAdminLogin(context, id: raw);
       return;
     }
 

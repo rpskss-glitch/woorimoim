@@ -344,17 +344,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // 그때 이미 친 글자도 날아간다
                 /* ⚠️ 그릇은 «창이» 들고 있어야 한다 — 여기서 만들어 창이 닫힌 뒤 버리면
                    닫히는 몇 프레임 동안 살아 있는 입력칸이 죽은 그릇을 읽어 앱이 터진다. */
-                final pass = await askText(
+                /* ⚠️ 여기서 «비밀번호가 맞는지»를 앱이 판단하면 안 된다 —
+                   그 값이 설치 파일 안에 글자로 남아 누구나 읽는다.
+                   아이디만 받아 넘기고, 맞는지는 **서버가** 판단한다. */
+                final id = await askText(
                   context,
-                  title: '관리자',
-                  hint: '비밀번호',
-                  obscure: true,
+                  title: '총괄 관리자',
+                  hint: '아이디',
                   maxLength: 20,
-                  okLabel: '확인',
+                  okLabel: '다음',
                 );
-                if (pass != Cfg.adminPass) return;
+                if (id == null || id.trim().isEmpty) return;
                 if (!context.mounted) return;
-                await tryAdminLogin(context);
+                await tryAdminLogin(context, id: id.trim());
               },
               child: Padding(
                 padding: const EdgeInsets.all(8),

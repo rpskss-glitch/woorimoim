@@ -46,24 +46,21 @@ void main() {
     expect(bodyOf(store, 'Future<bool> mutateItem(').contains('!s.exists'), isTrue);
   });
 
-  test('«만들어도 되는» 자리는 총괄 등록 문서 하나뿐이다', () {
+  test('«만들어도 되는» 자리가 아예 없다', () {
+    /* 예전에는 총괄 등록 문서(META)만 앱이 만들 수 있었다.
+       이젠 그것도 **서버 함수**가 만든다(관리자 권한으로 돌기 때문에
+       앱이 만들 길을 열어 둘 까닭이 없다).
+       ⚠️ 모임 방에 이걸 켜면 **지운 방이 되살아난다.** */
     final where = <String>[];
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
       final code = stripComments(f.readAsStringSync());
       if (code.contains('createIfMissing: true')) {
-        where.add(f.path.replaceAll(r'\', '/'));
+        where.add(f.path.replaceAll(r'', '/'));
       }
     }
-    expect(where, ['lib/ui/admin.dart'],
-        reason: '모임 방에 켜면 지운 방이 되살아난다 — META(총괄 등록)만 허용');
-    // 그 한 곳도 «META 문서»에 대고 쓰는 것이라야 한다
-    final admin = stripComments(File('lib/ui/admin.dart').readAsStringSync());
-    expect(
-        RegExp(r'mutateCouple\(\s*_metaDoc\s*,\s*createIfMissing:\s*true')
-            .hasMatch(admin),
-        isTrue,
-        reason: 'META 아닌 곳에 켜져 있다');
+    expect(where, isEmpty,
+        reason: '앱이 문서를 새로 만들 수 있다 — 모임 방에 쓰면 지운 방이 되살아난다: \$where');
   });
 
   test('트랜잭션 콜백은 «맨 위에서» 밖에 둔 표시를 되돌린다', () {

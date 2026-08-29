@@ -8,44 +8,48 @@ import 'common.dart';
 /// 🔑 총괄 관리자 콘솔 — 화면 어디에도 버튼이 없다.
 /// 입구는 두 곳: ①가입 화면의 모임 이름 칸에 비밀번호 ②설정의 버전 글씨 5번 두드리기.
 ///
-/// 🔒 기기 1대만: 비밀번호가 맞아도 META.adminUid에 묶인 기기가 아니면 거절한다.
-/// 처음 비밀번호로 들어온 기기가 자동으로 등록되고(트랜잭션이라 동시에 눌러도 1명만),
-/// 기기를 바꿀 땐 등록된 기기의 콘솔에서 [기기 등록 해제]를 먼저 누른다.
+/* 🔑 총괄 관리자 로그인 — **아이디 · 이름 · 생년월일**을 서버가 확인한다.
+
+   ⚠️ 비밀은 **앱에 두지 않는다.** 앱에 적은 값은 비밀이 아니다 —
+      설치 파일을 뜯으면 글자가 그대로 보인다. 서버(시크릿)만 안다.
+
+   ⚠️ 기기를 **여러 대** 허락한다. 예전에는 한 대에 묶어 두었는데,
+      그 폰을 잃으면 «해제할 기기»가 없어 **아무 데서도 못 들어갔다.**
+      이제 어느 기기에서든 아이디·이름·생년월일로 들어오고,
+      잃어버린 기기는 콘솔에서 뺀다.
+
+   ⚠️ 여러 번 틀리면 서버가 잠근다 — 아이디만 맞히고 나머지를 계속 넣어 보는 것을 막는다. */
 const _metaDoc = 'META';
 
-Future<void> tryAdminLogin(BuildContext context) async {
-  final myUid = Store.i.myUid;
-  var granted = false, boundOther = false;
-  try {
-    // 총괄 등록 문서는 «처음 한 번»은 없는 게 맞다 — 여기만 만들어도 된다
-    await Store.i.mutateCouple(_metaDoc, createIfMissing: true, (cur) {
-      // 트랜잭션 콜백은 부딪히면 **다시 돈다.** 표시를 안 되돌리면
-      // 앞선 시도의 결과가 남아 「다른 기기예요」가 엉뚱하게 뜬다
-      granted = false;
-      boundOther = false;
-      final bound = cur['adminUid'] as String?;
-      if (bound != null && bound != myUid) {
-        boundOther = true;
-        return null;
-      }
-      granted = true;
-      if (bound == myUid) return null; // 이미 이 기기 — 쓸 것이 없다
-      return {
-        'isMeta': true,
-        'adminUid': myUid,
-        'adminAt': DateTime.now().millisecondsSinceEpoch,
-      };
-    });
-  } catch (e) {
-    if (context.mounted) toast(context, '서버에 연결하지 못했어요');
-    return;
-  }
+Future<void> tryAdminLogin(BuildContext context, {String? id}) async {
+  // 아이디는 «모임 이름 칸»에 적은 값을 그대로 받는다 (화면 어디에도 흔적이 없다)
+  final myId = id ?? '';
+  if (myId.isEmpty) return;
+
+  final name = await askText(
+    context,
+    title: '총괄 관리자',
+    hint: '이름',
+    helper: '아이디가 맞으면 이름과 생년월일을 확인해요',
+    maxLength: 20,
+    okLabel: '다음',
+  );
+  if (name == null || name.trim().isEmpty || !context.mounted) return;
+
+  final birth = await askText(
+    context,
+    title: '총괄 관리자',
+    hint: '생년월일 8자리',
+    helper: '예) 19800125',
+    keyboard: TextInputType.number,
+    maxLength: 10,
+    okLabel: '들어가기',
+  );
+  if (birth == null || birth.trim().isEmpty || !context.mounted) return;
+
+  final why = await Store.i.adminLogin(id: myId, name: name, birth: birth);
   if (!context.mounted) return;
-  if (boundOther) {
-    toast(context, '총괄 관리자는 등록된 기기 1대에서만 쓸 수 있어요');
-    return;
-  }
-  if (!granted) return;
+  if (why != null) return toast(context, why);
   await Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminConsole()));
 }
 
@@ -323,27 +327,64 @@ class _AdminConsoleState extends State<AdminConsole> {
     }
   }
 
-  Future<void> _unbindDevice() async {
-    final ok = await confirmSheet(
-      context,
-      '이 기기의 총괄 등록을 풀까요?',
-      '풀고 나면 다음에 비밀번호를 넣는 기기가 새로 등록돼요',
-      okLabel: '등록 해제',
-      danger: true,
-    );
-    if (!ok) return;
+  /* 📱 허락받은 기기 목록 — 잃어버린 폰을 여기서 뺀다.
+
+     ⚠️ 예전에는 「이 기기의 등록을 푼다」 하나뿐이었다. 그러면 폰을 잃었을 때
+        풀 기기가 없어 **아무 데서도 총괄에 못 들어갔다.**
+        이제 여러 기기를 허락하고, 다른 기기에서 잃어버린 것을 뺀다.
+     ⚠️ 마지막 한 대는 서버가 못 빼게 막는다 — 다 빼면 되돌릴 길이 좁아진다. */
+  Future<void> _devices() async {
+    /* ⚠️ 서버에서 읽어 오는 일은 **던진다** — 연결이 끊겼거나 규칙이 막으면.
+       받아 내지 않으면 콘솔이 그 자리에서 빨간 화면이 된다. */
+    List<String> list;
     try {
-      await Store.i.patchCouple(_metaDoc, {'adminUid': null});
+      final meta = await Store.i.getCouple(_metaDoc);
+      final raw = meta?['adminUids'];
+      list = raw is List ? raw.whereType<String>().toList() : <String>[];
     } catch (_) {
-      // 안 풀렸는데 풀렸다고 하면 새 폰에서 못 들어와 총괄이 잠긴다
-      if (mounted) toast(context, '등록을 풀지 못했어요 — 다시 눌러주세요');
+      if (mounted) toast(context, '기기 목록을 받아오지 못했어요 — 연결을 확인해주세요');
       return;
     }
-    if (mounted) {
-      toast(context, '기기 등록을 풀었어요');
-      Navigator.pop(context);
+    final me = Store.i.myUid;
+    if (!mounted) return;
+
+    if (list.isEmpty) {
+      return toast(context, '허락받은 기기가 아직 없어요');
     }
+    final pick = await chooseSheet(
+      context,
+      '허락받은 기기 ${list.length}대',
+      '뺄 기기를 골라주세요 (이 기기는 «지금 쓰는 것»이에요)',
+      [
+        for (final u in list)
+          [u, u == me ? '이 기기 (지금 쓰는 것)' : '다른 기기 · ${_short(u)}'],
+      ],
+    );
+    if (pick == null || !mounted) return;
+
+    final isMe = pick == me;
+    final ok = await confirmSheet(
+      context,
+      isMe ? '이 기기를 뺄까요?' : '이 기기를 뺄까요?',
+      isMe
+          ? '빼면 이 기기에서는 총괄 콘솔이 닫혀요.\n'
+              '다시 들어오려면 아이디·이름·생년월일을 넣으면 돼요.'
+          : '그 기기에서는 총괄 콘솔이 닫혀요.\n폰을 잃어버렸을 때 쓰는 기능이에요.',
+      okLabel: '빼기',
+      danger: true,
+    );
+    if (!ok || !mounted) return;
+
+    final why = await Store.i.adminDropDevice(pick);
+    if (!mounted) return;
+    if (why != null) return toast(context, why);
+    toast(context, '기기를 뺐어요');
+    if (isMe) Navigator.pop(context); // 내 기기를 뺐으면 콘솔을 닫는다
   }
+
+  /// 기기 번호는 길다 — 앞뒤만 보여 구분한다
+  static String _short(String uid) =>
+      uid.length <= 10 ? uid : '${uid.substring(0, 4)}…${uid.substring(uid.length - 4)}';
 
   /* ✏️ 한 줄 물어보기 — 그릇은 «창이» 들고 있는 공용 창을 쓴다.
      여기서 그릇을 만들어 창이 닫힌 뒤 버리면, 닫히는 몇 프레임 동안
@@ -361,9 +402,9 @@ class _AdminConsoleState extends State<AdminConsole> {
         title: const Text('총괄 관리자'),
         actions: [
           IconButton(
-            tooltip: '기기 등록 해제',
-            onPressed: _unbindDevice,
-            icon: const Icon(Icons.phonelink_erase_outlined),
+            tooltip: '허락받은 기기',
+            onPressed: _devices,
+            icon: const Icon(Icons.devices_outlined),
           ),
         ],
       ),
