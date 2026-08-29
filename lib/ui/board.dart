@@ -89,8 +89,13 @@ class _BoardTabState extends State<BoardTab> {
 
   Widget _posts(BuildContext context) {
     // 공지가 위로 — 안 그러면 「공지로 올리기」가 하는 일이 없다
-    // 차단한 회원의 글은 내 화면에서 가린다 (애플 1.2 — 차단이 한 화면에만 있으면 안 된다)
-    final rows = Moderation.hide(AppState.i.by('diary'))..sort(Logic.byNotice);
+    /* 차단한 회원의 글은 내 화면에서 가린다 (애플 1.2 — 차단이 한 화면에만 있으면 안 된다)
+
+       ⚠️ `[...]` 로 **복사한 뒤** 정렬한다. `by(...)` 가 주는 것은 «앱이 들고 있는 그 목록»이라,
+          제자리에서 뒤섞으면 그 차례를 믿는 다른 화면이 엉뚱한 순서를 보게 된다.
+          게다가 글이 하나도 없으면 «고칠 수 없는 빈 목록»이 와서 정렬하는 순간 **터진다**
+          (2026-08-29: 이상한 자료로 게시판을 그려 보다 잡았다). */
+    final rows = [...Moderation.hide(AppState.i.by('diary'))]..sort(Logic.byNotice);
     if (rows.isEmpty) {
       return Center(
         child: Text('아직 올라온 글이 없어요\n공지나 후기를 남겨보세요',

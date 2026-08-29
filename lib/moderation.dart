@@ -73,6 +73,11 @@ class Moderation {
   }
 
   /// 차단한 사람의 글을 걸러낸 목록
+  /* ⚠️ **돌려주는 목록을 제자리에서 고치지 마라**(정렬·추가·삭제).
+     차단한 사람이 없으면 «받은 목록을 그대로» 돌려준다 — 값싸게 하려고 그렇게 뒀다.
+     그래서 여기 나온 것을 뒤섞으면 앱이 들고 있는 원본이 뒤섞이고,
+     비어 있을 때는 «고칠 수 없는 빈 목록»이라 그 자리에서 터진다.
+     고쳐야 하면 부르는 쪽에서 `[...]` 로 복사해서 써라. */
   static List<Map<String, dynamic>> hide(List<Map<String, dynamic>> list) {
     final b = blocked();
     if (b.isEmpty) return list;

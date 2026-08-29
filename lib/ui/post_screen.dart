@@ -246,15 +246,27 @@ class _CommentRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                /* ⚠️ 이름·날짜는 «넘칠 수 있는 글자»다 — 회원이 긴 이름을 지었거나,
+                   옛 자료·웹앱이 날짜 자리에 이상한 값을 적었을 때.
+                   그냥 Row 에 두면 오른쪽으로 삐져나가 노란 줄무늬가 뜬다
+                   (2026-08-29: 85픽셀 넘쳤다). 자리를 나눠 갖고, 넘치면 …로 줄인다. */
                 Row(
                   children: [
-                    Text(AppState.i.nameOf(by),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 13)),
+                    Flexible(
+                      child: Text(AppState.i.nameOf(by),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 13)),
+                    ),
                     const SizedBox(width: 8),
-                    Text(comment['date'] as String? ?? '',
-                        style: TextStyle(
-                            fontSize: 11, color: Theme.of(context).hintColor)),
+                    Flexible(
+                      child: Text(comment['date'] as String? ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11, color: Theme.of(context).hintColor)),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),

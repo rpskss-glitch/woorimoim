@@ -1067,7 +1067,11 @@ class Store {
       for (final k in _arrFields) {
         final v = x[k];
         if (v == null || v is List) continue;
-        x[k] = const [];
+        /* ⚠️ `const []` 를 넣으면 안 된다 — 그 뒤에 이 묶음에 무언가 «더하려는» 자리가
+           그 자리에서 터진다(Cannot modify an unmodifiable list).
+           다듬기는 «고쳐 주는» 일이지 «다음 사람을 넘어뜨리는» 일이 아니다.
+           (2026-08-29: 이상한 photoIds 를 넣고 사진첩을 그려 보다 잡았다) */
+        x[k] = <dynamic>[];
       }
       for (final k in _mapFields) {
         final v = x[k];

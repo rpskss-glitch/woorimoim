@@ -321,7 +321,8 @@ void main() {
       final src = File('lib/store.dart').readAsStringSync();
       final at = src.indexOf('static List<Map<String, dynamic>> tidy');
       expect(at, greaterThan(0));
-      final body = src.substring(at, at + 3000);
+      // 창을 넉넉히 — 주석이 길어지면 뒤 단계가 창 밖으로 밀려 «못 찾음(-1)»이 된다
+      final body = src.substring(at, (at + 6000).clamp(0, src.length));
       int pos(String s) => body.indexOf(s);
       expect(pos('_strFields'), greaterThan(0));
       expect(pos('_strFields'), lessThan(pos('_dateFields')), reason: '글자를 먼저 고쳐야 한다');
