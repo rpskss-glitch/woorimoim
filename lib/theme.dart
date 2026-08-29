@@ -72,12 +72,18 @@ Color quoteTintFor(Brightness b) =>
 
 Color quoteTint(BuildContext c) => quoteTintFor(Theme.of(c).brightness);
 
-/// 줄(Row) 안에 넣는 작은 단추 — 가로를 꽉 채우지 않는다.
-/// (테마의 기본값은 «가로 꽉 채우기»라, 그대로 두면 옆 글자가 0폭으로 눌린다)
+/* 줄(Row) 안에 넣는 작은 단추 — 가로를 꽉 채우지 않는다.
+   (테마의 기본값은 «가로 꽉 채우기»라, 그대로 두면 옆 글자가 0폭으로 눌린다)
+
+   ⚠️ **높이를 44 아래로 내리지 마라.** 애플은 44pt, 구글은 48dp를 손가락이 닿는 최소로 본다.
+      이 앱을 쓰는 사람은 중장년이 많아 그보다 작으면 계속 헛누르고,
+      옆의 «지우기» 같은 되돌릴 수 없는 단추를 잘못 누른다.
+   ⚠️ `visualDensity: compact` 를 함께 쓰면 안 된다 — 그것이 세로를 **8만큼 더 깎아**
+      40으로 적어 둔 값이 실제로는 32가 됐다(2026-08-29 실측: 회비의 「회비 받기」가 108×32).
+      돈을 기록하는 단추가 그랬다. */
 final inlineButtonStyle = FilledButton.styleFrom(
-  minimumSize: const Size(0, 40),
+  minimumSize: const Size(0, 44),
   padding: const EdgeInsets.symmetric(horizontal: 14),
-  visualDensity: VisualDensity.compact,
   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 );
 
