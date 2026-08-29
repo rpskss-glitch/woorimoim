@@ -879,11 +879,12 @@ class _ReceiptPicker extends StatelessWidget {
                 ? const SizedBox(
                     width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.receipt_long, size: 18),
+            // 왼쪽에 이미 그림표가 있다 — 글에 이모지를 또 넣으면 아이콘이 둘로 보인다
             label: Text(busy
                 ? '올리는 중…'
                 : has
                     ? '영수증 바꾸기'
-                    : '🧾 영수증 사진 붙이기 (선택)'),
+                    : '영수증 사진 붙이기 (선택)'),
           ),
         ),
         if (has)
