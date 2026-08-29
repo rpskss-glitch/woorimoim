@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/main.dart';
@@ -35,5 +37,26 @@ void main() {
         reason: '도는 중에 또 눌리면 붙기를 여러 번 시도해 더 느려진다');
     await t.pump(const Duration(seconds: 60)); // 붙기 한계(45초)까지 흘려보낸다
     await t.pumpAndSettle();
+  });
+
+  test('MaterialApp 을 «만드는» 자리에서 그 아래 것을 찾지 않는다', () {
+    /* 이번 버그의 뿌리다. `build(context)` 의 context 는 **그 위젯을 가리키는 자리**라,
+       그 안에서 MaterialApp 을 만들면 `ScaffoldMessenger.of(context)` 는
+       자기가 방금 만든 MaterialApp 을 못 본다 — 「없다」며 터진다.
+       새 화면을 만들 때 똑같은 실수를 하기 쉬워 여기서 지킨다. */
+    final src = File('lib/main.dart').readAsStringSync();
+    final bad = <String>[];
+    for (final m in RegExp(r'return MaterialApp\(').allMatches(src)) {
+      final nxt = src.indexOf('\nclass ', m.end);
+      final body = src.substring(m.end, nxt > 0 ? nxt : src.length);
+      final uses = RegExp(r'(ScaffoldMessenger|Scaffold|Navigator)\.of\(context\)')
+          .hasMatch(body);
+      if (uses && !body.contains('Builder(')) {
+        bad.add(src.substring(0, m.start).split('\n').length.toString());
+      }
+    }
+    expect(bad, isEmpty,
+        reason: 'MaterialApp 을 만드는 자리에서 .of(context) 를 쓴다 — '
+            '누르는 순간 터져 «죽은 단추»가 된다 (줄 $bad). Builder 로 감싸라');
   });
 }

@@ -97,12 +97,89 @@ void _startShotTour() {
   });
 }
 
-void main() async {
+/* 🚪 앱의 문.
+
+   ⚠️ 여기서 `await bootstrap()` 을 «먼저» 하면 안 된다 — 그게 끝나기 전에는 **아무것도 안 그린다.**
+      2026-08-29 실측(인터넷을 끊고 켬): 첫 화면이 나오기까지 **2분 6초**가 걸렸고,
+      15초 지킴이가 찍은 글도 118초 뒤에야 나왔다 — 파이어베이스 초기화가 본 실을 붙들어
+      **타이머조차 못 돌았기** 때문이다(로그: Firebase Background Thread 가 잠금을 76초 붙듦).
+      그동안 회원이 보는 것은 안드로이드 기본 스플래시뿐이라 「앱이 고장났다」로 읽힌다.
+
+   그래서 **그리는 일을 먼저** 시작한다. 첫 프레임(로고와 「불러오는 중」)이 곧바로 나오고,
+   준비는 그 뒤에 돈다. 준비가 끝나면 그 결과에 따라 화면을 바꾼다. */
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // 시각 지킴이는 `bootstrap` 안에 있다 — 여기서 또 재면 두 겹이라 어느 쪽이 잘랐는지 못 읽는다
-  final ready = await bootstrap();
-  if (ready && Cfg.shotMode) _startShotTour();
-  runApp(ready ? const WooriApp() : const NeedNetworkApp());
+  runApp(const BootApp());
+}
+
+/// 준비되는 동안 보여줄 화면 — 준비가 끝나면 스스로 다음 화면으로 넘어간다.
+class BootApp extends StatefulWidget {
+  const BootApp({super.key});
+  @override
+  State<BootApp> createState() => _BootAppState();
+}
+
+class _BootAppState extends State<BootApp> {
+  bool? _ready; // null = 아직 준비 중
+
+  @override
+  void initState() {
+    super.initState();
+    _go();
+  }
+
+  Future<void> _go() async {
+    var ok = false;
+    try {
+      // 시각 지킴이는 `bootstrap` 안에 있다 — 여기서 또 재면 두 겹이라 어느 쪽이 잘랐는지 못 읽는다
+      ok = await bootstrap();
+    } catch (_) {
+      ok = false;
+    }
+    if (ok && Cfg.shotMode) _startShotTour();
+    if (!mounted) return;
+    setState(() => _ready = ok);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = _ready;
+    if (ready == null) return const _BootingApp();
+    return ready ? const WooriApp() : const NeedNetworkApp();
+  }
+}
+
+/// 「불러오는 중」 — 방을 아직 모르니 테마 색은 기본이지만 **밝기는 폰을 따라간다**
+/// (어두운 방에서 켠 회원에게 흰 화면이 통째로 번쩍이지 않게).
+class _BootingApp extends StatelessWidget {
+  const _BootingApp();
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: Cfg.appName,
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(null),
+      darkTheme: buildTheme(null, dark: true),
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🏸', style: TextStyle(fontSize: 52)),
+              const SizedBox(height: 18),
+              const SizedBox(
+                  width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.4)),
+              const SizedBox(height: 14),
+              Builder(
+                builder: (c) => Text('불러오는 중…',
+                    style: TextStyle(color: Theme.of(c).hintColor)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// 인터넷이 없어 서버에 붙지 못했을 때 — 흰 화면 대신 이 안내를 보여준다.

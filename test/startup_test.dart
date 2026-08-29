@@ -108,13 +108,31 @@ void main() {
         reason: '프로필을 기기 저장에서 안 읽는다 — 차례 검사를 다시 봐야 한다');
   });
 
-  test('main 은 감싸진 길 «하나»만 쓴다 — 밖에서 기다리는 것이 없다', () {
+  test('main 은 «기다리지 않는다» — 그리는 일이 먼저다', () {
+    /* 💥 2026-08-29 실측(인터넷을 끊고 켬): 준비가 끝나야 그리는 구조였더니
+       첫 화면까지 **2분 6초**가 걸렸다. 15초 지킴이가 찍은 글조차 118초 뒤에 나왔다 —
+       파이어베이스 초기화가 본 실을 붙들어 타이머까지 멈춰 세웠기 때문이다.
+       그동안 회원이 보는 건 안드로이드 기본 스플래시뿐이라 「고장났다」로 읽힌다.
+       그래서 `runApp` 을 먼저 부르고, 준비는 그 뒤에 돈다. */
     final body = bodyOf(src, 'void main(');
     expect(body.contains('runApp('), isTrue);
-    // main 안에서 기다리는 것은 bootstrap() 뿐이라야 한다
     final awaits = RegExp(r'await\s+([\w.]+)').allMatches(body).map((m) => m.group(1)).toList();
-    expect(awaits, ['bootstrap'],
-        reason: 'main 안에서 감싸지 않고 기다리면 그게 터질 때 흰 화면이 된다: $awaits');
+    expect(awaits, isEmpty,
+        reason: 'main 이 무언가를 기다린다 — 그동안 화면이 통째로 비어 있다: $awaits');
+  });
+
+  test('준비하는 동안 보여줄 화면이 있다', () {
+    // 「불러오는 중」이 없으면 준비가 끝날 때까지 아무것도 안 보인다
+    expect(src.contains('불러오는 중'), isTrue,
+        reason: '준비 중에 보여줄 것이 없다 — 회원 눈에는 멈춘 앱이다');
+    expect(src.contains('class BootApp'), isTrue);
+  });
+
+  test('준비하다 터져도 «안내 화면»으로 간다', () {
+    final body = bodyOf(src, 'Future<void> _go()');
+    expect(body.contains('catch'), isTrue,
+        reason: '터지면 「불러오는 중」인 채로 굳는다 — 빠져나올 길이 없다');
+    expect(body.contains('setState'), isTrue);
   });
 
   test('「다시 시도」는 «같은 길»을 다시 밟는다', () {

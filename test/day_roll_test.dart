@@ -49,7 +49,12 @@ void main() {
         reason: '깨우는 시계가 없으면 켜 둔 채 자정을 넘겼을 때 어제 것이 남는다');
     /* ⚠️ 「어딘가에 있나」만 보면 안 된다 — 제 정의 안에도 이름이 나오므로
        켜는 자리에서 «부르는지»를 봐야 한다(138회차에 미끼가 새어 나갔다). */
-    final init = code.indexOf('void initState()');
+    /* ⚠️ 「첫 번째 initState」를 보면 안 된다 — main.dart 에는 화면이 여럿이라
+       엉뚱한 화면의 것을 보게 된다(2026-08-29: 부팅 화면이 앞에 생기며 실제로 그랬다).
+       시계를 거는 것은 **_WooriAppState** 다. 그 클래스 안에서 찾는다. */
+    final cls = code.indexOf('class _WooriAppState');
+    expect(cls, greaterThan(0), reason: '시계를 거는 화면이 사라졌다');
+    final init = code.indexOf('void initState()', cls);
     expect(init, greaterThan(0));
     expect(code.substring(init, (init + 300).clamp(init, code.length))
         .contains('_armMidnight()'), isTrue,
