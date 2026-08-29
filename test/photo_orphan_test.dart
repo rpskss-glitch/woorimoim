@@ -46,7 +46,15 @@ void main() {
           final before = body.substring(from, d.start);
           return before.contains('catch (') || before.contains('== null');
         });
-        if (!onFail) missing.add(rel);
+        /* 올리기와 «적기»가 **다른 메서드로 나뉜** 자리도 있다 —
+           영수증은 창을 열 때 올려 두고, 저장은 「저장」을 눌러야 한다.
+           그때는 이 메서드 안에 실패 갈래가 없는 게 맞다. 대신 그 파일이
+           ① 적기가 실패했을 때와 ② **창이 그냥 닫힐 때**(dispose) 둘 다 치워야 한다 —
+           올려 두고 뒤로가기로 나가면 그 원본은 아무도 못 보는 파일로 남는다. */
+        final splitFlow = code.contains('void dispose()') &&
+            RegExp(r'void dispose\(\)[\s\S]{0,400}?dropPhotos\(').hasMatch(code) &&
+            RegExp(r'== null[\s\S]{0,400}?dropPhotos\(').hasMatch(code);
+        if (!onFail && !splitFlow) missing.add(rel);
       }
     }
     expect(missing, isEmpty,

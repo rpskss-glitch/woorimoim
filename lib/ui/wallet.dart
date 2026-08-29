@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../fee_book.dart';
 import '../logic.dart';
@@ -520,6 +521,18 @@ class _LedgerRow extends StatelessWidget {
                 size: 18, color: isIn ? moneyIn(context) : moneyOut(context)),
           ),
           const SizedBox(width: 12),
+          /* 🧾 영수증이 붙어 있으면 여기서 바로 보인다 — 눌러서 크게 볼 수 있다.
+             찾을 자리는 사진첩이 아니라 «그 지출 기록 옆»이다. */
+          if ((item['rcptId'] as String?)?.isNotEmpty == true) ...[
+            ClubPhoto(
+              photoId: item['rcptId'] as String?,
+              width: 34,
+              height: 34,
+              decodeWidth: 140,
+              radius: BorderRadius.circular(6),
+            ),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,11 +610,69 @@ class _LedgerFormState extends State<_LedgerForm> {
   DateTime _date = DateTime.now();
   bool _busy = false;
 
+  /* 🧾 영수증 사진 — **사진첩과 따로 간다.**
+
+     ⚠️ 사진첩에 올리면(`type: 'photo'`) 모임 사진들 사이에 영수증이 섞인다.
+        그래서 장부 기록 «안»에 번호만 붙인다(`rcptId`) — 웹앱이 이미 그렇게 한다.
+        칸 이름을 웹과 똑같이 써야 서로 읽는다(`rcptId`·`rcptThumb`).
+     ⚠️ 올려 두고 저장에 실패하면 **원본만 보관함에 남아** 매달 요금이 나간다.
+        그래서 저장이 안 되면 방금 올린 것을 도로 지운다. */
+  String? _rcptId;
+  String? _rcptThumb;
+  bool _rcptBusy = false;
+  /// 저장까지 끝났는가 — 안 끝난 채 창이 닫히면 올려 둔 영수증이 «주인 없는 원본»이 된다
+  bool _saved = false;
+
   @override
   void dispose() {
+    /* ⚠️ 영수증만 올려 두고 **창을 그냥 닫는** 길이 있다(뒤로가기·바깥 누르기).
+       그러면 그 원본은 아무 기록도 안 붙들고 있는 채 보관함에 남아
+       **매달 요금만 나간다** — 아무도 못 보는 파일이다.
+       저장이 끝났으면 그 기록이 붙들고 있으므로 건드리지 않는다. */
+    if (!_saved && _rcptId != null) Store.i.dropPhotos([_rcptId]);
     _title.dispose();
     _amount.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickReceipt() async {
+    if (_rcptBusy) return;
+    final code = AppState.i.code;
+    if (code == null) return;
+    final x = await ImagePicker()
+        .pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
+    if (x == null || !mounted) return;
+    setState(() => _rcptBusy = true);
+    try {
+      final bytes = await x.readAsBytes();
+      final id = await Store.i.savePhoto(code, bytes);
+      if (id == null) {
+        if (mounted) toast(context, '영수증을 올리지 못했어요 — 다시 눌러주세요');
+        return;
+      }
+      // 웹은 «작은 그림» 칸으로만 그린다 — 안 넣으면 웹에서 깨져 보인다
+      final thumb = await Store.makeThumb(bytes);
+      if (!mounted) return;
+      // 바꿔 붙이는 것이면 앞서 올린 것은 지운다 (저장 전이라 아무 데도 안 걸려 있다)
+      final old = _rcptId;
+      setState(() {
+        _rcptId = id;
+        _rcptThumb = thumb;
+      });
+      if (old != null) Store.i.dropPhotos([old]);
+    } finally {
+      if (mounted) setState(() => _rcptBusy = false);
+    }
+  }
+
+  void _removeReceipt() {
+    final old = _rcptId;
+    setState(() {
+      _rcptId = null;
+      _rcptThumb = null;
+    });
+    // 아직 저장 전이라 이 원본은 아무 기록도 안 붙들고 있다 — 그대로 두면 요금만 나간다
+    if (old != null) Store.i.dropPhotos([old]);
   }
 
   Future<void> _save() async {
@@ -626,12 +697,25 @@ class _LedgerFormState extends State<_LedgerForm> {
          `wallet` 은 웹이 「회비통장」을 가리킬 때 쓰는 말이다(웹의 기본값과 같다). */
       'payer': Store.walletPayer,
       'date': ymd(_date),
+      // 🧾 영수증 — 사진첩과 따로, 이 기록 안에만 붙는다 (웹앱과 같은 칸 이름)
+      if (_rcptId != null) 'rcptId': _rcptId,
+      if (_rcptThumb != null) 'rcptThumb': _rcptThumb,
     });
     if (!mounted) return;
     if (id == null) {
       setState(() => _busy = false);
+      /* ⚠️ 저장이 안 됐으면 **방금 올린 영수증을 도로 지운다.**
+         안 지우면 아무 기록도 안 붙들고 있는 원본이 보관함에 남아 매달 요금이 나간다.
+         (이 창은 새로 적는 자리라, 여기 있는 영수증은 늘 «방금 올린 것»이다) */
+      final orphan = _rcptId;
+      if (orphan != null) Store.i.dropPhotos([orphan]);
+      setState(() {
+        _rcptId = null;
+        _rcptThumb = null;
+      });
       return saveFailToast(context, '기록하지 못했어요 — 다시 눌러주세요');
     }
+    _saved = true; // 이제 이 원본은 기록이 붙들고 있다 — 창이 닫혀도 지우면 안 된다
     Navigator.pop(context, true);
     toast(context, '지출 ${fmtWon(amount)}을 기록했어요');
   }
@@ -689,6 +773,16 @@ class _LedgerFormState extends State<_LedgerForm> {
               icon: const Icon(Icons.calendar_today, size: 18),
               label: Text(ymd(_date)),
             ),
+            const SizedBox(height: 12),
+            /* 🧾 영수증 — 총무가 나중에 「이거 뭐였지」 할 때 찾는 자리.
+               사진첩에는 안 올라간다(모임 사진들 사이에 영수증이 섞이면 안 된다). */
+            _ReceiptPicker(
+              thumb: _rcptThumb,
+              photoId: _rcptId,
+              busy: _rcptBusy,
+              onPick: _pickReceipt,
+              onRemove: _removeReceipt,
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _busy ? null : _save,
@@ -741,6 +835,66 @@ class _AccountBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/* 🧾 영수증 붙이는 자리 — 지출 기록 창 안에 들어간다.
+
+   ⚠️ 사진첩(`type: 'photo'`)에는 안 올라간다. 장부 기록 «안»에 번호만 붙는다.
+      모임 사진들 사이에 영수증이 섞이면 사진첩이 지저분해지고,
+      영수증을 찾으려 사진첩을 뒤지게 된다 — 찾을 자리는 그 지출 기록 옆이다. */
+class _ReceiptPicker extends StatelessWidget {
+  final String? thumb;
+  final String? photoId;
+  final bool busy;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  const _ReceiptPicker({
+    required this.thumb,
+    required this.photoId,
+    required this.busy,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final has = photoId != null;
+    return Row(
+      children: [
+        if (has)
+          // 눌러서 크게 보기는 ClubPhoto 가 이미 한다 — 총무가 금액을 다시 확인한다
+          ClubPhoto(
+            photoId: photoId,
+            width: 56,
+            height: 56,
+            decodeWidth: 200,
+            radius: BorderRadius.circular(8),
+          ),
+        if (has) const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: busy ? null : onPick,
+            icon: busy
+                ? const SizedBox(
+                    width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.receipt_long, size: 18),
+            label: Text(busy
+                ? '올리는 중…'
+                : has
+                    ? '영수증 바꾸기'
+                    : '🧾 영수증 사진 붙이기 (선택)'),
+          ),
+        ),
+        if (has)
+          IconButton(
+            onPressed: busy ? null : onRemove,
+            icon: const Icon(Icons.close),
+            tooltip: '영수증 떼기',
+          ),
+      ],
     );
   }
 }

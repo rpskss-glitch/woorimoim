@@ -729,6 +729,8 @@ class Store {
   static const _strFields = {
     'text', 'title', 'memo', 'place', 'date', 'until', 'cat', 'kind',
     'by', 'emoji', 'time', 'name', 'uid', 'photoId', 'payer', 'replyTo', 'repeat', 'birth', 'body',
+    // 🧾 영수증 — 지출 기록 안에만 붙는다(사진첩과 따로). 웹앱과 같은 칸 이름이라야 서로 읽는다
+    'rcptId', 'rcptThumb',
     'thumb',
   };
   /* 기록에서 «한 줄 자리»에 그대로 그려지는 칸 — 길면 화면 밖으로 나간다.
