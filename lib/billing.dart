@@ -35,6 +35,30 @@ class Billing {
   /// 지금 결제 창이 떠 있는지 (두 번 눌러 두 번 결제되는 것을 막는다)
   final busy = ValueNotifier<bool>(false);
 
+  /* ⏱️ 「잠시만요…」가 **영영 안 풀리는 길**을 막는다.
+
+     `buy()` 는 스토어가 스트림으로 답을 줘야 잠금을 푼다. 그런데 답이 «안 오는» 길이 있다 —
+     결제 창을 시스템 수준에서 닫았거나, 스토어 앱이 죽었거나, 기기가 절전으로 들어갔을 때.
+     그러면 단추가 「잠시만요…」인 채 영영 잠겨 **앱을 껐다 켜야 다시 살 수 있다.**
+     돈 내려는 사람을 막는 셈이라, 시간이 지나면 스스로 푼다. */
+  static const _busyLimit = Duration(minutes: 3);
+  Timer? _busyGuard;
+
+  void _setBusy(bool v) {
+    busy.value = v;
+    _busyGuard?.cancel();
+    _busyGuard = null;
+    if (!v) return;
+    _busyGuard = Timer(_busyLimit, () {
+      if (!busy.value) return;
+      busy.value = false;
+      lastMessage.value = '결제 창이 닫힌 것 같아요 — 다시 눌러주세요';
+    });
+  }
+
+  /// 복원으로 되살아난 것이 있었는지 (없으면 «없다»고 말해 줘야 한다)
+  var _restoredCount = 0;
+
   /// 마지막으로 일어난 일 — 화면이 회원 말로 바꿔서 보여준다
   final lastMessage = ValueNotifier<String?>(null);
 
@@ -49,7 +73,14 @@ class Billing {
     } catch (e) {
       available = false;
     }
-    if (!available) return;
+    /* ⚠️ 못 붙었으면 **다시 해볼 수 있게 되돌린다.**
+       앱을 켜는 그 순간에는 스토어가 아직 안 서 있을 수 있다(부팅 직후·계정 전환 중).
+       여기서 굳혀 버리면 그 뒤로는 아무리 화면을 다시 열어도
+       「이 기기에서는 스토어 결제를 쓸 수 없어요」만 나온다 — 살 길이 아예 막힌다. */
+    if (!available) {
+      _started = false;
+      return;
+    }
     /* 스트림은 «앱이 사는 동안» 계속 듣는다.
        결제 도중에 앱이 꺼졌다 켜져도 여기로 마저 들어온다 — 안 들으면 돈만 나간 채 끝난다. */
     _sub = _iap.purchaseStream.listen(
@@ -82,12 +113,12 @@ class Billing {
       await loadProduct();
       return;
     }
-    busy.value = true;
+    _setBusy(true);
     try {
       // 정기결제는 buyNonConsumable 로 산다 (소모품이 아니다)
       await _iap.buyNonConsumable(purchaseParam: PurchaseParam(productDetails: p));
     } catch (e) {
-      busy.value = false;
+      _setBusy(false);
       lastMessage.value = '결제 창을 열지 못했어요 — 잠시 후 다시 해주세요';
     }
   }
@@ -99,15 +130,29 @@ class Billing {
       lastMessage.value = '이 기기에서는 스토어 결제를 쓸 수 없어요';
       return;
     }
-    busy.value = true;
+    _setBusy(true);
+    _restoredCount = 0;
     lastMessage.value = '이전 결제를 확인하는 중이에요…';
     try {
       await _iap.restorePurchases();
     } catch (_) {
+      _setBusy(false);
       lastMessage.value = '복원하지 못했어요 — 스토어 계정을 확인해주세요';
+      return;
     }
-    busy.value = false;
+    /* ⚠️ 되살릴 것이 **없으면 스트림에 아무것도 안 온다.**
+       그러면 「확인하는 중이에요…」인 채로 끝나 회원은 «된 건지 만 건지» 모른다.
+       애플 심사에서도 「복원을 눌렀는데 아무 반응이 없다」로 걸리는 자리다.
+       그래서 잠깐 기다렸다가, 아무것도 안 왔으면 «없다»고 말해 준다. */
+    await Future<void>.delayed(_restoreWait);
+    _setBusy(false);
+    if (_restoredCount == 0) {
+      lastMessage.value = '되살릴 결제가 없어요 — 스토어 계정이 맞는지 확인해주세요';
+    }
   }
+
+  /// 복원 결과가 스트림으로 들어올 때까지 기다리는 시간
+  static const _restoreWait = Duration(seconds: 4);
 
   Future<void> _onPurchases(List<PurchaseDetails> list) async {
     for (final p in list) {
@@ -116,14 +161,15 @@ class Billing {
           lastMessage.value = '결제를 기다리는 중이에요…';
           continue;
         case PurchaseStatus.canceled:
-          busy.value = false;
+          _setBusy(false);
           lastMessage.value = '결제를 취소했어요';
         case PurchaseStatus.error:
-          busy.value = false;
+          _setBusy(false);
           // 스토어가 주는 영어 오류를 그대로 보여주지 않는다 (애플 지침·회원이 못 알아본다)
           lastMessage.value = '결제하지 못했어요 — 잠시 후 다시 해주세요';
         case PurchaseStatus.purchased:
         case PurchaseStatus.restored:
+          if (p.status == PurchaseStatus.restored) _restoredCount++;
           await _verify(p);
       }
       /* ⚠️ 어떤 갈래로 끝나든 «완료»를 알려야 한다.
@@ -140,7 +186,7 @@ class Billing {
   Future<void> _verify(PurchaseDetails p) async {
     final code = AppState.i.code;
     if (code == null) {
-      busy.value = false;
+      _setBusy(false);
       lastMessage.value = '모임에 들어간 뒤에 결제해주세요';
       return;
     }
@@ -150,7 +196,7 @@ class Billing {
       token: p.verificationData.serverVerificationData,
       source: p.verificationData.source, // 'google_play' | 'app_store'
     );
-    busy.value = false;
+    _setBusy(false);
     lastMessage.value = ok
         ? '이용권이 켜졌어요 — 고맙습니다 🏸'
         /* 돈은 나갔는데 못 켠 경우다. **다시 결제하라고 하면 두 번 결제된다** —
@@ -161,6 +207,10 @@ class Billing {
   void dispose() {
     _sub?.cancel();
     _sub = null;
+    _busyGuard?.cancel(); // 안 끄면 앱이 꺼진 뒤에도 시계가 돈다
+    _busyGuard = null;
+    busy.value = false;
     _started = false;
+    available = false; // 다시 켤 때 스토어부터 새로 묻는다
   }
 }
