@@ -23,7 +23,15 @@ class Comments {
     out.sort((a, b) {
       final x = (a['createdAt'] as num?)?.toInt() ?? 0;
       final y = (b['createdAt'] as num?)?.toInt() ?? 0;
-      return x.compareTo(y);
+      final t = x.compareTo(y);
+      if (t != 0) return t;
+      /* ⚠️ 때가 «같을» 때는 문서 번호로 갈라 준다.
+
+         모임 날 여럿이 한꺼번에 달면 같은 밀리초가 흔하다. 그런데 Dart 의 `sort` 는
+         **차례를 지켜 주지 않아서**(불안정 정렬), 같은 값끼리는 볼 때마다 자리가 바뀔 수 있다.
+         그러면 읽던 자리를 잃고 「내 댓글이 사라졌나」로 읽는다.
+         때가 아예 없는 옛 댓글(0으로 세는 것)끼리도 마찬가지다. */
+      return ((a['id'] as String?) ?? '').compareTo((b['id'] as String?) ?? '');
     });
     return out;
   }
