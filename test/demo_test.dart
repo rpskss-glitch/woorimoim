@@ -175,8 +175,16 @@ void main() {
     }
 
     test('내 번호도 체험 것으로 바뀐다', () {
-      expect(src, contains('Demo.on ? Demo.uid'),
+      /* 한 줄이든 여러 줄이든 «체험이면 체험 번호»라야 한다 —
+         모양은 바뀔 수 있으니 뜻만 본다. */
+      final at = src.indexOf('String get myUid');
+      expect(at, greaterThan(0), reason: '내 번호를 주는 자리가 사라졌다');
+      final body = src.substring(at, (at + 420).clamp(0, src.length));
+      expect(body.contains('Demo.on') && body.contains('Demo.uid'), isTrue,
           reason: '내 말·내 표가 하나도 내 것으로 안 잡혀 앱이 남의 것처럼 보인다');
+      // 체험 판정이 «먼저» 와야 한다 — 뒤에 오면 그 전에 파이어베이스를 만진다
+      expect(body.indexOf('Demo.on'), lessThan(body.indexOf('_auth')),
+          reason: '체험인지 묻기 전에 파이어베이스부터 만진다');
     });
   });
 }
