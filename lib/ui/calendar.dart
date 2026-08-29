@@ -303,11 +303,17 @@ class _EventCard extends StatelessWidget {
               ],
             )
           else ...[
-            Row(
+            /* ⚠️ `Wrap` 이라야 한다 — 「출석 N명」과 안내글이 한 줄에 다 못 들어가면
+               오른쪽으로 넘친다. 폰 설정에서 글자를 키운 회원(중장년 동호회에는 흔하다)이
+               좁은 폰(360px)으로 보면 실제로 넘쳤다 — 2026-08-29 실측 112픽셀.
+               `Spacer` 는 «남는 자리»를 먹는 것이라 자리가 모자랄 때는 아무 도움이 안 된다. */
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
               children: [
                 Text('출석 $attendN명',
                     style: TextStyle(fontWeight: FontWeight.w700, color: cs.primary)),
-                const Spacer(),
                 if (st.isAdmin)
                   Text('이름을 눌러 출석 체크',
                       style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),

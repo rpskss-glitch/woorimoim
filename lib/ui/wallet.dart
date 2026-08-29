@@ -535,10 +535,18 @@ class _LedgerRow extends StatelessWidget {
               ],
             ),
           ),
-          Text('${isIn ? '+' : '-'}${fmtWon(amount)}',
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  color: isIn ? moneyIn(context) : moneyOut(context))),
+          /* ⚠️ 금액도 «자리를 나눠 갖게» 한다. 한 줄에 동그란 아이콘·제목·금액·메뉴가
+             모두 들어가는데, 폰 설정에서 글자를 키운 회원(중장년 동호회에는 흔하다)이
+             좁은 폰(360px)으로 보면 넘쳤다 — 2026-08-29 실측 18픽셀.
+             금액은 «잘리면 안 되는» 값이라 줄이지 않고 자리만 확보한다. */
+          Flexible(
+            child: Text('${isIn ? '+' : '-'}${fmtWon(amount)}',
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: isIn ? moneyIn(context) : moneyOut(context))),
+          ),
           /* 지우기는 «둘 다» 맞아야 서버가 받아 준다 —
              돈을 다룰 수 있고(isTreasurer), 그 기록을 지울 수 있어야 한다(canDeleteItem).
              하나만 보고 메뉴를 띄우면 눌러도 안 되는 단추가 된다. */
