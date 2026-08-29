@@ -823,10 +823,16 @@ class Store {
      그래서 2000년부터 «하루 뒤»까지만 때로 인정한다(폰 시계가 조금 빠른 것은 봐준다). */
   static const _timeFloor = 946684800000; // 2000-01-01
 
+  /* 앞날 쪽으로 봐주는 폭 — 하루. 폰 시계 오차는 대개 초 단위이고,
+     사흘씩 틀린 값은 «오차»가 아니라 망가진 값이다.
+     ⚠️ 2026-08-29에 이걸 이레로 늘려 봤다가 되돌렸다 — 시계가 틀린 폰을 봐주려 한 것인데,
+        그건 드문 일이고 진짜 원인은 다른 데 있었다(회비 표가 «들어온 때를 모를 때»를
+        현황 화면과 다르게 다뤘다). 값을 눅이는 것으로 남의 버그를 덮지 않는다. */
   static bool isSaneTime(Object? v) {
     if (v is! num || !v.isFinite) return false; // NaN 은 toInt() 부터 터진다
     final n = v.toInt();
-    return n >= _timeFloor && n <= DateTime.now().millisecondsSinceEpoch + 86400000;
+    return n >= _timeFloor &&
+        n <= DateTime.now().millisecondsSinceEpoch + 86400000;
   }
 
   /// 숫자로 고치되, [asTime] 이면 «말이 되는 때»가 아닌 값은 아예 뺀다.

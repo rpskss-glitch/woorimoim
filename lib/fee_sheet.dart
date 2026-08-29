@@ -34,11 +34,18 @@ class FeeSheet {
   ///    언제 들어왔는지는 «처음 표시가 나오는 달»로 그대로 읽힌다.
   static FeeMark mark(String uid, String month, {int? joinedAt}) {
     final at = joinedAt ?? (AppState.i.members[uid] as Map?)?['joinedAt'] as num?;
-    if (at != null) {
-      final joined = Logic.ymKey(
-          Logic.ymOf(DateTime.fromMillisecondsSinceEpoch(at.toInt())));
-      if (month.compareTo(joined) < 0) return FeeMark.before;
-    }
+    /* ⚠️ 들어온 때를 **모를 때**도 현황 화면과 «같은 말»을 해야 한다.
+
+       모를 수 있다: 옛 판이 안 적었거나, 백업을 손으로 고쳤거나,
+       적힌 값이 말이 안 되는 때라 다듬기가 뺐거나(폰 시계가 틀린 채로 가입).
+       현황 화면(`Logic.unpaidMonths`)은 그때 «이번 달부터»만 센다.
+       여기서만 «옛 달까지 다 안 낸 것»으로 그리면, 새로 든 회원이
+       표에서 「열두 달 밀린 사람」이 되어 대화방에 그대로 올라간다.
+       (2026-08-29: 회비 표와 현황이 다른 말을 하던 자리가 또 나왔다) */
+    final joinedYm = at != null
+        ? Logic.ymOf(DateTime.fromMillisecondsSinceEpoch(at.toInt()))
+        : Logic.ymOf(DateTime.now());
+    if (month.compareTo(Logic.ymKey(joinedYm)) < 0) return FeeMark.before;
     return Logic.paidIn(uid, month) ? FeeMark.paid : FeeMark.unpaid;
   }
 
