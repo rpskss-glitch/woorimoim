@@ -161,23 +161,25 @@ class _WalletTabState extends State<WalletTab> {
         child: Column(
           children: [
             _AccountBar(),
-            Row(
+            /* ⚠️ `Wrap` 이라야 한다 — 「표로 보기」·「밀린 사람 모두」·「여러 명 한 번에」가
+               한 줄에 다 못 들어가면 오른쪽으로 넘친다. 폰 설정에서 글자를 키운 회원
+               (중장년 동호회에는 흔하다)이 좁은 폰(360px)으로 보면 실제로 넘쳤다 —
+               2026-08-29 실측 29픽셀. 넘친 자리의 단추는 아예 못 누른다.
+               `Wrap` 은 자리가 모자라면 **아랫줄로 내려 준다.** */
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Expanded(
-                  child: _pickMode
-                      ? Text('받은 분들을 골라주세요 (${_picked.length}명)',
-                          style: TextStyle(
-                              fontSize: 12, color: Theme.of(context).hintColor))
-                      // 📋 종이 표처럼 «사람 × 달»로 보기 — 대화방에 그대로 올릴 수 있다
-                      : Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () => openFeeSheet(context),
-                            icon: const Icon(Icons.table_chart_outlined, size: 18),
-                            label: const Text('📋 표로 보기'),
-                          ),
-                        ),
-                ),
+                _pickMode
+                    ? Text('받은 분들을 골라주세요 (${_picked.length}명)',
+                        style: TextStyle(
+                            fontSize: 12, color: Theme.of(context).hintColor))
+                    // 📋 종이 표처럼 «사람 × 달»로 보기 — 대화방에 그대로 올릴 수 있다
+                    : TextButton.icon(
+                        onPressed: () => openFeeSheet(context),
+                        icon: const Icon(Icons.table_chart_outlined, size: 18),
+                        label: const Text('📋 표로 보기'),
+                      ),
                 if (_pickMode)
                   TextButton(
                     onPressed: () => setState(() {

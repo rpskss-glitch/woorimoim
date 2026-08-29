@@ -1112,14 +1112,22 @@ class _Option extends StatelessWidget {
                         ),
                       ),
                     ),
+                    /* ⚠️ 「N명 NN%」도 «자리를 나눠 갖게» 한다.
+                       폰 설정에서 글자를 키운 회원(중장년 동호회에는 흔하다)이
+                       좁은 폰(360px)으로 보면 이 줄이 오른쪽으로 넘쳤다 —
+                       2026-08-29 실측 43픽셀. 넘친 자리는 아예 못 누른다. */
                     if (count > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Text('$count명 ${(percent * 100).round()}%',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Theme.of(context).hintColor)),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Text('$count명 ${(percent * 100).round()}%',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Theme.of(context).hintColor)),
+                        ),
                       ),
                   ],
                 ),
