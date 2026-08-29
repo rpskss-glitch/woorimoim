@@ -11,6 +11,7 @@ import 'package:woorimoim/ui/fee_sheet_screen.dart';
 import 'package:woorimoim/ui/home.dart';
 import 'package:woorimoim/ui/members.dart';
 import 'package:woorimoim/ui/settings.dart';
+import 'package:woorimoim/ui/shell.dart';
 import 'package:woorimoim/ui/wallet.dart';
 
 /* 👆 「화면의 단추를 **하나씩 눌러 본다**」
@@ -103,6 +104,135 @@ void main() {
      여기서는 «그리다 터지지 않는지»만 본다. */
   testWidgets('회비 자세히', (t) async =>
       tapEveryButton(t, () => const FeeScreen(), '회비 자세히', needButtons: false));
+
+  /* 🪟 「창을 열었다 **닫아 본다**」
+
+     2026-08-29 아침에 잡은 크래시 둘은 모두 «창을 닫는 순간» 터졌다 —
+     둥근 단추 이름이 겹치거나, 입력 그릇을 창이 닫히기 전에 버려서.
+     그러니 «여는 것»만으로는 부족하다. 열고 닫는 데까지 해봐야 그 자리가 잡힌다. */
+  Future<void> openAndClose(WidgetTester t, Widget Function() screen,
+      String label) async {
+    await t.pumpWidget(host(screen()));
+    await t.pumpAndSettle();
+    final n = tappables().evaluate().length;
+    for (var i = 0; i < n; i++) {
+      await t.pumpWidget(const SizedBox());
+      await t.pumpWidget(host(screen()));
+      await t.pumpAndSettle();
+      final all = tappables();
+      if (all.evaluate().length <= i) break;
+      await t.tap(all.at(i), warnIfMissed: false);
+      await t.pumpAndSettle(const Duration(milliseconds: 300));
+      t.takeException(); // 여는 중의 탈은 앞 시험이 잡는다
+      // 창이 열렸으면 닫아 본다 — 닫는 순간 터지는 자리를 찾는다
+      final closers = find.byWidgetPredicate((w) =>
+          (w is TextButton) || (w is FilledButton) || (w is IconButton));
+      if (closers.evaluate().isNotEmpty) {
+        await t.tap(closers.last, warnIfMissed: false);
+        await t.pumpAndSettle(const Duration(milliseconds: 400));
+        final e = t.takeException();
+        expect(e, isNull,
+            reason: '$label 의 ${i + 1}번째 에서 열린 창을 닫으니 터진다: $e');
+      }
+      // 닫은 뒤 몇 프레임 더 — «닫히는 동안» 터지는 것까지 본다
+      await t.pump(const Duration(milliseconds: 500));
+      final e2 = t.takeException();
+      expect(e2, isNull,
+          reason: '$label 의 ${i + 1}번째 — 창이 닫히는 동안 터진다: $e2');
+    }
+  }
+
+  testWidgets('설정 — 창을 열고 닫기', (t) async =>
+      openAndClose(t, () => const SettingsScreen(), '설정'));
+
+  testWidgets('회비 — 창을 열고 닫기', (t) async =>
+      openAndClose(t, () => const WalletTab(), '회비'));
+
+  testWidgets('일정 — 창을 열고 닫기', (t) async =>
+      openAndClose(t, () => const CalendarTab(), '일정'));
+
+  testWidgets('게시판 — 창을 열고 닫기', (t) async =>
+      openAndClose(t, () => const BoardTab(), '게시판'));
+
+  /* 🏠 진짜 앱의 모양으로 — **탭 다섯이 한꺼번에 살아 있는** 화면.
+
+     ⚠️ 화면을 하나만 띄우면 둥근 단추가 하나뿐이라 «같은 이름» 부딪힘을 못 잡는다.
+        2026-08-29 아침의 크래시가 바로 그것이었다 — IndexedStack 으로 다섯이 동시에 살아
+        회비·게시판·일정의 둥근 단추가 한 화면에 함께 있었고, 화면을 옮기는 순간 터졌다.
+        그래서 여기서는 **진짜 꺼풀을 그대로** 세우고 탭을 옮겨 본다. */
+  testWidgets('탭을 옮겼다 돌아와도 안 터진다', (t) async {
+    await t.pumpWidget(host(ShellScreen(onTouch: () {}), wrap: false));
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull, reason: '꺼풀을 그리다 터진다');
+
+    // 다섯 탭을 차례로 누른다 — 옮기는 순간이 위험하다
+    for (var round = 0; round < 2; round++) {
+      for (var i = 0; i < 5; i++) {
+        final dest = find.byType(NavigationDestination);
+        if (dest.evaluate().length <= i) break;
+        await t.tap(dest.at(i), warnIfMissed: false);
+        await t.pumpAndSettle(const Duration(milliseconds: 400));
+        final e = t.takeException();
+        expect(e, isNull, reason: '${i + 1}번째 탭으로 옮기니 터진다: $e');
+      }
+    }
+  });
+
+  testWidgets('꺼풀 안에서 둥근 단추를 눌러도 안 터진다', (t) async {
+    /* 둥근 단추를 누르면 창이 뜼고, 그 순간 Hero 가 짝을 찾는다 —
+       이름이 겹치면 바로 그때 터진다. */
+    for (var tab = 0; tab < 5; tab++) {
+      await t.pumpWidget(const SizedBox());
+      await t.pumpWidget(host(ShellScreen(onTouch: () {}), wrap: false));
+      await t.pumpAndSettle();
+      final dest = find.byType(NavigationDestination);
+      if (dest.evaluate().length <= tab) break;
+      await t.tap(dest.at(tab), warnIfMissed: false);
+      await t.pumpAndSettle(const Duration(milliseconds: 400));
+      t.takeException(); // 옮기다 난 탈은 위 시험이 잡는다
+      final fab = find.byType(FloatingActionButton);
+      if (fab.evaluate().isEmpty) continue;
+      await t.tap(fab.first, warnIfMissed: false);
+      await t.pumpAndSettle(const Duration(milliseconds: 500));
+      final e = t.takeException();
+      expect(e, isNull,
+          reason: '${tab + 1}번째 탭의 둥근 단추를 누르니 터진다: $e');
+    }
+  });
+
+  testWidgets('꺼풀 위로 화면을 밀어 넣었다 빼도 안 터진다', (t) async {
+    /* 💥 2026-08-29 아침의 크래시가 바로 이 모양이었다 — 설정에서 「월 회비」를
+       저장하고 창이 닫힐 때 빨간 화면이 떴다:
+         There are multiple heroes that share the same tag.
+       탭 다섯이 동시에 살아 있어 둥근 단추가 한 화면에 여럿인데,
+       **화면을 옮길 때** Hero 가 그 이름으로 짝을 지으려다 「같은 이름이 둘」이라며 터졌다.
+       그러니 탭만 옮겨서는 안 된다 — **밀어 넣고 빼야** 그 자리가 잡힌다. */
+    for (var tab = 0; tab < 5; tab++) {
+      await t.pumpWidget(const SizedBox());
+      await t.pumpWidget(host(ShellScreen(onTouch: () {}), wrap: false));
+      await t.pumpAndSettle();
+      final dest = find.byType(NavigationDestination);
+      if (dest.evaluate().length <= tab) break;
+      await t.tap(dest.at(tab), warnIfMissed: false);
+      await t.pumpAndSettle(const Duration(milliseconds: 400));
+      t.takeException();
+
+      // 꺼풀 위로 화면 하나를 밀어 넣는다 (설정·회원 같은 자리로 가는 것과 같다)
+      final ctx = t.element(find.byType(NavigationBar));
+      Navigator.of(ctx).push(MaterialPageRoute(
+          builder: (_) => const Scaffold(body: Center(child: Text('새 화면')))));
+      await t.pumpAndSettle(const Duration(milliseconds: 600));
+      final e1 = t.takeException();
+      expect(e1, isNull,
+          reason: '${tab + 1}번째 탭에서 화면을 밀어 넣으니 터진다: $e1');
+
+      Navigator.of(ctx).pop();
+      await t.pumpAndSettle(const Duration(milliseconds: 600));
+      final e2 = t.takeException();
+      expect(e2, isNull,
+          reason: '${tab + 1}번째 탭에서 화면을 빼니 터진다: $e2');
+    }
+  });
 
   tearDownAll(() => AppState.i.setItems([]));
 }

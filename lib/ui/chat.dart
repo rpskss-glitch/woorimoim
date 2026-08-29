@@ -102,8 +102,19 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     super.didUpdateWidget(old);
     // 방금 채팅 탭으로 들어왔다면 그때 읽음 처리한다
     if (!old.active && widget.active) {
-      _markSeen();
-      _scrollToBottom(); // 다른 탭 갔다 돌아오면 다시 최신 대화가 보이게
+      /* ⚠️ 여기서 «바로» 부르면 안 된다 — `didUpdateWidget` 은 **그리는 도중**에 불린다.
+         읽음 표시는 모임 자료를 고치고, 그러면 알림이 퍼져 다른 탭들이 다시 그리려 든다.
+         그 순간 Flutter 가 「그리는 중에는 다시 그리라고 할 수 없다」며 막는다:
+           setState() or markNeedsBuild() called during build.
+         탭 다섯이 «동시에 살아 있는» 이 앱에서는 한 번 옮길 때마다 네 개씩 났다
+         (2026-08-29: 탭을 옮겨 보는 시험이 잡았다. 디버그 판에서는 빨간 화면이 되고,
+          내보내는 판에서는 조용히 넘어가되 화면 갱신이 한 박자 밀린다).
+         그리기가 끝난 뒤로 미룬다. */
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _markSeen();
+      });
+      _scrollToBottom(); // 다른 탭 갔다 돌아오면 다시 최신 대화가 보이게 (이미 다음 프레임에 돈다)
     }
   }
 
