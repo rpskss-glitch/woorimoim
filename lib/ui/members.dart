@@ -505,15 +505,26 @@ class _MemberRow extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w700)),
                     ),
                     if (role == 'owner') const Text(' 👑', style: TextStyle(fontSize: 13)),
+                    /* ⚠️ 직책 딱지도 «자리를 나눠 갖게» 한다.
+                       이름은 이미 줄어들지만(ellipsis), 딱지가 자리를 안 양보하면
+                       딱지째로 오른쪽으로 밀려 나간다 — 「경기이사 겸 총무보조」처럼
+                       긴 직책은 동호회에 흔하다. 2026-08-29 실측: 회원 40명·긴 이름·
+                       좁은 폰(360px)·글자 2배에서 117픽셀 넘쳤다. */
                     if (title != null && title.isNotEmpty) ...[
                       const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer.withValues(alpha: .55),
-                          borderRadius: BorderRadius.circular(20),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer.withValues(alpha: .55),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w700)),
                         ),
-                        child: Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ],
