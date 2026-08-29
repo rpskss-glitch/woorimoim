@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/demo.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/theme.dart';
+import 'package:woorimoim/ui/admin.dart';
+import 'package:woorimoim/ui/onboarding.dart';
+import 'package:woorimoim/ui/wait.dart';
 import 'package:woorimoim/ui/board.dart';
 import 'package:woorimoim/ui/calendar.dart';
 import 'package:woorimoim/ui/chat.dart';
@@ -233,6 +236,20 @@ void main() {
           reason: '${tab + 1}번째 탭에서 화면을 빼니 터진다: $e2');
     }
   });
+
+  /* 아직 안 훑은 화면들 — 총괄 콘솔·가입·승인 기다림.
+     회원이 드물게 보는 자리일수록 눌러 본 적이 없어 버그가 오래 산다. */
+  testWidgets('총괄 콘솔', (t) async =>
+      tapEveryButton(t, () => const AdminConsole(), '총괄 콘솔',
+          wrap: false, needButtons: false));
+
+  testWidgets('승인 기다림', (t) async =>
+      tapEveryButton(t, () => const WaitScreen(), '승인 기다림',
+          wrap: false, needButtons: false));
+
+  testWidgets('가입 화면', (t) async =>
+      tapEveryButton(t, () => OnboardingScreen(onJoined: () {}), '가입 화면',
+          wrap: false, needButtons: false));
 
   tearDownAll(() => AppState.i.setItems([]));
 }
