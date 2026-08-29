@@ -251,5 +251,76 @@ void main() {
       tapEveryButton(t, () => OnboardingScreen(onJoined: () {}), '가입 화면',
           wrap: false, needButtons: false));
 
+  /* ⌨️ 「글자를 집어넣고 저장까지 눌러 본다」
+
+     2026-08-29 아침 크래시 둘 중 하나가 바로 이 자리였다 —
+     설정에서 「월 회비」를 고치고 **저장을 누르는 순간** 빨간 화면:
+       A TextEditingController was used after being disposed.
+     창을 여는 것만으로는 안 나고, **글자를 치고 저장까지** 해야 나왔다. */
+  Future<void> typeAndSave(WidgetTester t, Widget Function() screen,
+      String label) async {
+    await t.pumpWidget(host(screen(), wrap: false));
+    await t.pumpAndSettle();
+    final n = tappables().evaluate().length;
+
+    for (var i = 0; i < n; i++) {
+      await t.pumpWidget(const SizedBox());
+      await t.pumpWidget(host(screen(), wrap: false));
+      await t.pumpAndSettle();
+      final all = tappables();
+      if (all.evaluate().length <= i) break;
+      await t.tap(all.at(i), warnIfMissed: false);
+      await t.pumpAndSettle(const Duration(milliseconds: 300));
+      t.takeException(); // 여는 중의 탈은 앞 시험들이 잡는다
+
+      // 창이 열렸고 그 안에 입력칸이 있으면 — 글자를 치고 저장을 누른다
+      final fields = find.byType(TextField);
+      if (fields.evaluate().isEmpty) continue;
+      await t.enterText(fields.first, '12345');
+      await t.pumpAndSettle(const Duration(milliseconds: 200));
+      final e1 = t.takeException();
+      expect(e1, isNull,
+          reason: '$label 의 ${i + 1}번째 — 글자를 치니 터진다: $e1');
+
+      /* «저장» 같은 마침 단추를 찾아 누른다.
+         ⚠️ 창 «안»에서만 찾는다 — 밖의 단추를 누르면 창이 열린 채로 딴 일이 벌어져,
+            우리 코드와 무관한 탈이 나고 그걸 앱 버그로 잘못 읽게 된다. */
+      final dialog = find.byWidgetPredicate((w) => w is AlertDialog || w is Dialog);
+      if (dialog.evaluate().isEmpty) continue;
+      final save = find.descendant(
+          of: dialog.first,
+          matching: find.byWidgetPredicate((w) =>
+              (w is FilledButton) || (w is TextButton) || (w is ElevatedButton)));
+      if (save.evaluate().isEmpty) continue;
+      await t.tap(save.last, warnIfMissed: false);
+      await t.pumpAndSettle(const Duration(milliseconds: 500));
+      final e2 = t.takeException();
+      expect(e2, isNull,
+          reason: '$label 의 ${i + 1}번째 — 글자를 치고 저장을 누르니 터진다: $e2');
+
+      // 닫힐 때까지 본다 — 크래시는 보통 «닫히는 동안» 난다
+      await t.pump(const Duration(milliseconds: 600));
+      final e3 = t.takeException();
+      expect(e3, isNull,
+          reason: '$label 의 ${i + 1}번째 — 창이 닫히는 동안 터진다: $e3');
+
+      /* ⚠️ 다음 차례로 넘어가기 «전»에 열린 창을 반드시 닫는다.
+         창이 남은 채로 화면을 통째로 갈아 끼우면 Flutter 안쪽이 꼬여
+         우리 코드와 무관한 탈이 난다 — 그걸 앱 버그로 잘못 읽게 된다. */
+      final nav = find.byType(Navigator);
+      if (nav.evaluate().isNotEmpty) {
+        Navigator.of(t.element(nav.first)).popUntil((r) => r.isFirst);
+        await t.pumpAndSettle(const Duration(milliseconds: 400));
+        t.takeException();
+      }
+    }
+  }
+
+  testWidgets('설정 — 글자를 치고 저장하기', (t) async =>
+      typeAndSave(t, () => const SettingsScreen(), '설정'));
+
+  testWidgets('회원 관리 — 글자를 치고 저장하기', (t) async =>
+      typeAndSave(t, () => const MembersScreen(), '회원 관리'));
+
   tearDownAll(() => AppState.i.setItems([]));
 }
