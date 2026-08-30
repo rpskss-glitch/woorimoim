@@ -82,7 +82,18 @@ void main() {
     final bad = <String>[];
     for (final f in Directory('lib/ui').listSync().whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
-      final src = f.readAsStringSync();
+      /* ⚠️ **주석은 걷어낸다.** 「showDatePicker 에 달만 고르는 모드가 없다」처럼
+         설명에 이름이 나오면 코드도 아닌 자리를 잡아 헛짚는다(실제로 그랬다).
+         줄 번호는 그대로 세야 하므로 주석을 «지우지 말고 빈칸으로» 바꾼다. */
+      final raw = f.readAsStringSync();
+      // 줄 번호는 그대로 세야 하므로, 주석은 «지우지 말고» 같은 길이의 빈칸으로 바꾼다
+      final lf = String.fromCharCode(10);
+      String blank(String t) =>
+          t.split('').map((c) => c == lf ? c : ' ').join();
+      final src = raw
+          .replaceAllMapped(
+              RegExp('/[*][\\s\\S]*?[*]/'), (m) => blank(m[0]!))
+          .replaceAllMapped(RegExp('//[^' + lf + ']*'), (m) => blank(m[0]!));
       final name = f.uri.pathSegments.last;
       for (final m in RegExp('showDatePicker').allMatches(src)) {
         final body = src.substring(m.start, (m.start + 400).clamp(m.start, src.length));

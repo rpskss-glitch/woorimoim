@@ -1789,6 +1789,13 @@ class Store {
   String? getStr(String k) => _prefs?.getString(k);
   Future<void> setStr(String k, String v) async => _prefs?.setString(k, v);
   Future<void> remove(String k) async => _prefs?.remove(k);
+  /* 🧪 시험에서만 쓰는 자리 — «이 기기에 남기는 값»(안내서 닫음·읽은 데까지)은
+     저장소가 있어야 뜻이 있는데, 시험틀에는 그것이 없어 조용히 무시된다.
+     그러면 「닫아도 계속 뜬다」 같은 것을 시험으로 붙잡을 수가 없다. */
+  Future<void> loadPrefsForTest() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
+
   int getInt(String k) => _prefs?.getInt(k) ?? 0;
   Future<void> setInt(String k, int v) async => _prefs?.setInt(k, v);
 

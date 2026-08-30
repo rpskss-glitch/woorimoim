@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../config.dart';
 import '../demo.dart';
@@ -25,6 +28,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _codeC = TextEditingController();
   final _nameC = TextEditingController();
   DateTime? _birth;
+
+  /* 📷 가입할 때 고른 «내 얼굴 사진».
+     ⚠️ 여기서는 **아직 서버에 못 올린다** — 올릴 방(모임)이 정해지기 전이라
+        보관함 경로가 없다. 그래서 그림만 들고 있다가, 방에 들어간 «직후»에 올린다
+        (`_uploadFaceIfAny`). 그 전에 올리면 어느 방 것인지 알 수 없어 떠돌이 파일이 된다. */
+  Uint8List? _face;
   String _emoji = allAvatars.first;
   bool _busy = false;
 
@@ -77,6 +86,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   String? get _birthStr => _birth == null ? null : ymd(_birth!);
+
+  /* 📷 앨범에서 얼굴 사진 고르기 — 설정의 「내 정보」와 같은 규격(360px)이라야
+     두 곳에서 고른 사진이 같은 크기로 보인다. */
+  Future<void> _pickFace() async {
+    try {
+      final x = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 360,
+        // 세로도 함께 줄인다 — 긴 사진은 가로만 줄여선 여전히 크다
+        maxHeight: 360,
+        imageQuality: 80,
+      );
+      if (x == null) return;
+      final bytes = await x.readAsBytes();
+      if (mounted) setState(() => _face = bytes);
+    } catch (_) {
+      // 앨범을 못 열어도 가입은 막지 않는다 — 아바타로 들어가면 된다
+      if (mounted) toast(context, '앨범을 열지 못했어요 — 아바타로 하셔도 돼요');
+    }
+  }
+
+  /* 방에 들어간 «뒤»에 얼굴 사진을 올린다.
+     ⚠️ 실패해도 가입은 되돌리지 않는다 — 사진 하나 때문에 못 들어가면 더 나쁘다.
+        (설정 → 내 정보에서 언제든 다시 올릴 수 있다) */
+  Future<void> _uploadFaceIfAny(String code) async {
+    final bytes = _face;
+    if (bytes == null) return;
+    String? photoId;
+    try {
+      photoId = await Store.i.savePhoto(code, bytes);
+      if (photoId == null) return;
+      await Store.i.patchCouple(code, Store.memberPatch(Store.i.myUid, {'photo': photoId}));
+    } catch (_) {
+      /* ⚠️ **올리기는 됐는데 적기가 거절당한 자리** — 그 원본은 보관함에
+         «아무도 못 보는 파일»로 남아 매달 요금만 나간다(화면 어디에도 안 보이니 아무도 모른다).
+         가입 자체는 되돌리지 않는다 — 사진 하나 때문에 못 들어가면 더 나쁘다. */
+      if (photoId != null) Store.i.dropPhotos([photoId]);
+    }
+  }
 
   /* 👀 가입 없이 둘러보기 — 샘플 모임을 이 폰 안에 세우고 그대로 들어간다.
      ⚠️ 서버에는 아무것도 오가지 않는다(`Demo` 가 Store 의 모든 읽기·쓰기를 가로챈다).
@@ -306,6 +354,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     //    다음에 앱을 열 때 "모임 이용이 중지됐어요"라고 잘못 알린다.
     Future<void> enter() async {
       await AppState.i.saveProfile(code, uid, name);
+      // 방이 정해진 «뒤»에 얼굴 사진을 올린다 (그 전엔 올릴 곳이 없다)
+      await _uploadFaceIfAny(code);
       widget.onJoined();
     }
 
@@ -589,6 +639,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 BirthInput(
                   initial: _birth,
                   onChanged: (d) => setState(() => _birth = d),
+                ),
+                const SizedBox(height: 14),
+                /* 📷 아바타보다 «먼저» — 사진이 있는 사람은 그림을 고르지 않아도 된다.
+                   (사진이 없을 때만 아바타가 얼굴이 되므로 차례가 이렇게 맞다) */
+                _Label('내 사진', hint: '없으면 아래 아바타로 해도 돼요'),
+                Row(
+                  children: [
+                    if (_face != null) ...[
+                      ClipOval(
+                        child: Image.memory(_face!,
+                            width: 52, height: 52, fit: BoxFit.cover),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _pickFace,
+                        icon: const Icon(Icons.photo_outlined, size: 18),
+                        label: Text(_face == null ? '앨범에서 고르기' : '다른 사진'),
+                      ),
+                    ),
+                    if (_face != null) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        onPressed: () => setState(() => _face = null),
+                        child: const Text('빼기'),
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 14),
                 _Label('내 아바타', hint: '같은 이름이면 아바타로 구분해요'),

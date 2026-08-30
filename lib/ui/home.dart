@@ -9,6 +9,7 @@ import '../store.dart';
 import 'album.dart';
 import 'common.dart';
 import 'members.dart';
+import 'owner_guide.dart';
 import 'post_screen.dart';
 
 /* 🏠 홈 — **웹앱 첫 화면과 같은 얼굴.**
@@ -68,6 +69,12 @@ class _HomeTabState extends State<HomeTab> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
+        /* 📖 방장 안내서 — **방장에게만, 닫기 전까지.** 맨 위에 둔다:
+           새 방장이 제일 먼저 봐야 할 것이라 아래에 두면 못 찾는다. */
+        if (OwnerGuideCard.shouldShow()) ...[
+          OwnerGuideCard(onClosed: _r, onGo: _go),
+          const SizedBox(height: 12),
+        ],
         _hero(context, st, now),
         const SizedBox(height: 12),
         _quick(context),
@@ -141,7 +148,7 @@ class _HomeTabState extends State<HomeTab> {
                   onPressed: () async {
                     final ok = await Push.i.setup();
                     if (!context.mounted) return;
-                    toast(context, ok ? '알림을 켰어요 🔔' : '알림 권한을 허용해야 받을 수 있어요');
+                    toast(context, Push.i.offReason(ok));
                   },
                   child: const Text('알림 켜기'),
                 ),

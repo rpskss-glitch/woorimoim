@@ -11,6 +11,7 @@ import '../store.dart';
 import '../theme.dart';
 import 'admin.dart';
 import 'common.dart';
+import 'owner_guide.dart';
 
 /// ⚙️ 설정 — 내 정보, 모임 설정(방장), 알림, 꾸미기.
 class SettingsScreen extends StatefulWidget {
@@ -111,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           if (m[0] != 'off') {
                             final ok = await Push.i.setup();
                             if (!ok && context.mounted) {
-                              toast(context, '알림 권한을 허용해야 받을 수 있어요');
+                              toast(context, Push.i.offReason(false));
                               return;
                             }
                           }
@@ -309,6 +310,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 20),
+
+          /* 📖 방장 안내서 다시 보기 — 홈에서 닫은 뒤 되찾는 길.
+             이 길이 없으면 한 번 닫은 안내서를 **영영 못 본다**(닫기가 곧 삭제가 된다). */
+          if (st.isOwner)
+            SectionCard(
+              title: '📖 방장 안내서',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('방장 안내서 다시 보기'),
+                subtitle: const Text('회원 부르기·직책·회비·일정·이용권 차례대로',
+                    style: TextStyle(fontSize: 12)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  OwnerGuideCard.reset();
+                  toast(context, '홈 맨 위에 다시 나와요');
+                },
+              ),
+            ),
+          if (st.isOwner) const SizedBox(height: 20),
 
           SectionCard(
             title: '📋 모임 안내',

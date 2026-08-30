@@ -62,6 +62,11 @@ void main() {
     /* 회비·지출 표를 «그림으로 만들어» 대화방에 올리는 자리(203회차).
        사진 올리기와 같은 두 걸음이고, 뒤가 실패하면 같은 방식으로 원본을 치운다. */
     'lib/ui/fee_sheet_screen.dart': 1,
+    /* 가입할 때 고른 «내 얼굴 사진»(2026-08-30).
+       방이 정해진 뒤에야 올릴 수 있어 「보관함에 올리기 → 회원 칸에 적기」 두 걸음이고,
+       뒤가 실패하면 `dropPhotos` 로 방금 올린 원본을 도로 치운다.
+       ⚠️ 가입 자체는 되돌리지 않는다 — 사진 하나 때문에 못 들어가면 더 나쁘다. */
+    'lib/ui/onboarding.dart': 1,
   };
 
   test('한 동작이 두 번 쓰는 자리가 «늘어나면» 알려준다', () {
@@ -78,6 +83,7 @@ void main() {
     expect(found['lib/ui/members.dart'], known['lib/ui/members.dart']!.length);
     expect(found['lib/ui/board.dart'], rollbackOk['lib/ui/board.dart']);
     expect(found['lib/ui/fee_sheet_screen.dart'], rollbackOk['lib/ui/fee_sheet_screen.dart']);
+    expect(found['lib/ui/onboarding.dart'], rollbackOk['lib/ui/onboarding.dart']);
   });
 
   test('되돌리기로 넘어가는 자리는 «정말로» 되돌린다', () {

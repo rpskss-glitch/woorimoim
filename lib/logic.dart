@@ -836,6 +836,17 @@ class Logic {
      (달을 0부터 이어 센 값 = 해*12 + 달-1. 음수 없이 늘 양수라 나눗셈이 안전하다) */
   static int ymOf(DateTime d) => d.year * 12 + d.month - 1;
 
+  /* 「2026-08」 같은 달 이름을 «달 셈»으로 되돌린다 (ymOf 의 반대).
+     ⚠️ 모양이 아니면 null 을 준다 — 손으로 고친 백업·옛 자료가 섞일 수 있어
+        여기서 걸러 내야 표가 엉뚱한 해로 튀지 않는다. */
+  static int? ymOfKey(String? key) {
+    if (key == null || key.length < 7) return null;
+    final y = int.tryParse(key.substring(0, 4));
+    final m = int.tryParse(key.substring(5, 7));
+    if (y == null || m == null || m < 1 || m > 12) return null;
+    return y * 12 + m - 1;
+  }
+
   static String ymKey(int ym) =>
       '${ym ~/ 12}-${(ym % 12 + 1).toString().padLeft(2, '0')}';
 

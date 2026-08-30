@@ -120,7 +120,6 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _typingTick?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     AppState.i.removeListener(_onData);
     AppState.i.live.removeListener(_onLive);
@@ -156,8 +155,23 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     if (mounted) setState(() {});
   }
 
+  /* 🚪 지금 보고 있는 방. `''` = 모두의 방, `'staff'` = 운영진 방.
+
+     ⚠️ 앱에서 가리는 것만으로는 «비밀»이 되지 않는다 — 앱을 뜯으면 자료가 그대로 읽힌다.
+        그래서 서버 규칙이 운영진 방을 직접 막는다(firestore.rules). 여기는 «화면»일 뿐이다.
+     ⚠️ 운영진에서 내려온 사람이 이 값을 들고 있으면 안 된다 — 그릴 때 늘 다시 본다. */
+  String _room = '';
+
+  bool get _canStaffRoom => AppState.i.isAdmin;
+
   /// 차단한 회원의 대화는 내 화면에서 가린다 (지우는 것이 아니라 «나만 안 보는 것»)
-  List<Map<String, dynamic>> get _msgs => Moderation.hide(AppState.i.by('msg'));
+  /// 그리고 «지금 보는 방»의 것만 남긴다 — 칸이 없는 옛 대화는 모두의 방이다.
+  List<Map<String, dynamic>> get _msgs {
+    final room = _canStaffRoom ? _room : ''; // 권한이 없어졌으면 모두의 방으로
+    return Moderation.hide(AppState.i.by('msg'))
+        .where((m) => ((m['room'] as String?) ?? '') == room)
+        .toList();
+  }
 
   /// 읽음 표시 — 남의 메시지를 어디까지 봤는지만 적는다.
   /// 내 것까지 세면 보낼 때마다 쓰기가 한 번 더 나가고, 단체방에선 그 쓰기가
@@ -189,9 +203,20 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     }
   }
 
-  /// 입력 중 표시 — 3초에 한 번, 그리고 볼 사람이 있을 때만.
-  /// (쓰기 1번이 구독 중인 회원 수만큼 읽기 요금으로 곱해지기 때문)
+  /* ⌨️ 「○○님이 입력 중…」은 **쓰지 않는다.**
+
+     2026-08-30 사장님 결정 — 누가 글을 적고 있는지 남에게 알리지 않는다.
+     동호회 대화방에서는 «보고 있다»는 것이 알려지는 것 자체가 부담이 된다
+     (쓰다 지우면 그것도 상대에게 보였다).
+
+     ⚠️ 덤으로 요금도 준다 — 이 값은 «글자를 칠 때마다» 서버에 쓰이는데,
+        쓰기 한 번이 구독 중인 회원 수만큼 읽기 요금으로 곱해졌다.
+
+     ⚠️ 읽는 쪽(`typingLive`)은 **지우지 않고 남겨 둔다** — 웹앱이 아직 이 값을 쓰고,
+        옛 판 앱이 적어 둔 값이 남아 있을 수 있다. 우리는 «안 그릴» 뿐이다. */
   void _onTyping() {
+    return; // 아무것도 보내지 않는다
+    // ignore: dead_code
     final st = AppState.i;
     final code = st.code;
     if (code == null) return;
@@ -221,6 +246,8 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     final id = await Store.i.addItem(code, {
       'type': 'msg',
       'text': text,
+      // 운영진 방에서 쓴 말에는 표시를 남긴다 — 서버 규칙이 이 칸을 보고 막는다
+      if (_canStaffRoom && _room.isNotEmpty) 'room': _room,
       if (reply != null) 'replyTo': reply['id'],
     });
     if (id == null) {
@@ -502,19 +529,33 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final st = AppState.i;
     final msgs = _msgs;
-    final typers = _typers();
 
     return Column(
       children: [
+        /* 🚪 방 바꾸기 — **운영진에게만 보인다.**
+           평회원에게 보이면 「눌러도 안 되는 문」이 되어 오히려 궁금해진다. */
+        if (_canStaffRoom)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: '', label: Text('모두의 방')),
+                ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
+              ],
+              selected: {_room},
+              onSelectionChanged: (v) => setState(() => _room = v.first),
+            ),
+          ),
         Expanded(
           child: msgs.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('🏸', style: TextStyle(fontSize: 44)),
+                      Text(_room.isEmpty ? '🏸' : '🔒',
+                          style: const TextStyle(fontSize: 44)),
                       const SizedBox(height: 10),
-                      Text('모임 단체 대화방이에요\n첫 인사를 건네보세요!',
+                      Text(_room.isEmpty ? '모임 단체 대화방이에요\n첫 인사를 건네보세요!' : '운영진끼리만 보는 방이에요\n회원에게는 보이지 않아요',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Theme.of(context).hintColor, height: 1.5)),
                     ],
@@ -557,17 +598,8 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                   },
                 ),
         ),
-        if (typers.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${typers.take(2).join(', ')}${typers.length > 2 ? ' 외 ${typers.length - 2}명' : ''}님이 입력 중…',
-                style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor),
-              ),
-            ),
-          ),
+        /* 「○○님이 입력 중…」은 **안 그린다** — 위 `_onTyping` 의 설명 참고.
+           (웹앱이 적어 둔 값이 와도 이 화면에는 안 띄운다) */
         if (_replyTo != null)
           Container(
             padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
@@ -666,27 +698,6 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       if ((((v as num?) ?? 0).toInt()) >= at) n++;
     });
     return n;
-  }
-
-  /// 표시가 사라져야 할 때 «스스로» 다시 그리게 하는 시계
-  Timer? _typingTick;
-
-  List<String> _typers() {
-    final st = AppState.i;
-    final r = typingLive(
-      (st.couple?['typing'] as Map?)?.cast<String, dynamic>() ?? {},
-      st.members.containsKey,
-      Store.i.myUid,
-      DateTime.now().millisecondsSinceEpoch,
-    );
-    // 남은 시간이 지나면 한 번 더 그린다 — 안 그러면 멈춘 뒤에도 표시가 남는다
-    _typingTick?.cancel();
-    if (r.expiresInMs > 0) {
-      _typingTick = Timer(Duration(milliseconds: r.expiresInMs + 60), () {
-        if (mounted) setState(() {});
-      });
-    }
-    return r.uids.map(st.nameOf).toList();
   }
 
   String _preview(Map<String, dynamic> m) => msgLabel(m);

@@ -21,6 +21,22 @@ class FeeSheet {
     return [for (var i = months - 1; i >= 0; i--) Logic.ymKey(end - i)];
   }
 
+  /* 📅 «고른 기간»의 달 목록 — 시작 달부터 끝 달까지.
+
+     총무가 「작년 3월부터 8월까지」처럼 «지난 어느 때»를 봐야 할 일이 있다
+     (결산·감사 때). 「최근 N개월」만으로는 그 자리를 못 본다.
+
+     ⚠️ 거꾸로 골라도(끝이 시작보다 앞) 빈 표를 주지 않고 **뒤집어서** 돌려준다 —
+        고른 사람은 실수했는지 모르고 「자료가 없다」고 오해한다.
+     ⚠️ 너무 넓게 고르면 표가 수백 칸이 되어 화면이 멈칫한다 — 120달로 끊는다. */
+  static List<String> monthRange(String fromYm, String toYm) {
+    var a = Logic.ymOfKey(fromYm), b = Logic.ymOfKey(toYm);
+    if (a == null || b == null) return monthKeys(6);
+    if (b < a) { final t = a; a = b; b = t; }
+    final n = (b - a + 1).clamp(1, 120);
+    return [for (var i = 0; i < n; i++) Logic.ymKey(a + i)];
+  }
+
   /// 그 사람이 그 달에 어땠는지.
   ///
   /// ⚠️ 가입 «전»을 미납으로 그리면 안 된다 — 새로 들어온 회원이 표에서

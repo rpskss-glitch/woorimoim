@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../fee_sheet.dart';
+import '../logic.dart';
 import '../state.dart';
 import '../store.dart';
 import 'common.dart';
@@ -26,6 +27,11 @@ class FeeSheetScreen extends StatefulWidget {
 
 class _FeeSheetScreenState extends State<FeeSheetScreen> {
   int _months = 6;
+
+  /* 📅 «직접 고른» 기간 (둘 다 있을 때만 쓴다).
+     총무는 결산·감사 때 「작년 3월부터 8월까지」 같은 지난 자리를 봐야 한다 —
+     「최근 N개월」만으로는 못 본다. */
+  String? _fromYm, _toYm;
   int _tab = 0; // 0=회비 1=지출
   bool _busy = false;
 
@@ -47,6 +53,50 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
     super.dispose();
   }
 
+  /* 📅 기간 직접 고르기 — 시작 달과 끝 달을 달력에서 고른다.
+
+     ⚠️ 달력은 «날»을 고르게 돼 있지만 우리는 «달»만 쓴다 — 며칠을 골랐든 그 달로 본다.
+        (`showDatePicker` 에 달만 고르는 모드가 없다. 회원에게는 「그 달의 아무 날」로 안내한다)
+     ⚠️ 취소하면 아무것도 안 바꾼다 — 고르다 말았는데 표가 바뀌면 놀란다. */
+  Future<void> _pickRange() async {
+    final now = DateTime.now();
+    final first = DateTime(now.year - 10);
+    final last = DateTime(now.year + 1, 12, 31);
+
+    /* ⚠️ `initialDate` 는 **반드시 `clampDate` 를 거친다** — 범위 밖 값이 들어오면
+       달력이 그 자리에서 터진다(assert). 지금은 «오늘»에서 만들어 안전하지만,
+       나중에 저장된 값을 쓰게 되면 그때 터진다. 앱 전체가 이 규칙을 지킨다. */
+    final a = await showDatePicker(
+      context: context,
+      initialDate: clampDate(DateTime(now.year, now.month), first, last),
+      firstDate: first,
+      lastDate: last,
+      helpText: '시작 달 — 그 달의 아무 날이나',
+    );
+    // 취소하면 아무것도 안 바꾼다 — 고르다 말았는데 표가 바뀌면 놀란다
+    if (a == null) return;
+    if (!mounted) return;
+    final b = await showDatePicker(
+      context: context,
+      initialDate: clampDate(now, first, last),
+      firstDate: first,
+      lastDate: last,
+      helpText: '끝 달 — 그 달의 아무 날이나',
+    );
+    if (b == null) return;
+    if (!mounted) return;
+
+    setState(() {
+      _fromYm = Logic.ymKey(Logic.ymOf(a));
+      _toYm = Logic.ymKey(Logic.ymOf(b));
+    });
+    // 기간을 바꾸면 표를 «맨 끝»(가장 최근 달)으로 — 안 그러면 옛 달만 보인다
+    WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
+    if (!mounted) return;
+    final n = FeeSheet.monthRange(_fromYm!, _toYm!).length;
+    toast(context, '$_fromYm ~ $_toYm · $n개월을 봅니다');
+  }
+
   void _toNow() {
     if (!_hScroll.hasClients) return;
     _hScroll.jumpTo(_hScroll.position.maxScrollExtent);
@@ -60,7 +110,9 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final months = FeeSheet.monthKeys(_months);
+    final months = (_fromYm != null && _toYm != null)
+        ? FeeSheet.monthRange(_fromYm!, _toYm!)
+        : FeeSheet.monthKeys(_months);
     return Scaffold(
       appBar: AppBar(
         title: Text(_tab == 0 ? '회비 납부 현황' : '지출 내역'),
@@ -69,7 +121,13 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
             tooltip: '몇 달치를 볼지',
             initialValue: _months,
             onSelected: (v) {
-              setState(() => _months = v);
+              if (v == -1) { _pickRange(); return; }
+              setState(() {
+                _months = v;
+                // 「최근 N개월」을 고르면 직접 고른 기간은 푼다 — 둘이 겹치면 어느 쪽인지 모른다
+                _fromYm = null;
+                _toYm = null;
+              });
               // 달 수를 바꿔도 «이번 달»이 보이게
               WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
             },
@@ -77,6 +135,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
               PopupMenuItem(value: 3, child: Text('최근 3개월')),
               PopupMenuItem(value: 6, child: Text('최근 6개월')),
               PopupMenuItem(value: 12, child: Text('최근 12개월')),
+              PopupMenuItem(value: -1, child: Text('기간 직접 고르기…')),
             ],
             icon: const Icon(Icons.date_range),
           ),

@@ -150,6 +150,24 @@ class _MembersScreenState extends State<MembersScreen> {
                 children: [
                   for (final t in Logic.allTitles())
                     ActionChip(label: Text(t), onPressed: () => Navigator.pop(c, t)),
+                  /* ✏️ 미리 넣어둔 12개에 없는 직책 — 모임마다 부르는 이름이 다르다
+                     (「총무님」·「살림이」·「기획」…). 직접 적을 길이 없으면
+                     방장은 비슷한 것을 골라 두고 실제와 다르게 쓴다. */
+                  ActionChip(
+                    avatar: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('직접 입력'),
+                    onPressed: () async {
+                      final t = await askText(c,
+                          title: '직책 직접 입력',
+                          hint: '예) 기획이사',
+                          helper: '회장·총무로 적으면 운영진 권한도 함께 붙어요',
+                          maxLength: 10,
+                          okLabel: '정하기');
+                      final v = (t ?? '').trim();
+                      if (v.isEmpty || !c.mounted) return;
+                      Navigator.pop(c, v);
+                    },
+                  ),
                   ActionChip(
                     label: const Text('직책 없음'),
                     onPressed: () => Navigator.pop(c, ''),
@@ -177,17 +195,28 @@ class _MembersScreenState extends State<MembersScreen> {
       titleDone = true;
       if (!mounted) return;
       var nowStaff = m['role'] != 'member';
-      // 운영진 직책이면 권한도 같이 줄지 물어본다
-      if (picked.isNotEmpty && adminTitles.contains(picked) && m['role'] == 'member') {
-        final give = await confirmSheet(
-          context,
-          '$picked 직책이네요',
-          '운영진 권한(회원 승인·일정 관리)도 같이 드릴까요?',
-          okLabel: '권한도 주기',
-        );
-        if (give) {
+      /* 👑 **회장·총무는 묻지 않고 바로 운영진.**
+         이 둘은 모임을 실제로 굴리는 자리라, 권한 없이 직책만 주면
+         회원 승인도 일정 관리도 못 해 «이름뿐인 직책»이 된다.
+         방장이 매번 「네」를 눌러야 했는데, 안 누르면 그 사실을 아무도 모른 채
+         그 사람만 아무것도 못 하고 있었다. (2026-08-30 사장님 결정)
+         ⚠️ 나머지 직책(부회장·경기이사 등)은 **지금처럼 물어본다** — 모임마다 다르다. */
+      if (picked.isNotEmpty && m['role'] == 'member') {
+        if (autoStaffTitles.contains(picked)) {
           await Store.i.patchCouple(code, {'members.$uid.role': 'admin'});
           nowStaff = true;
+          if (mounted) toast(context, '$picked 이라 운영진 권한도 함께 드렸어요');
+        } else if (adminTitles.contains(picked)) {
+          final give = await confirmSheet(
+            context,
+            '$picked 직책이네요',
+            '운영진 권한(회원 승인·일정 관리)도 같이 드릴까요?',
+            okLabel: '권한도 주기',
+          );
+          if (give) {
+            await Store.i.patchCouple(code, {'members.$uid.role': 'admin'});
+            nowStaff = true;
+          }
         }
       }
       if (!mounted) return;

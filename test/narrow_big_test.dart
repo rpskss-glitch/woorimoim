@@ -13,6 +13,7 @@ import 'package:woorimoim/ui/fee_sheet_screen.dart';
 import 'package:woorimoim/ui/home.dart';
 import 'package:woorimoim/ui/members.dart';
 import 'package:woorimoim/ui/onboarding.dart';
+import 'package:woorimoim/ui/owner_guide.dart';
 import 'package:woorimoim/ui/post_screen.dart';
 import 'package:woorimoim/ui/settings.dart';
 import 'package:woorimoim/ui/wait.dart';
@@ -115,6 +116,14 @@ void main() {
     /* 총괄 콘솔은 사장님만 보는 곳이지만, 여기가 깨지면 **모임을 만들 수가 없다.**
        (새 모임 만들기·방장 코드 내주기가 전부 여기 있다) */
     '총괄 콘솔': () => const AdminConsole(),
+    /* 📖 방장 안내서 — 홈 맨 위에 얹히는 «큰 카드»라 좁은 화면에서 제일 위험하다.
+       여섯 걸음 × 여러 줄이라 글자를 키우면 금방 넘친다. */
+    /* ⚠️ 실제로는 홈의 «밀리는 목록» 안에 있다 — 그냥 두면 카드 하나가 화면보다
+       길다고 «넘쳤다»고 나온다(그건 이 카드의 탈이 아니다).
+       세로로 밀 수 있는 자리에 넣어, 실제와 같은 조건에서 «가로 넘침»과 단추 크기를 본다. */
+    '방장 안내서': () => SingleChildScrollView(
+          child: OwnerGuideCard(onClosed: () {}, onGo: (_) {}),
+        ),
   };
 
   for (final scale in [1.0, 2.0]) {

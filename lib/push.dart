@@ -156,6 +156,32 @@ class Push {
 
   String get mode => modeIn(_push, Store.i.myUid);
 
+  /* 🔕 회원이 «허용 안 함»을 눌렀는가.
+
+     ⚠️ 아이폰은 한 번 거절하면 **다시는 권한 창을 안 띄운다** — 아이폰 설정에서 켜야 한다.
+        그래서 안내가 달라야 한다:
+          · 거절해서 안 된 것   → 「설정 → 알림」으로 가시라고
+          · 그 밖의 까닭으로 안 됨 → 잠시 뒤 다시 (알림망 등록이 늦거나 막힌 것)
+        둘을 같은 말로 덮으면, 허용을 눌렀는데도 「허용해야 한다」는 말을 듣는다
+        (2026-08-30 아이폰에서 실제로 그랬다). */
+  bool denied = false;
+
+  /* 🗣 알림 켜기 결과를 «회원 말»로. [ok] 는 켜졌는가.
+
+     세 갈래를 갈라 말한다 — 셋을 한 말로 덮으면 회원이 엉뚱한 데를 헤맨다:
+       · 켜졌다
+       · 회원이 거절했다      → 아이폰은 창이 다시 안 뜨니 «설정으로 가라»
+       · 그 밖(등록 실패 등)  → 잠시 뒤 다시 */
+  String offReason(bool ok) {
+    if (ok) return '알림을 켰어요 🔔';
+    if (denied) {
+      return defaultTargetPlatform == TargetPlatform.iOS
+          ? '알림이 꺼져 있어요 — 아이폰 «설정 → 알림 → 우리 모임»에서 켜주세요'
+          : '알림 권한을 허용해야 받을 수 있어요';
+    }
+    return '알림을 켜지 못했어요 — 잠시 후 다시 눌러주세요';
+  }
+
   bool get ready => readyIn(_push, Store.i.myUid);
 
   /// 이미 권한이 있으면 조용히 토큰만 갱신 (첫 화면을 막지 않게).
@@ -187,7 +213,14 @@ class Push {
     final code = AppState.i.code;
     if (code == null) return false;
     final settings = await _fm.requestPermission(alert: true, badge: true, sound: true);
-    if (settings.authorizationStatus == AuthorizationStatus.denied) return false;
+    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+      /* 회원이 «허용 안 함»을 눌렀거나, 예전에 눌러 둔 것이 남아 있다.
+         ⚠️ 아이폰은 한 번 거절하면 **다시는 창을 안 띄운다** — 설정에서 켜야 한다.
+            그래서 「다시 눌러 보세요」가 아니라 «어디로 가라»고 알려 줘야 한다. */
+      denied = true;
+      return false;
+    }
+    denied = false;
 
     await _initLocal();
 
@@ -211,6 +244,10 @@ class Push {
     } catch (_) {
       token = null;
     }
+    /* 여기까지 왔는데 토큰이 없으면 «권한»이 아니라 **알림망에 등록을 못 한 것**이다.
+       아이폰에서 App ID 의 푸시 기능이나 entitlements 가 빠지면 이 길로 온다 —
+       2026-08-30 실제로 그랬다(허용을 눌러도 「권한을 허용해야」라고만 떴다).
+       권한 탓으로 안내하면 회원은 설정만 몇 번씩 들락거린다. */
     if (token == null) return false;
     final cur = (AppState.i.couple?['push'] as Map?)?[Store.i.myUid] as Map?;
     // 토큰이 그대로면 쓰지 않는다 — 쓰기 1번이 구독 중인 회원 수만큼 읽기 요금으로 곱해진다

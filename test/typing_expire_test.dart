@@ -47,15 +47,24 @@ void main() {
     expect(typingLive({'u2': null}, member, 'u1', now).uids, isEmpty);
   });
 
-  test('화면이 «남은 시간»에 맞춰 스스로 다시 그린다', () {
+  test('「입력 중」은 **아무에게도 안 보인다**', () {
+    /* 2026-08-30 사장님 결정 — 누가 글을 적고 있는지 남에게 알리지 않는다.
+       동호회에서는 «보고 있다»는 것이 알려지는 것 자체가 부담이고,
+       쓰다 지우면 그것까지 상대에게 보였다.
+       덤으로 요금도 준다 — 이 값은 «글자를 칠 때마다» 서버에 쓰이는데,
+       쓰기 한 번이 구독 중인 회원 수만큼 읽기 요금으로 곱해졌다.
+
+       ⚠️ 셈(`typingLive`)은 **지우지 않는다** — 웹앱이 아직 이 값을 쓰고,
+          옛 판 앱이 적어 둔 값도 남아 있다. 앱이 «안 그릴» 뿐이다(위 시험들이 그 셈을 지킨다). */
     final code = stripComments(File('lib/ui/chat.dart').readAsStringSync());
-    final at = code.indexOf('List<String> _typers()');
-    expect(at, greaterThan(0));
-    final body = code.substring(at, (at + 700).clamp(at, code.length));
-    expect(body.contains('expiresInMs'), isTrue);
-    expect(body.contains('Timer('), isTrue,
-        reason: '다시 그릴 까닭이 없으면 멈춘 뒤에도 표시가 남는다');
-    expect(code.contains('_typingTick?.cancel()'), isTrue,
-        reason: '화면을 떠날 때 시계를 꺼야 한다');
+    expect(code.contains('님이 입력 중'), isFalse,
+        reason: '「○○님이 입력 중…」을 다시 그리고 있다');
+
+    // 보내지도 않는다 — 그리지만 않으면 요금은 그대로 나간다
+    final at = code.indexOf('void _onTyping()');
+    expect(at, greaterThan(0), reason: '_onTyping 이 사라졌다 — 이 시험이 헛돈다');
+    final body = code.substring(at, (at + 260).clamp(at, code.length));
+    expect(RegExp(r'\{\s*return;').hasMatch(body), isTrue,
+        reason: '「입력 중」을 아직 서버에 보내고 있다 — 안 그리면서 요금만 낸다');
   });
 }
