@@ -560,47 +560,21 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
 
     return Column(
       children: [
-        /* 🚪 방 바꾸기 — **운영진에게만 보인다.**
-           평회원에게 보이면 「눌러도 안 되는 문」이 되어 오히려 궁금해진다. */
+        /* 🚪 방 바꾸기 — **운영진에게만 보인다.** 평회원은 방이 하나뿐이라 안 보인다.
+           ⚠️ 투표 단추는 여기 두지 않는다 — «사진 올리기 옆»(아래 도구모음)이 원래 자리다
+              (사장님 지시, 2026-08-31). 그 자리의 투표는 «지금 고른 방»에 올라가므로,
+              운영진 방을 고른 채 만들면 운영진 투표가 된다 — 방은 그대로 나뉜다. */
         if (_canStaffRoom)
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(value: '', label: Text('모두의 방')),
-                      ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
-                    ],
-                    selected: {_room},
-                    onSelectionChanged: (v) => setState(() => _room = v.first),
-                    showSelectedIcon: false,
-                  ),
-                ),
-                /* 📊 방마다 투표 하나씩 — 지금 보고 있는 방에 올라간다.
-                   ⚠️ 운영진 방 투표는 회원에게 안 보인다(방 표시가 붙는다). */
-                IconButton(
-                  onPressed: _newPoll,
-                  icon: const Icon(Icons.bar_chart_rounded),
-                  tooltip: _room.isEmpty ? '모두의 방 투표 만들기' : '운영진 투표 만들기',
-                  visualDensity: VisualDensity.compact,
-                ),
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: '', label: Text('모두의 방')),
+                ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
               ],
-            ),
-          )
-        /* 평회원에게는 방이 하나뿐이라 «방 바꾸기»가 없다 —
-           그래도 투표는 만들 수 있어야 하므로 여기 하나만 둔다. */
-        else
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 8, top: 4),
-              child: TextButton.icon(
-                onPressed: _newPoll,
-                icon: const Icon(Icons.bar_chart_rounded, size: 18),
-                label: const Text('투표 만들기'),
-              ),
+              selected: {_room},
+              onSelectionChanged: (v) => setState(() => _room = v.first),
+              showSelectedIcon: false,
             ),
           ),
         Expanded(
@@ -695,11 +669,16 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                   tooltip: '사진 보내기',
                   visualDensity: VisualDensity.compact,
                 ),
-                /* 📎 «파일 올리기»는 뺐다 (사장님 지시). 지금은 사진첩 파일(사진·그림)만
-                   받는데, 그러면 바로 옆 「사진 보내기」와 하는 일이 똑같아 단추 둘이
-                   같은 창을 연다 — 회원이 뭐가 다른가 헷갈린다.
-                   ⚠️ 나중에 «문서» 고르개(꾸러미 필요)를 넣게 되면 그때 여기에 되살린다.
-                      되살릴 자리를 알아보게 이 자국을 남겨 둔다. */
+                /* 📊 투표 만들기 — «사진 옆»이 원래 자리다 (사장님 지시, 2026-08-31).
+                   지금 고른 방에 올라간다 — 운영진 방을 고른 채 만들면 운영진 투표. */
+                IconButton(
+                  onPressed: _newPoll,
+                  icon: const Icon(Icons.bar_chart_rounded),
+                  tooltip: (_canStaffRoom && _room.isNotEmpty)
+                      ? '운영진 투표 만들기'
+                      : '투표 만들기',
+                  visualDensity: VisualDensity.compact,
+                ),
                 Expanded(
                   child: TextField(
                     controller: _textC,
