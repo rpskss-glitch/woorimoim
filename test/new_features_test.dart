@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:woorimoim/config.dart';
 import 'package:woorimoim/demo.dart';
 import 'package:woorimoim/fee_sheet.dart';
+import 'package:woorimoim/logic.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/store.dart';
 import 'package:woorimoim/theme.dart';
@@ -210,7 +211,7 @@ void main() {
           reason: '회원에게는 «할 수도 없는 일 목록»이라 성가심일 뿐이다');
     });
 
-    test('닫을 수 있고, 닫으면 다시 안 뜬다', () async {
+    test('접었다 폈다 할 수 있다', () async {
       /* 「닫았다」는 표시는 이 기기의 저장소에 남는다 —
          시험틀에는 그 저장소가 없으니 «가짜 저장소»를 깔고 진짜처럼 확인한다.
          (안 깔면 setInt 가 조용히 무시돼 시험이 늘 실패한다) */
@@ -218,13 +219,20 @@ void main() {
       await Store.i.loadPrefsForTest();
       seed(role: 'owner');
       OwnerGuideCard.reset();
+      /* ⚠️ **접어도 카드는 남는다** — 제목 줄이 남아 있어야 다시 펼 수 있다.
+         예전에는 «닫기»라 카드가 통째로 사라졌고, 설정에 「다시 보기」가 있는 줄
+         모르는 방장은 영영 못 봤다(2026-08-30 사장님이 접기로 바꾸라고 하셨다). */
+      OwnerGuideCard.unfold();
+      expect(OwnerGuideCard.folded, isFalse);
       expect(OwnerGuideCard.shouldShow(), isTrue);
-      OwnerGuideCard.dismiss();
-      expect(OwnerGuideCard.shouldShow(), isFalse,
-          reason: '닫아도 계속 뜨면 «치울 수 없는 광고»가 된다');
-      // 다시 볼 길이 있어야 한다 — 없으면 닫기가 곧 삭제가 된다
-      OwnerGuideCard.reset();
-      expect(OwnerGuideCard.shouldShow(), isTrue);
+
+      OwnerGuideCard.fold();
+      expect(OwnerGuideCard.folded, isTrue, reason: '접힌 것이 안 기억된다');
+      expect(OwnerGuideCard.shouldShow(), isTrue,
+          reason: '접었다고 카드가 통째로 사라지면 다시 펼 길이 없다');
+
+      OwnerGuideCard.unfold();
+      expect(OwnerGuideCard.folded, isFalse, reason: '다시 못 편다');
     });
 
     test('설정에 «다시 보기»가 있다', () {
@@ -254,6 +262,116 @@ void main() {
       // 초대 코드를 함부로 뿌리면 방장 자리가 넘어간다 — 그 경고가 있어야 한다
       expect(s.contains('방장을 넘길 때'), isTrue,
           reason: '초대 코드를 아무에게나 보내면 안 된다는 말이 없다');
+    });
+  });
+  group('⑦ 총괄 모드 — 이미 허락된 기기는 안 묻는다', () {
+    test('기기 확인 → 곧장 콘솔, 처음이면 그때만 묻는다', () {
+      final s = File('lib/ui/admin.dart').readAsStringSync();
+      expect(s.contains('Future<bool> alreadyAdminDevice()'), isTrue,
+          reason: '이미 허락된 기기인지 볼 길이 없다 — 들어갈 때마다 암호를 친다');
+      final at = s.indexOf('Future<void> openAdminByTaps(');
+      expect(at, greaterThan(0), reason: '다섯 번 두드리는 입구가 없다');
+      final body = s.substring(at, at + 700);
+      expect(body.contains('alreadyAdminDevice()'), isTrue);
+      expect(body.indexOf('alreadyAdminDevice()'), lessThan(body.indexOf('askText')),
+          reason: '기기를 확인하기 «전»에 먼저 묻는다 — 건너뛰기가 안 된다');
+    });
+
+    test('못 읽으면 «거짓»으로 본다 — 아무나 열리면 안 된다', () {
+      final s = File('lib/ui/admin.dart').readAsStringSync();
+      final at = s.indexOf('Future<bool> alreadyAdminDevice()');
+      final body = s.substring(at, s.indexOf('Future<void> openAdminByTaps(', at));
+      expect(RegExp(r'catch[\s\S]{0,80}return false').hasMatch(body), isTrue,
+          reason: '연결이 끊겼을 때 참으로 보면 아무 기기나 총괄 콘솔이 열린다');
+    });
+
+    test('모임 «안»(홈)에서도 열린다', () {
+      final s = File('lib/ui/home.dart').readAsStringSync();
+      expect(s.contains('openAdminByTaps'), isTrue,
+          reason: '모임에 들어와 있으면 설정까지 내려가야 한다');
+      expect(s.contains('_emblemTaps < 5'), isTrue, reason: '다섯 번이 아니다');
+    });
+
+    test('암호를 물을 때 «무엇인지» 알려 주지 않는다', () {
+      /* 숨은 입구인데 「이름」·「생년월일 8자리」라고 적으면
+         어깨너머로 보는 사람에게 무엇을 알아내야 하는지 그대로 알려 주는 셈이다. */
+      final s = File('lib/ui/admin.dart').readAsStringSync();
+      expect(s.contains("hint: '첫 번째 암호'"), isTrue);
+      expect(s.contains("hint: '두 번째 암호'"), isTrue);
+      expect(s.contains("hint: '생년월일 8자리'"), isFalse,
+          reason: '무엇을 넣는지 화면에 적혀 있다');
+      // 치는 글자는 가린다 — 어깨너머로 보인다
+      expect(RegExp(r'obscure: true').allMatches(s).length, greaterThanOrEqualTo(2),
+          reason: '암호가 화면에 그대로 보인다');
+    });
+  });
+
+  group('⑧ 투표 기간', () {
+    Map<String, dynamic> poll({int? until, bool closed = false}) => {
+          'kind': 'poll',
+          'poll': {'q': '언제 만날까요', 'opts': ['토', '일'], 'closed': closed,
+                   if (until != null) 'until': until},
+        };
+
+    test('기한이 지나면 «저절로» 닫힌다', () {
+      const now = 1000000;
+      expect(Logic.poll(poll(until: now + 1000), now: now).closed, isFalse);
+      expect(Logic.poll(poll(until: now - 1), now: now).closed, isTrue,
+          reason: '기한이 지났는데 아직 열려 있다 — 사람이 마감하기를 기다리면 몇 달씩 남는다');
+    });
+
+    test('기한이 없으면 손으로 마감할 때까지 열려 있다', () {
+      expect(Logic.poll(poll()).closed, isFalse);
+      expect(Logic.poll(poll()).until, isNull);
+      expect(Logic.poll(poll(closed: true)).closed, isTrue);
+    });
+
+    test('남은 시간을 셀 수 있다 — 지났으면 없다', () {
+      const now = 1000000;
+      expect(Logic.pollLeftMs(poll(until: now + 5000), now: now), 5000);
+      expect(Logic.pollLeftMs(poll(until: now - 1), now: now), isNull);
+      expect(Logic.pollLeftMs(poll(), now: now), isNull);
+    });
+
+    test('🔴 다듬기를 지나도 기한이 «살아 있다»', () {
+      /* 실기기에서 잡았다 — 「3시간」을 골라 올렸는데 남은 시간이 안 뜨고
+         기한이 지나도 안 닫혔다. `Store.tidy` 가 투표를 «다시 만들면서»
+         적지 않은 칸(until)을 통째로 버리고 있었다.
+         ⚠️ 앱이 지나는 길과 똑같이 tidy 를 거쳐서 봐야 잡힌다. */
+      final out = Store.tidy([
+        {
+          'id': 'p1', 'type': 'msg', 'kind': 'poll', 'by': 'me',
+          'text': '언제 만날까요', 'createdAt': 1756400000000,
+          'poll': {'q': '언제 만날까요', 'opts': ['토', '일'],
+                   'closed': false, 'until': 1756500000000},
+        }
+      ]);
+      expect((out.first['poll'] as Map)['until'], 1756500000000,
+          reason: '다듬기가 기한을 버린다 — 고른 기한이 통째로 사라진다');
+      expect(Logic.poll(out.first).until, 1756500000000);
+    });
+
+    test('망가진 기한 값에도 안 죽는다', () {
+      expect(Logic.poll({'poll': {'until': '글자'}}).closed, isFalse);
+      expect(Logic.pollLeftMs({'poll': {'until': null}}), isNull);
+    });
+
+    test('끝나면 «종료되었습니다»라고 말한다', () {
+      final s = File('lib/ui/chat.dart').readAsStringSync();
+      expect(s.contains('투표가 종료되었습니다'), isTrue,
+          reason: '끝난 것을 안 알려 주면 회원이 계속 눌러 본다');
+      expect(s.contains('남음'), isTrue, reason: '남은 시간을 안 알려 준다');
+      // 기한이 되는 «그 순간» 스스로 다시 그려야 한다
+      expect(s.contains('_armDueTick'), isTrue,
+          reason: '아무도 안 눌러도 종료가 보여야 한다');
+    });
+
+    test('투표 «중»에도 누가 골랐는지 바로 보인다', () {
+      final s = File('lib/ui/chat.dart').readAsStringSync();
+      expect(s.contains('faces:'), isTrue,
+          reason: '「누가 골랐나」를 눌러야만 알 수 있으면 판을 못 읽는다');
+      // 큰 모임에서 얼굴이 화면을 덮지 않게 끊어야 한다
+      expect(s.contains('faces.take(6)'), isTrue, reason: '얼굴 수를 안 끊는다');
     });
   });
 }

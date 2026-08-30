@@ -21,17 +21,67 @@ import 'common.dart';
    ⚠️ 여러 번 틀리면 서버가 잠근다 — 아이디만 맞히고 나머지를 계속 넣어 보는 것을 막는다. */
 const _metaDoc = 'META';
 
+/* 🔑 이 기기가 «이미 허락받은 총괄 기기»인가.
+
+   한 번 들어온 기기는 서버의 «허락받은 기기 목록»에 남아 있다.
+   그러면 다시 물어볼 까닭이 없다 — 곧장 콘솔을 연다.
+   ⚠️ 못 읽으면(연결 끊김·규칙) **거짓으로 본다.** 그래야 물어보는 길로 가서
+      적어도 들어갈 수는 있다. 참으로 보면 아무나 콘솔이 열린다. */
+Future<bool> alreadyAdminDevice() async {
+  try {
+    final meta = await Store.i.getCouple(_metaDoc);
+    if (meta == null) return false;
+    final me = Store.i.myUid;
+    if (me.isEmpty) return false;
+    final list = meta['adminUids'];
+    if (list is List && list.contains(me)) return true;
+    return meta['adminUid'] == me; // 옛 방식으로 묶인 기기
+  } catch (_) {
+    return false;
+  }
+}
+
+/* 🤫 숨은 입구 — 어디서든 «다섯 번 두드리면» 총괄 콘솔.
+
+   ⚠️ **이미 허락받은 기기면 아무것도 안 묻는다.** 모임 안에 들어와 있어도 마찬가지다.
+      사장님은 늘 같은 기기로 쓰는데 들어갈 때마다 암호 둘을 치는 것은 성가시기만 하고,
+      어깨너머로 보는 사람에게 암호를 노출할 기회만 늘린다.
+   ⚠️ 처음 기기이거나 목록에서 빠졌으면 그때만 «아이디 → 암호 둘»을 묻는다.
+   ⚠️ 화면 어디에도 흔적을 남기지 않는다 — 눌러도 아무 일이 없어야 모르는 사람은 모른다. */
+Future<void> openAdminByTaps(BuildContext context) async {
+  if (await alreadyAdminDevice()) {
+    if (!context.mounted) return;
+    await Navigator.push(
+        context, MaterialPageRoute<void>(builder: (_) => const AdminConsole()));
+    return;
+  }
+  if (!context.mounted) return;
+  final id = await askText(
+    context,
+    title: '총괄 관리자',
+    hint: '아이디',
+    maxLength: 20,
+    okLabel: '다음',
+  );
+  if (id == null || id.trim().isEmpty || !context.mounted) return;
+  await tryAdminLogin(context, id: id.trim());
+}
+
 Future<void> tryAdminLogin(BuildContext context, {String? id}) async {
   // 아이디는 «모임 이름 칸»에 적은 값을 그대로 받는다 (화면 어디에도 흔적이 없다)
   final myId = id ?? '';
   if (myId.isEmpty) return;
 
+  /* 🔐 물어보는 말에 «무엇을 넣는지» 적지 않는다.
+     예전에는 「이름」·「생년월일 8자리」라고 적혀 있었다 — 숨은 입구인데
+     어깨너머로 보는 사람에게 **무엇을 알아내야 하는지 그대로 알려 주는 셈**이었다.
+     아는 사람은 순서를 알고, 모르는 사람은 알 길이 없어야 한다. */
   final name = await askText(
     context,
     title: '총괄 관리자',
-    hint: '이름',
-    helper: '아이디가 맞으면 이름과 생년월일을 확인해요',
+    hint: '첫 번째 암호',
     maxLength: 20,
+    obscure: true,
     okLabel: '다음',
   );
   if (name == null || name.trim().isEmpty || !context.mounted) return;
@@ -39,10 +89,10 @@ Future<void> tryAdminLogin(BuildContext context, {String? id}) async {
   final birth = await askText(
     context,
     title: '총괄 관리자',
-    hint: '생년월일 8자리',
-    helper: '예) 19800125',
+    hint: '두 번째 암호',
     keyboard: TextInputType.number,
     maxLength: 10,
+    obscure: true,
     okLabel: '들어가기',
   );
   if (birth == null || birth.trim().isEmpty || !context.mounted) return;

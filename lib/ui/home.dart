@@ -6,6 +6,7 @@ import '../moderation.dart';
 import '../push.dart';
 import '../state.dart';
 import '../store.dart';
+import 'admin.dart';
 import 'album.dart';
 import 'common.dart';
 import 'members.dart';
@@ -51,6 +52,19 @@ class _HomeTabState extends State<HomeTab> {
 
   /// 아래쪽 탭으로 옮긴다 (0홈 1채팅 2일정 3회비 4게시판) — 꺼풀(shell)이 듣고 있다
   void _go(int tab) => AppState.i.openTab.value = tab;
+
+  /* 🤫 숨은 입구 — 모임 «상징»을 다섯 번 두드리면 총괄 콘솔.
+     설정 맨 아래 버전 글씨에도 같은 길이 있는데, 모임 안에 들어와 있으면
+     그 글씨까지 내려가는 것이 번거로워 첫 화면에도 둔다.
+     ⚠️ 화면에는 아무 흔적이 없다 — 모르는 사람은 그냥 그림을 누른 것이다. */
+  int _emblemTaps = 0;
+
+  Future<void> _tapEmblem() async {
+    _emblemTaps++;
+    if (_emblemTaps < 5) return;
+    _emblemTaps = 0;
+    await openAdminByTaps(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +207,10 @@ class _HomeTabState extends State<HomeTab> {
               ),
               const SizedBox(height: 14),
             ],
-            const Emblem(basePx: emblemBasePx, capScale: 2),
+            GestureDetector(
+              onTap: _tapEmblem,
+              child: const Emblem(basePx: emblemBasePx, capScale: 2),
+            ),
             const SizedBox(height: 10),
             Text(
               (st.couple?['title'] as String?) ?? Cfg.appName,

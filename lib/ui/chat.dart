@@ -346,7 +346,14 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       'type': 'msg',
       'kind': 'poll',
       'text': r['q'],
-      'poll': {'q': r['q'], 'opts': r['opts'], 'multi': r['multi'], 'closed': false},
+      'poll': {
+        'q': r['q'],
+        'opts': r['opts'],
+        'multi': r['multi'],
+        'closed': false,
+        // 기한을 안 골랐으면 이 칸이 아예 없다 (없음 = 기한 없는 투표)
+        if (r['until'] != null) 'until': r['until'],
+      },
       'votes': <String, dynamic>{},
       if (reply != null) 'replyTo': reply['id'],
     });
@@ -990,8 +997,42 @@ class _PollCardState extends State<PollCard> {
     );
   }
 
+  /* ⏳ 기한이 되는 «그 순간» 스스로 다시 그린다.
+     안 그러면 대화방을 보고 있어도 「투표 중」인 채로 남아, 눌러 봐야 그때 닫힌 걸 안다. */
+  Timer? _dueTick;
+
+  @override
+  void dispose() {
+    _dueTick?.cancel();
+    super.dispose();
+  }
+
+  /* 남은 시간을 회원 말로 — 「2시간 남음」·「10분 남음」.
+     ⚠️ 분 단위까지만 센다. 초까지 보여 주면 1초마다 다시 그려야 하고,
+        회원에게도 쫓기는 느낌만 준다. */
+  static String _leftLabel(int? until) {
+    if (until == null) return '';
+    final left = until - DateTime.now().millisecondsSinceEpoch;
+    if (left <= 0) return '';
+    final m = left ~/ 60000;
+    if (m < 60) return ' · ${m < 1 ? 1 : m}분 남음';
+    final h = m ~/ 60;
+    if (h < 24) return ' · $h시간 남음';
+    return ' · ${h ~/ 24}일 남음';
+  }
+
+  void _armDueTick() {
+    _dueTick?.cancel();
+    final left = Logic.pollLeftMs(widget.msg);
+    if (left == null) return;
+    _dueTick = Timer(Duration(milliseconds: left + 200), () {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    _armDueTick();
     final cs = Theme.of(context).colorScheme;
     final p = Logic.poll(widget.msg);
     final t = Logic.pollTally(widget.msg);
@@ -1026,6 +1067,10 @@ class _PollCardState extends State<PollCard> {
               // 마감된 뒤에는 가장 많이 받은 항목에 왕관 (결과가 한눈에 보이게)
               won: p.closed && t.per[i].isNotEmpty && t.per[i].length == top,
               onTap: p.closed || _busy ? null : () => _vote(i),
+              /* 👥 누가 골랐는지 «바로» 보여 준다 — 예전에는 「누가 골랐나」를
+                 눌러야만 알 수 있어서, 투표 중에 판을 읽으려면 매번 창을 열어야 했다.
+                 얼굴만 깔면 한눈에 들어오고, 자세한 이름은 그 창이 그대로 맡는다. */
+              faces: t.per[i].map(AppState.i.emojiOf).toList(),
             ),
           Padding(
             padding: const EdgeInsets.only(top: 2),
@@ -1036,7 +1081,10 @@ class _PollCardState extends State<PollCard> {
               children: [
                 Text(
                   '${t.voters == 0 ? '아직 아무도 안 골랐어요' : '${t.voters}명 참여'}'
-                  '${p.multi ? ' · 복수 선택' : ''}${p.closed ? ' · 🔒 마감' : ''}',
+                  '${p.multi ? ' · 복수 선택' : ''}'
+                  /* 기한이 있는 투표는 «언제 끝나는지»가 참여를 좌우한다 —
+                     끝난 뒤에는 「종료」라고 분명히 알려야 다시 누르지 않는다. */
+                  '${p.closed ? (p.until != null ? ' · 투표가 종료되었습니다' : ' · 🔒 마감') : _leftLabel(p.until)}',
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -1067,6 +1115,10 @@ class _Option extends StatelessWidget {
   final bool picked;
   final bool won;
   final VoidCallback? onTap;
+
+  /// 이 항목을 고른 사람들의 얼굴 — 투표 중에도 바로 보인다
+  final List<String> faces;
+
   const _Option({
     required this.label,
     required this.count,
@@ -1074,6 +1126,7 @@ class _Option extends StatelessWidget {
     required this.picked,
     required this.won,
     required this.onTap,
+    this.faces = const [],
   });
 
   @override
@@ -1113,14 +1166,34 @@ class _Option extends StatelessWidget {
                         child: Icon(Icons.check_circle, size: 15, color: cs.primary),
                       ),
                     Expanded(
-                      child: Text(
-                        won ? '👑 $label' : label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          height: 1.3,
-                          fontWeight: FontWeight.w700,
-                          color: picked ? cs.primary : null,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            won ? '👑 $label' : label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.3,
+                              fontWeight: FontWeight.w700,
+                              color: picked ? cs.primary : null,
+                            ),
+                          ),
+                          /* 👥 고른 사람 얼굴 — 투표 중에도 «바로» 보인다.
+                             ⚠️ 여섯까지만. 큰 모임에서 다 그리면 말풍선이 화면을 덮는다.
+                                자세한 이름은 「누가 골랐나」가 그대로 맡는다. */
+                          if (faces.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                faces.take(6).join(' ') +
+                                    (faces.length > 6 ? ' +${faces.length - 6}' : ''),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     /* ⚠️ 「N명 NN%」도 «자리를 나눠 갖게» 한다.
@@ -1198,6 +1271,19 @@ class _PollFormState extends State<PollForm> {
   final _opts = [TextEditingController(), TextEditingController()];
   bool _multi = false;
 
+  /* ⏳ 몇 «시간» 뒤에 끝낼까. 0이면 기한 없음(사람이 손으로 마감).
+     ⚠️ 「며칠 뒤」가 아니라 시간으로 센다 — 동호회 투표는 「오늘 저녁까지」처럼
+        하루 안에 끝나는 것이 대부분이라, 날짜로만 고르게 하면 늘 넉넉히 잡게 된다. */
+  int _hours = 0;
+  static const _hourChoices = <int, String>{
+    0: '기한 없음',
+    3: '3시간',
+    6: '6시간',
+    24: '하루',
+    72: '사흘',
+    168: '일주일',
+  };
+
   @override
   void dispose() {
     _q.dispose();
@@ -1213,7 +1299,16 @@ class _PollFormState extends State<PollForm> {
     if (q.isEmpty) return toast(context, '무엇을 물어볼지 적어주세요');
     if (opts.length < 2) return toast(context, '고를 항목을 2개 이상 적어주세요');
     if (opts.toSet().length != opts.length) return toast(context, '같은 항목이 두 번 있어요');
-    Navigator.pop(context, {'q': q, 'opts': opts, 'multi': _multi});
+    Navigator.pop(context, {
+      'q': q,
+      'opts': opts,
+      'multi': _multi,
+      // 기한 없음(0)이면 아예 안 보낸다 — 칸이 없는 것이 «기한 없음»이다
+      if (_hours > 0)
+        'until': DateTime.now()
+            .add(Duration(hours: _hours))
+            .millisecondsSinceEpoch,
+    });
   }
 
   @override
@@ -1272,6 +1367,28 @@ class _PollFormState extends State<PollForm> {
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('항목 추가'),
               ),
+            /* ⏳ 언제까지 받을지 — 고른 시각이 지나면 투표가 «저절로» 끝난다.
+               사람이 마감하기를 기다리면 잊은 투표가 몇 달씩 열린 채 남는다. */
+            Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 2),
+              child: Text('언제까지 받을까요',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).hintColor)),
+            ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final e in _hourChoices.entries)
+                  ChoiceChip(
+                    label: Text(e.value),
+                    selected: _hours == e.key,
+                    onSelected: (_) => setState(() => _hours = e.key),
+                  ),
+              ],
+            ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: _multi,

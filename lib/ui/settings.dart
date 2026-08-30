@@ -357,24 +357,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _versionTaps++;
                 if (_versionTaps < 5) return;
                 _versionTaps = 0;
-                // 입력칸은 대화상자 «밖»에서 만들어 쓰고 끝나면 치운다.
-                // 안에서 만들면 화면이 다시 그려질 때마다 새로 생겨 쌓이고,
-                // 그때 이미 친 글자도 날아간다
-                /* ⚠️ 그릇은 «창이» 들고 있어야 한다 — 여기서 만들어 창이 닫힌 뒤 버리면
-                   닫히는 몇 프레임 동안 살아 있는 입력칸이 죽은 그릇을 읽어 앱이 터진다. */
-                /* ⚠️ 여기서 «비밀번호가 맞는지»를 앱이 판단하면 안 된다 —
-                   그 값이 설치 파일 안에 글자로 남아 누구나 읽는다.
-                   아이디만 받아 넘기고, 맞는지는 **서버가** 판단한다. */
-                final id = await askText(
-                  context,
-                  title: '총괄 관리자',
-                  hint: '아이디',
-                  maxLength: 20,
-                  okLabel: '다음',
-                );
-                if (id == null || id.trim().isEmpty) return;
-                if (!context.mounted) return;
-                await tryAdminLogin(context, id: id.trim());
+                /* 🤫 이미 허락받은 기기면 아무것도 안 묻고 바로 연다.
+                   처음이면 그때만 아이디·암호를 묻는다 (admin.dart 가 가린다). */
+                await openAdminByTaps(context);
               },
               child: Padding(
                 padding: const EdgeInsets.all(8),

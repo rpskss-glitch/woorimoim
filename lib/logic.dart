@@ -517,18 +517,43 @@ class Logic {
        votes:{번호:[고른 항목 자리…]}
      ⚠️ 질문은 `text` 에도 담긴다 — 투표를 «모르는» 옛 앱에서 빈 말풍선이 되지 않게
         (음성 메시지가 실제로 그랬다). 그래서 질문이 없으면 `text` 로 되돌려 읽는다. */
-  static ({String q, List<String> opts, bool multi, bool closed}) poll(
-      Map<String, dynamic> m) {
+  /* 📊 투표 한 건을 읽는다.
+
+     [closed] 는 «지금 닫혀 있는가»다 — 두 가지로 닫힌다:
+       · 만든 사람이 손으로 마감(`closed: true`)
+       · **기한이 지남**(`until` 이 지금보다 앞) ← 2026-08-30 더함
+     기한이 있는 투표는 아무도 안 눌러도 때가 되면 저절로 끝나야 한다.
+     사람이 마감하기를 기다리면, 마감을 잊은 투표가 몇 달씩 열린 채 남는다.
+
+     ⚠️ [until] 은 «있으면» 그 시각(밀리초). 없으면 null — 기한 없는 투표다.
+     ⚠️ 시각은 «그릴 때마다» 다시 본다 — 화면이 멈춰 있어도 다음 그림에서 닫힌다.
+        (그래서 화면 쪽에서 그 시각에 맞춰 한 번 더 그려 줘야 한다) */
+  static ({String q, List<String> opts, bool multi, bool closed, int? until})
+      poll(Map<String, dynamic> m, {int? now}) {
     final p = asMap(m['poll']);
     final q = p['q'];
     final opts = p['opts'];
+    final u = p['until'];
+    final until = u is num ? u.toInt() : null;
+    final t = now ?? DateTime.now().millisecondsSinceEpoch;
     return (
       q: (q is String && q.isNotEmpty) ? q : ((m['text'] as String?) ?? ''),
       // 글자가 아닌 항목은 뺀다 — 그리는 자리에서 터지면 대화방이 통째로 안 뜬다
       opts: opts is List ? opts.whereType<String>().toList() : const <String>[],
       multi: p['multi'] == true,
-      closed: p['closed'] == true,
+      closed: p['closed'] == true || (until != null && t >= until),
+      until: until,
     );
+  }
+
+  /* ⏳ 기한까지 남은 밀리초 — 지났거나 기한이 없으면 null.
+     화면이 «그때» 스스로 다시 그리도록 쓰는 값이다. */
+  static int? pollLeftMs(Map<String, dynamic> m, {int? now}) {
+    final p = asMap(m['poll']);
+    final u = p['until'];
+    if (u is! num) return null;
+    final left = u.toInt() - (now ?? DateTime.now().millisecondsSinceEpoch);
+    return left > 0 ? left : null;
   }
 
   /// 적힌 표 한 사람 몫을 «항목 자리 목록»으로. 숫자 하나만 적힌 옛 꼴도 받아 준다.
