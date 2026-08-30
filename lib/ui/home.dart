@@ -558,7 +558,13 @@ class _HomeTabState extends State<HomeTab> {
     if (diaries.isEmpty) return const [];
     final d = diaries.first;
     final photos = st.by('photo').length;
-    final msgs = st.by('msg').length;
+    /* 🔴 **못 보는 방의 대화는 안 센다.** 평회원 홈에 「대화 9개」라고 떠 있는데
+       들어가면 6개뿐이면, 회원은 뭔가 사라진 줄 안다.
+       (room 칸이 없는 옛 대화는 모두의 방이다) */
+    final msgs = st
+        .by('msg')
+        .where((m) => ((m['room'] as String?) ?? '').isEmpty || st.isAdmin)
+        .length;
     return [
       SectionCard(
         title: '📔 최근 게시판',

@@ -75,7 +75,7 @@ void main() {
     final wallet = File('lib/ui/wallet.dart').readAsStringSync();
     final at = wallet.indexOf('class _MemberFeeRow');
     expect(at, greaterThan(0));
-    final body = wallet.substring(at, at + 2200);
+    final body = wallet.substring(at, at + 3400);
     expect(body.contains('inlineButtonStyle'), isTrue,
         reason: '회원별 납부 현황 줄이 다시 «한 글자씩» 쪼개진다');
   });

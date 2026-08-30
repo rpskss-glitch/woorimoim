@@ -235,10 +235,13 @@ void main() {
       expect(OwnerGuideCard.folded, isFalse, reason: '다시 못 편다');
     });
 
-    test('설정에 «다시 보기»가 있다', () {
+    test('설정에 «회원 사용설명서»가 있다', () {
+      /* 2026-08-30: 홈 안내서가 「접기·펴기」가 되면서 «다시 보기» 길이 필요 없어졌다
+         (제목 줄이 홈에 늘 남는다). 그 자리를 평회원용 설명서로 바꿨다 —
+         설명이 아무 데도 없던 회원이 그제야 앱 쓰는 법을 본다. */
       final s = File('lib/ui/settings.dart').readAsStringSync();
-      expect(s.contains('방장 안내서 다시 보기'), isTrue,
-          reason: '한 번 닫으면 영영 못 본다');
+      expect(s.contains('MemberGuideCard'), isTrue,
+          reason: '회원 설명서를 설정에 안 걸었다 — 회원이 볼 곳이 없다');
     });
 
     test('회원 눈에 «별표»가 새지 않는다', () {

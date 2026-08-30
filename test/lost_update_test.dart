@@ -88,19 +88,23 @@ void main() {
        지켜야 하는 것은 그대로 — **저마다 자기 칸만** 보낸다.
        set(merge:true) 가 안쪽 묶음을 합쳐 주므로, 안 고친 칸을 같이 보내면
        남이 방금 바꾼 값을 조용히 되돌린다(예전에 「내는 날」이 실제로 그렇게 지워졌다). */
-    expect(fee, hasLength(2), reason: '회비를 저장하는 곳이 늘거나 줄었다 — 무엇을 보내는지 확인해라');
+    /* 2026-08-30: 「가입비」 칸이 생겨 회비 묶음을 저장하는 자리가 셋이 됐다
+       (월 회비·계좌·가입비). 지켜야 하는 규칙은 그대로 — 저마다 «자기 칸만» 보낸다. */
+    expect(fee, hasLength(3), reason: '회비를 저장하는 곳이 늘거나 줄었다 — 무엇을 보내는지 확인해라');
     for (final b in fee) {
       expect(b.contains("'day'"), isFalse,
           reason: '고치지도 않은 「내는 날」을 같이 보내면 웹에서 정한 날짜를 지운다');
     }
-    final amountOnly = fee.where((b) => b.contains("'amount'")).toList();
-    final accountOnly = fee.where((b) => b.contains("'account'")).toList();
-    expect(amountOnly, hasLength(1), reason: '금액을 저장하는 곳은 하나여야 한다');
-    expect(accountOnly, hasLength(1), reason: '계좌를 저장하는 곳은 하나여야 한다');
-    expect(amountOnly.single.contains("'account'"), isFalse,
-        reason: '금액만 고치는 자리가 계좌까지 덮어쓴다');
-    expect(accountOnly.single.contains("'amount'"), isFalse,
-        reason: '계좌만 고치는 자리가 금액까지 덮어쓴다');
+    // 저마다 «자기 칸 하나만» 담아야 한다 — 다른 칸을 같이 담으면 그 칸을 덮는다
+    for (final key in const ['amount', 'account', 'joinAmount']) {
+      final mine = fee.where((b) => b.contains("'$key'")).toList();
+      expect(mine, hasLength(1), reason: '$key 를 저장하는 곳은 하나여야 한다');
+      for (final other in const ['amount', 'account', 'joinAmount']) {
+        if (other == key) continue;
+        expect(mine.single.contains("'$other'"), isFalse,
+            reason: '$key 만 고치는 자리가 $other 까지 덮어쓴다');
+      }
+    }
   });
 
   test('저장할 값을 «화면이 들고 있는 사본»에서 퍼오지 않는다', () {

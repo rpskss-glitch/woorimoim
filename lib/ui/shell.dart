@@ -159,6 +159,11 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
            (2026-08-23 실측: 남이 쓴 말 3개인데 배지가 8). */
         .where((m) =>
             !Logic.isMe(m['by'] as String?, Store.i.myUid) &&
+            /* 🔴 **못 보는 방의 대화는 세지 않는다.**
+               운영진 방이 생기면서, 평회원 화면에도 그 방 대화가 안읽음으로 잡혔다 —
+               배지에 「3」이 떠서 들어가 보면 아무것도 없다(볼 수 없는 글이니까).
+               ⚠️ room 칸이 없는 옛 대화는 «모두의 방»이다. */
+            (((m['room'] as String?) ?? '').isEmpty || st.isAdmin) &&
             ((m['createdAt'] as num?) ?? 0) > seen)
         .length;
   }

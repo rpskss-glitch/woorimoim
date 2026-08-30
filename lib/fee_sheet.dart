@@ -12,6 +12,8 @@ enum FeeMark {
   paid,   // ○ 냈다
   unpaid, // − 안 냈다 («셈에 든 달인데» 안 낸 것)
   before, //   가입 전 — 안 낸 게 아니라 «셀 것이 없다»
+  after,  //   탈퇴한 다음 달부터 — 마찬가지로 «셀 것이 없다»
+  exempt, // 면 그 달만 면제해 준 사람 (다치거나, 오래 못 나오거나)
 }
 
 class FeeSheet {
@@ -48,8 +50,24 @@ class FeeSheet {
   ///    표는 한 달만 밀린 것처럼 보여, **같은 앱의 두 화면이 서로 다른 말을 했다.**
   ///    가입한 달도 내야 하는 달이다 — 그래서 「가입」 표시를 없앴다.
   ///    언제 들어왔는지는 «처음 표시가 나오는 달»로 그대로 읽힌다.
+  /* 그 사람의 기록 — **지난 회원(former)도 찾는다.**
+     ⚠️ `members` 만 보면 탈퇴한 사람은 들어온 때를 모르는 것으로 읽혀,
+        표에서 밀린 달이 통째로 어긋난다(가입 전까지 미납으로 찍힌다). */
+  static Map? rec(String uid) {
+    final m = AppState.i.members[uid];
+    if (m is Map) return m;
+    final f = AppState.i.former[uid];
+    return f is Map ? f : null;
+  }
+
+  /* 🙇 **그 달만 면제** — 다치거나, 오래 못 나오거나, 상을 당한 회원.
+     달 이름을 그대로 담아 둔다(`members.<uid>.feeFree = ['2026-07', …]`).
+     ⚠️ 「회비 0원」으로 바꾸는 방식은 안 된다 — 그 달 «모두»가 안 내게 된다. */
+  static Set<String> exemptMonths(String uid) => Logic.feeFree(uid);
+
   static FeeMark mark(String uid, String month, {int? joinedAt}) {
-    final at = joinedAt ?? (AppState.i.members[uid] as Map?)?['joinedAt'] as num?;
+    final one = rec(uid);
+    final at = joinedAt ?? one?['joinedAt'] as num?;
     /* ⚠️ 들어온 때를 **모를 때**도 현황 화면과 «같은 말»을 해야 한다.
 
        모를 수 있다: 옛 판이 안 적었거나, 백업을 손으로 고쳤거나,
@@ -62,7 +80,47 @@ class FeeSheet {
         ? Logic.ymOf(DateTime.fromMillisecondsSinceEpoch(at.toInt()))
         : Logic.ymOf(DateTime.now());
     if (month.compareTo(Logic.ymKey(joinedYm)) < 0) return FeeMark.before;
-    return Logic.paidIn(uid, month) ? FeeMark.paid : FeeMark.unpaid;
+
+    /* 🚪 나간 사람 — **나간 달까지는 내야 한다.** 「다음 달부터」 셈에서 뺀다.
+       ⚠️ 나간 달까지 빼 버리면 그 달 회비가 조용히 사라져 잔액이 안 맞는다.
+       ⚠️ 그렇다고 나간 뒤까지 미납으로 두면, 표에 「스무 달 밀린 사람」이 영영 남는다. */
+    final left = one?['leftAt'] as num?;
+    if (left != null && left > 0) {
+      final leftYm =
+          Logic.ymOf(DateTime.fromMillisecondsSinceEpoch(left.toInt()));
+      if (month.compareTo(Logic.ymKey(leftYm)) > 0) return FeeMark.after;
+    }
+
+    // 낸 것이 먼저다 — 면제해 준 달에 이미 냈다면 «냈다»고 보여야 맞다
+    if (Logic.paidIn(uid, month)) return FeeMark.paid;
+    return exemptMonths(uid).contains(month) ? FeeMark.exempt : FeeMark.unpaid;
+  }
+
+  /* 📋 표에 실을 줄 —— 지금 회원 + **밀린 것이 남은 지난 회원**.
+
+     ⚠️ 나갔다고 표에서 지우면 안 된다. 총무는 그 사람에게 받을 돈이 있는데
+        표에서 사라지면 «받을 것이 없는 셈»이 되어 그대로 묻힌다(사장님 지적).
+     ⚠️ 다 낸 지난 회원은 안 싣는다 — 몇 해 쌓이면 표가 지난 회원으로 가득 찬다.
+     ⚠️ 기기를 옮긴 사람(`movedTo`)은 «같은 사람»이라 두 줄이 되면 안 된다. */
+  static List<Map<String, dynamic>> rowMembers(List<String> months) {
+    final rows = [...AppState.i.memberList];
+    final have = rows.map((m) => m['uid']).toSet();
+    final extra = <Map<String, dynamic>>[];
+    AppState.i.former.forEach((key, v) {
+      if (v is! Map) return;
+      final uid = (v['uid'] is String && (v['uid'] as String).isNotEmpty)
+          ? v['uid'] as String
+          : key;
+      if (have.contains(uid)) return;
+      final to = v['movedTo'];
+      if (to is String && to.isNotEmpty && to != uid) return; // 폰만 바꾼 사람
+      if (!months.any((m) => mark(uid, m) == FeeMark.unpaid)) return;
+      extra.add({...v.cast<String, dynamic>(), 'uid': uid, 'left': true});
+    });
+    // 늦게 나간 사람이 아래로 — 총무가 최근 것부터 찾는다
+    extra.sort((a, b) =>
+        ((a['leftAt'] as num?) ?? 0).compareTo((b['leftAt'] as num?) ?? 0));
+    return [...rows, ...extra];
   }
 
   /* 칸에 찍을 글자 — 낸 달은 ○, 안 낸 달은 −, 가입 전은 빈칸.
@@ -77,7 +135,12 @@ class FeeSheet {
         return '○';
       case FeeMark.unpaid:
         return '−'; // 사이시옷 아닌 «빼기표»(U+2212) — 하이픈보다 굵어 표에서 잘 보인다
+      case FeeMark.exempt:
+        return '면';
       case FeeMark.before:
+      case FeeMark.after:
+        /* 둘 다 «낼 까닭이 없던 달»이라 글자는 같다 — 미납(−)과만 갈리면 된다.
+           들어오기 전인지 나간 뒤인지는 칸 색으로 알려 준다. */
         return '';
     }
   }

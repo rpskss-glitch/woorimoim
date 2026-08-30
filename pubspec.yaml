@@ -31,6 +31,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # 🇰🇷 달력·시계의 «자국 말». 이것이 없으면 날짜 고르개가 통째로 영어로 뜬다
+  #    (「Sat, Aug 1」·「Cancel」·「OK」) — 어르신 회원이 무슨 말인지 못 읽는다.
+  flutter_localizations:
+    sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -45,7 +49,9 @@ dependencies:
   # 🖼 «작은 그림»(썸네일)을 만들 때만 쓴다 — 원래 image_picker 가 끌고 오던 것을
   #    직접 쓰겠다고 적은 것이라 내려받는 것이 늘지 않는다(잠금파일에 이미 있다).
   image: ^4.9.2
-  intl: ^0.20.3
+  # ⚠️ 판을 올리지 말 것 — flutter_localizations(SDK)가 0.20.2 를 못 박아
+  #    ^0.20.3 으로 두면 «판 고르기»가 통째로 실패한다.
+  intl: 0.20.2
   flutter_local_notifications: ^22.3.0
   package_info_plus: ^10.2.1
   in_app_purchase: ^3.3.0

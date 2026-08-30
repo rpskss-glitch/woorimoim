@@ -1,5 +1,6 @@
 import 'demo.dart';
 import 'state.dart';
+import 'store.dart';
 
 /* 💳 모임 이용권 — **모임을 만든 사람(방장)이** 그 모임의 월 이용료를 낸다. 회원은 한 푼도 안 낸다.
 
@@ -14,6 +15,31 @@ import 'state.dart';
       돈을 안 낸 벌을 «회원»이 받는 꼴이 된다. 새로 쓰는 것만 막는다. */
 class Fee {
   Fee._();
+
+  /* 💵 **가입비** — 새 회원이 «한 번만» 내는 돈. 모임마다 있기도 없기도 하다.
+
+     어디에 적히나
+       · 금액   : `couple.fee.joinAmount` (0이면 안 받는 모임)
+       · 낸 사람 : `members.<번호>.joinFee = 'paid'`
+       · 면제    : `members.<번호>.joinFee = 'free'`
+     ⚠️ 회원 칸에 적는다 — 회비처럼 «달»이 없는 한 번짜리라, 장부에 달을 붙일 수 없다.
+        (실제로 받은 돈은 총무가 장부에 「가입비」로 따로 적는다)
+     ⚠️ 칸이 없으면 «아직 안 냄»이다. 옛 회원은 다 그 상태라, 총무가 보고 정리한다. */
+  static int joinAmount() =>
+      Store.money(((AppState.i.couple?['fee'] as Map?)?['joinAmount'] as num?)?.toInt() ?? 0);
+
+  /// 가입비를 «받는» 모임인가
+  static bool get joinOn => joinAmount() > 0;
+
+  /// 그 회원의 가입비 상태 — 'paid'(냄) · 'free'(면제) · ''(아직)
+  static String joinStateOf(String? uid) {
+    final m = (AppState.i.members[uid] as Map?);
+    final v = m?['joinFee'];
+    return (v == 'paid' || v == 'free') ? v as String : '';
+  }
+
+  /// 아직 정리가 안 된 회원인가 — 이때만 「가입비」 단추를 보여 준다
+  static bool joinPending(String? uid) => joinOn && joinStateOf(uid).isEmpty;
 
   /// 월 이용료 (원)
   static const won = 48000;

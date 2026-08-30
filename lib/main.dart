@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'config.dart';
 import 'demo.dart';
@@ -162,6 +163,17 @@ class _BootingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      /* 🇰🇷 «우리말 달력». 이것이 없으면 날짜 고르개가 통째로 영어다 —
+         「Sat, Aug 1」·「Cancel」·「OK」. 어르신 회원은 무슨 말인지 못 읽는다.
+         ⚠️ 한 곳만 붙이면 안 된다 — 이 앱은 MaterialApp 이 여럿이다
+            (부팅 중·연결 실패·본 화면). 하나라도 빠지면 그 화면만 영어가 된다. */
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('ko', 'KR')],
+      locale: const Locale('ko', 'KR'),
       title: Cfg.appName,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(null),
@@ -201,6 +213,17 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      /* 🇰🇷 «우리말 달력». 이것이 없으면 날짜 고르개가 통째로 영어다 —
+         「Sat, Aug 1」·「Cancel」·「OK」. 어르신 회원은 무슨 말인지 못 읽는다.
+         ⚠️ 한 곳만 붙이면 안 된다 — 이 앱은 MaterialApp 이 여럿이다
+            (부팅 중·연결 실패·본 화면). 하나라도 빠지면 그 화면만 영어가 된다. */
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('ko', 'KR')],
+      locale: const Locale('ko', 'KR'),
       title: Cfg.appName,
       debugShowCheckedModeBanner: false,
       /* ⚠️ `darkTheme` 을 빼면 MaterialApp 은 폰이 어두운 화면이어도 «밝은 테마»를 그대로 쓴다.
@@ -491,6 +514,17 @@ class _WooriAppState extends State<WooriApp> {
       home = ShellScreen(onTouch: _touch);
     }
     return MaterialApp(
+      /* 🇰🇷 «우리말 달력». 이것이 없으면 날짜 고르개가 통째로 영어다 —
+         「Sat, Aug 1」·「Cancel」·「OK」. 어르신 회원은 무슨 말인지 못 읽는다.
+         ⚠️ 한 곳만 붙이면 안 된다 — 이 앱은 MaterialApp 이 여럿이다
+            (부팅 중·연결 실패·본 화면). 하나라도 빠지면 그 화면만 영어가 된다. */
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('ko', 'KR')],
+      locale: const Locale('ko', 'KR'),
       title: Cfg.appName,
       navigatorKey: navKey,
       debugShowCheckedModeBanner: false,

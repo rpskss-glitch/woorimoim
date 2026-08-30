@@ -164,6 +164,16 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
 
   bool get _canStaffRoom => AppState.i.isAdmin;
 
+  /* 🚪 지금 방에 «올리는 것»에 방 표시를 붙인다.
+
+     🔴 예전에는 글 보내는 자리에만 붙였다 — 그래서 운영진 방에서 올린
+        **사진과 투표가 모두의 방으로 샜다**(회원 전체가 봤다).
+        올리는 자리가 셋(글·사진·투표)이라 한 곳에 모아 둔다 — 흩어 두면 또 빠뜨린다.
+     ⚠️ 권한이 없어졌으면 붙이지 않는다 — 운영진에서 내려온 사람이 이 값을 들고
+        있어도 서버가 거절할 뿐이라, 애초에 안 붙이는 것이 맞다. */
+  Map<String, dynamic> get _roomTag =>
+      (_canStaffRoom && _room.isNotEmpty) ? {'room': _room} : const {};
+
   /// 차단한 회원의 대화는 내 화면에서 가린다 (지우는 것이 아니라 «나만 안 보는 것»)
   /// 그리고 «지금 보는 방»의 것만 남긴다 — 칸이 없는 옛 대화는 모두의 방이다.
   List<Map<String, dynamic>> get _msgs {
@@ -247,7 +257,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       'type': 'msg',
       'text': text,
       // 운영진 방에서 쓴 말에는 표시를 남긴다 — 서버 규칙이 이 칸을 보고 막는다
-      if (_canStaffRoom && _room.isNotEmpty) 'room': _room,
+      ..._roomTag,
       if (reply != null) 'replyTo': reply['id'],
     });
     if (id == null) {
@@ -268,6 +278,15 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   /// 사진 여러 장을 한 번에 보낸다 (웹앱과 같이 한 번에 5장까지).
   /// 5장으로 묶는 이유: 사진 한 장이 곧 메시지 1개라, 더 많이 보내면 단체방 전원에게
   /// 그만큼 알림과 읽기 요금이 곱해진다. 많이 올릴 때는 사진첩(게시판 탭)을 쓰면 된다.
+  /* 📎 파일 올리기 — 대화창 아래 클립 단추.
+
+     ⚠️ 지금은 **사진첩의 그림 파일**만 받는다. 문서(pdf·한글)를 고르려면
+        파일 고르개 꾸러미를 새로 넣어야 하는데, 그것만으로 앱이 커지고
+        아이폰·안드로이드 권한 문구도 새로 써야 한다.
+        회원이 실제로 주고받는 것은 대부분 사진이라, 그것부터 열어 둔다.
+     ⚠️ 「사진 보내기」와 같은 길을 쓴다 — 두 갈래로 나누면 한쪽만 고치는 일이 생긴다.
+        (여러 장 한 번에 · 5장 제한 · 실패하면 원본 치우기가 전부 저쪽에 있다) */
+
   Future<void> _sendPhoto() async {
     final code = AppState.i.code;
     if (code == null) return;
@@ -305,6 +324,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
         'kind': 'img',
         'photoId': photoId,
         'text': '',
+        ..._roomTag, // 🔴 이게 없어서 운영진 방 사진이 모두에게 보였다
         if (i == 0 && reply != null) 'replyTo': reply['id'],
         if (thumb != null) 'thumb': thumb,
       });
@@ -346,6 +366,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       'type': 'msg',
       'kind': 'poll',
       'text': r['q'],
+      ..._roomTag, // 🔴 이게 없어서 운영진 방 투표가 모두에게 보였다
       'poll': {
         'q': r['q'],
         'opts': r['opts'],
@@ -544,13 +565,42 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
         if (_canStaffRoom)
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-            child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: '', label: Text('모두의 방')),
-                ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
+            child: Row(
+              children: [
+                Expanded(
+                  child: SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: '', label: Text('모두의 방')),
+                      ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
+                    ],
+                    selected: {_room},
+                    onSelectionChanged: (v) => setState(() => _room = v.first),
+                    showSelectedIcon: false,
+                  ),
+                ),
+                /* 📊 방마다 투표 하나씩 — 지금 보고 있는 방에 올라간다.
+                   ⚠️ 운영진 방 투표는 회원에게 안 보인다(방 표시가 붙는다). */
+                IconButton(
+                  onPressed: _newPoll,
+                  icon: const Icon(Icons.bar_chart_rounded),
+                  tooltip: _room.isEmpty ? '모두의 방 투표 만들기' : '운영진 투표 만들기',
+                  visualDensity: VisualDensity.compact,
+                ),
               ],
-              selected: {_room},
-              onSelectionChanged: (v) => setState(() => _room = v.first),
+            ),
+          )
+        /* 평회원에게는 방이 하나뿐이라 «방 바꾸기»가 없다 —
+           그래도 투표는 만들 수 있어야 하므로 여기 하나만 둔다. */
+        else
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 8, top: 4),
+              child: TextButton.icon(
+                onPressed: _newPoll,
+                icon: const Icon(Icons.bar_chart_rounded, size: 18),
+                label: const Text('투표 만들기'),
+              ),
             ),
           ),
         Expanded(
@@ -645,12 +695,11 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                   tooltip: '사진 보내기',
                   visualDensity: VisualDensity.compact,
                 ),
-                IconButton(
-                  onPressed: _newPoll,
-                  icon: const Icon(Icons.bar_chart_rounded),
-                  tooltip: '투표 만들기',
-                  visualDensity: VisualDensity.compact,
-                ),
+                /* 📎 «파일 올리기»는 뺐다 (사장님 지시). 지금은 사진첩 파일(사진·그림)만
+                   받는데, 그러면 바로 옆 「사진 보내기」와 하는 일이 똑같아 단추 둘이
+                   같은 창을 연다 — 회원이 뭐가 다른가 헷갈린다.
+                   ⚠️ 나중에 «문서» 고르개(꾸러미 필요)를 넣게 되면 그때 여기에 되살린다.
+                      되살릴 자리를 알아보게 이 자국을 남겨 둔다. */
                 Expanded(
                   child: TextField(
                     controller: _textC,

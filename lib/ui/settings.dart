@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../config.dart';
+import '../fee.dart';
 import '../logic.dart';
 import '../moderation.dart';
 import '../push.dart';
@@ -11,7 +12,7 @@ import '../store.dart';
 import '../theme.dart';
 import 'admin.dart';
 import 'common.dart';
-import 'owner_guide.dart';
+import 'member_guide.dart';
 
 /// ⚙️ 설정 — 내 정보, 모임 설정(방장), 알림, 꾸미기.
 class SettingsScreen extends StatefulWidget {
@@ -164,6 +165,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _editFee,
                   ),
+                  /* 💵 가입비 — 새로 들어온 회원이 «한 번만» 내는 돈.
+                     월 회비 바로 밑에 둔다: 총무가 둘을 늘 같이 본다. */
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('가입비 (한 번만)'),
+                    subtitle: Text(
+                      Fee.joinAmount() == 0
+                          ? '받지 않아요'
+                          : fmtWon(Fee.joinAmount()),
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _editJoinFee,
+                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('회비 보내는 곳'),
@@ -311,24 +325,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          /* 📖 방장 안내서 다시 보기 — 홈에서 닫은 뒤 되찾는 길.
-             이 길이 없으면 한 번 닫은 안내서를 **영영 못 본다**(닫기가 곧 삭제가 된다). */
-          if (st.isOwner)
-            SectionCard(
-              title: '📖 방장 안내서',
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('방장 안내서 다시 보기'),
-                subtitle: const Text('회원 부르기·직책·회비·일정·이용권 차례대로',
-                    style: TextStyle(fontSize: 12)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  OwnerGuideCard.reset();
-                  toast(context, '홈 맨 위에 다시 나와요');
-                },
-              ),
-            ),
-          if (st.isOwner) const SizedBox(height: 20),
+          /* 📗 여기 있던 「방장 안내서 다시 보기」를 **회원 설명서**로 바꿨다 (사장님 지시).
+             그 길이 있던 까닭은 홈의 안내서가 «닫으면 사라졌기» 때문인데,
+             이제는 접기·펴기라 제목 줄이 홈에 늘 남아 있다 — 되찾을 길이 따로 필요 없다.
+             반대로 평회원에게는 설명이 **아무 데도 없었다.** 그 자리를 여기가 메운다. */
+          const MemberGuideCard(),
+          const SizedBox(height: 20),
 
           SectionCard(
             title: '📋 모임 안내',
@@ -795,6 +797,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {
       if (!mounted) return;
       saveFailToast(context, '저장하지 못했어요 — 연결을 확인해주세요');
+    }
+  }
+
+  /* 💵 가입비 정하기 — 월 회비와 «같은 방식»이라 말투도 같게 맞춘다.
+     ⚠️ 0이면 「받지 않아요」다 — 가입비를 안 걷는 모임이 더 많다. */
+  Future<void> _editJoinFee() async {
+    final st = AppState.i;
+    final cur = Fee.joinAmount();
+    final typed = await askText(
+      context,
+      title: '가입비 (한 번만)',
+      initial: cur == 0 ? '' : '$cur',
+      suffix: '원',
+      helper: '새 회원이 들어올 때 한 번만 받아요. 0으로 두면 안 받아요',
+      maxLength: 12,
+      keyboard: TextInputType.number,
+    );
+    if (typed == null) return;
+    final amount = int.tryParse(typed.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    // 다듬기가 버릴 값은 저장하지 않는다 — 월 회비와 같은 까닭
+    if (amount != Store.money(amount)) {
+      if (mounted) toast(context, '가입비가 너무 커요 — 자릿수를 다시 확인해주세요');
+      return;
+    }
+    final code = st.code;
+    if (code == null) return;
+    try {
+      // 「가입비」 칸만 보낸다 — 월 회비·내는 날은 건드리지 않는다
+      await Store.i.setCouple(code, {
+        'fee': {'joinAmount': amount}
+      });
+      if (!mounted) return;
+      toast(context,
+          amount == 0 ? '가입비를 받지 않도록 했어요' : '가입비를 ${fmtWon(amount)}으로 정했어요');
+      _r();
+    } catch (_) {
+      if (!mounted) return;
+      saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }
   }
 

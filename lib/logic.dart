@@ -890,7 +890,24 @@ class Logic {
     final joinedYm = ymOf(DateTime.fromMillisecondsSinceEpoch(joinedAt.toInt()));
     final before = ymOf(DateTime.now()) - maxBack; // 세는 창 «바로 앞» 달
     if (before < joinedYm) return false; // 그 앞은 들어오기 전이라 밀린 것이 없다
-    return !paidIn(uid, ymKey(before));
+    final key = ymKey(before);
+    if (feeFree(uid).contains(key)) return false; // 면제한 달이면 잘린 것이 아니다
+    return !paidIn(uid, key);
+  }
+
+  /* 🙇 «그 달만 면제»해 준 달들 — `members.<uid>.feeFree`.
+
+     ⚠️ 여기(Logic)에 두는 까닭: 밀린 달 셈과 표가 **같은 자리**를 봐야 한다.
+        표에만 반영하면 표는 「면」인데 회비 화면은 「3달 밀림」이라 하고,
+        회비를 받으려 하면 면제한 달부터 채워진다 — 같은 앱이 세 가지 말을 한다.
+     ⚠️ 나간 사람은 `former` 에 적힌다 — 둘 다 본다. */
+  static Set<String> feeFree(String uid) {
+    final m = AppState.i.members[uid];
+    final rec = m is Map ? m : (AppState.i.former[uid] is Map
+        ? AppState.i.former[uid] as Map
+        : null);
+    final v = rec?['feeFree'];
+    return v is List ? v.whereType<String>().toSet() : const {};
   }
 
   /// 아직 안 낸 달들 (모임 시작 달부터 이번 달까지).
@@ -903,11 +920,13 @@ class Logic {
     final joinedYm = joinedAt == null
         ? nowYm
         : ymOf(DateTime.fromMillisecondsSinceEpoch(joinedAt.toInt()));
+    final free = feeFree(uid);
     final out = <String>[];
     for (var i = maxBack - 1; i >= 0; i--) {
       final ym = nowYm - i;
       if (ym < joinedYm) continue;
       final key = ymKey(ym);
+      if (free.contains(key)) continue; // 면제해 준 달은 «밀린 것»이 아니다
       if (!paidIn(uid, key)) out.add(key);
     }
     return out;
@@ -921,6 +940,7 @@ class Logic {
   static List<String> feeMonthsToFill(String uid, int months) {
     if (months <= 0) return const [];
     final unpaid = unpaidMonths(uid);
+    final free = feeFree(uid);
     int startYm;
     if (unpaid.isNotEmpty) {
       final p = unpaid.first.split('-');
@@ -932,7 +952,8 @@ class Logic {
     // 넉넉히 앞으로 훑되(빈 달을 찾아), 끝없이 돌지는 않게 한계를 둔다
     for (var i = 0; out.length < months && i < months + 36; i++) {
       final key = ymKey(startYm + i);
-      if (paidIn(uid, key)) continue;
+      // 면제한 달에 돈을 채우면 «안 받은 돈»이 통장에 더해진다
+      if (paidIn(uid, key) || free.contains(key)) continue;
       out.add(key);
     }
     return out;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../fee.dart';
 import '../fee_book.dart';
 import '../logic.dart';
 import '../state.dart';
@@ -479,10 +480,16 @@ class _MemberFeeRow extends StatelessWidget {
                 Text(member['name'] as String? ?? '회원',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                  unpaid.isEmpty
-                      ? (prepaid > 0 ? '선납 $prepaid달' : '밀린 것 없음')
-                      : '${unpaid.length}달${Logic.unpaidTruncated(uid) ? ' 이상' : ''} 밀림'
-                          ' · ${unpaid.first}부터',
+                  (unpaid.isEmpty
+                          ? (prepaid > 0 ? '선납 $prepaid달' : '밀린 것 없음')
+                          : '${unpaid.length}달${Logic.unpaidTruncated(uid) ? ' 이상' : ''} 밀림'
+                              ' · ${unpaid.first}부터') +
+                      // 가입비를 정리한 회원은 그 사실을 적어 둔다 (단추가 사라지므로)
+                      (Fee.joinStateOf(uid) == 'paid'
+                          ? ' · 가입비 냄'
+                          : Fee.joinStateOf(uid) == 'free'
+                              ? ' · 가입비 면제'
+                              : ''),
                   style: TextStyle(
                     fontSize: 12,
                     color: unpaid.isEmpty ? Theme.of(context).hintColor : moneyOut(context),
@@ -493,16 +500,29 @@ class _MemberFeeRow extends StatelessWidget {
           ),
           if (pickMode)
             Checkbox(value: picked, onChanged: (v) => onPick?.call(v ?? false))
+          /* 💵 가입비 단추가 뜰 «때만» 두 단추를 세로로 쌓는다.
+             ⚠️ 가로로 나란히 두면 360px·글자 2배에서 54px 넘쳤다 — 이름을 0으로 줄여도
+                단추 둘이 안 들어간다(2026-08-30 fee_row_overflow_test 로 잡음).
+                가입비가 없을 때(흔한 경우)는 예전처럼 «회비 등록»만 줄 안에 둔다. */
+          else if (Fee.joinPending(uid))
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () =>
+                      _joinFee(context, uid, member['name'] as String? ?? '회원'),
+                  style: inlineButtonStyle.merge(OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  )),
+                  child: const Text('가입비'),
+                ),
+                const SizedBox(height: 4),
+                _receiveButton(context, uid, unpaid.isEmpty, cs),
+              ],
+            )
           else
-            FilledButton.tonal(
-              onPressed: () => _receive(context, uid, member['name'] as String? ?? '회원'),
-              // ⚠️ 줄 안의 단추는 «가로 꽉 채우기»를 되돌려야 한다 — 안 그러면 옆 이름이 0폭이 된다
-              style: inlineButtonStyle.merge(FilledButton.styleFrom(
-                backgroundColor: unpaid.isEmpty ? null : cs.primary,
-                foregroundColor: unpaid.isEmpty ? null : cs.onPrimary,
-              )),
-              child: const Text('회비 받기'),
-            ),
+            _receiveButton(context, uid, unpaid.isEmpty, cs),
         ],
       ),
     );
@@ -511,6 +531,18 @@ class _MemberFeeRow extends StatelessWidget {
         ? InkWell(onTap: () => onPick?.call(!picked), child: row)
         : row;
   }
+
+  /* 「회비 등록」 단추 하나 — 줄 안에도, 세로로 쌓을 때도 같은 모양을 쓴다.
+     ⚠️ 줄 안의 단추는 «가로 꽉 채우기»를 되돌려야 한다 — 안 그러면 옆 이름이 0폭이 된다. */
+  Widget _receiveButton(BuildContext context, String uid, bool paidUp, ColorScheme cs) =>
+      FilledButton.tonal(
+        onPressed: () => _receive(context, uid, member['name'] as String? ?? '회원'),
+        style: inlineButtonStyle.merge(FilledButton.styleFrom(
+          backgroundColor: paidUp ? null : cs.primary,
+          foregroundColor: paidUp ? null : cs.onPrimary,
+        )),
+        child: const Text('회비 등록'),
+      );
 
   /* 회비 받기 — 몇 달치든 받을 수 있다(직접 적기 포함).
      받은 달은 이미 받은 다음 달부터 자동으로 이어진다. */
@@ -534,6 +566,62 @@ class _MemberFeeRow extends StatelessWidget {
     }
     toast(context,
         '$name님 회비 ${fmtWon(r.won)}을 기록했어요 💵 (${Logic.feeSpan(r.months)})');
+    onChanged();
+  }
+
+  /* 💵 **가입비** — 한 번만 받는 돈이라 «달»이 없다.
+
+     ⚠️ 회비 길(FeeBook)을 쓰면 안 된다 — 그쪽은 달을 채우는 셈이라
+        가입비를 넣으면 «어느 달치를 냈다»는 잘못된 기록이 남는다.
+     ⚠️ 문서 이름을 못 박아 둔다 — 총무 둘이 동시에 눌러도 두 번 안 적힌다. */
+  Future<void> _joinFee(BuildContext context, String uid, String name) async {
+    if (!AppState.i.isTreasurer) {
+      return toast(context, '가입비 기록은 회장·총무만 할 수 있어요');
+    }
+    final won = Fee.joinAmount();
+    final pick = await chooseSheet(
+      context,
+      '$name님 가입비',
+      won > 0 ? '가입비는 ${fmtWon(won)}입니다. 어떻게 할까요?' : '가입비를 어떻게 할까요?',
+      [
+        ['paid', won > 0 ? '${fmtWon(won)} 받았어요' : '받았어요'],
+        ['free', '면제할래요'],
+      ],
+    );
+    if (pick == null || !context.mounted) return;
+
+    final code = AppState.i.code;
+    if (code == null) return toast(context, '모임을 찾지 못했어요');
+
+    // 받은 경우에만 장부에 수입으로 남긴다 (면제는 «받은 돈»이 아니다)
+    if (pick == 'paid' && won > 0) {
+      final id = await Store.i.addItem(
+        code,
+        {
+          'type': 'ledger',
+          'kind': 'in',
+          'title': '$name 가입비',
+          'amount': won,
+          'payer': uid,
+          'date': ymd(DateTime.now()),
+        },
+        docId: 'joinfee_${code}_$uid',
+      );
+      if (id == null) {
+        if (!context.mounted) return;
+        return saveFailToast(context, '기록하지 못했어요 — 다시 눌러주세요');
+      }
+    }
+
+    var done = true;
+    try {
+      await Store.i.patchCouple(code, {'members.$uid.joinFee': pick});
+    } catch (_) {
+      done = false;
+    }
+    if (!context.mounted) return;
+    if (!done) return saveFailToast(context, '기록하지 못했어요 — 다시 눌러주세요');
+    toast(context, pick == 'paid' ? '$name님 가입비를 받았다고 적었어요 💵' : '$name님 가입비를 면제했어요');
     onChanged();
   }
 }

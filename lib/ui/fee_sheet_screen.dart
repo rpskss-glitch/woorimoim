@@ -97,6 +97,31 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
     toast(context, '$_fromYm ~ $_toYm · $n개월을 봅니다');
   }
 
+  /// 「최근 N개월」로 — 직접 고른 기간은 푼다(둘이 겹치면 어느 쪽인지 모른다)
+  void _setMonths(int n) {
+    setState(() {
+      _months = n;
+      _fromYm = null;
+      _toYm = null;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
+  }
+
+  /// 올해 1월부터 이번 달까지 — 결산할 때 제일 자주 보는 자리다
+  void _setThisYear() {
+    final now = DateTime.now();
+    setState(() {
+      _fromYm = '${now.year}-01';
+      _toYm = Logic.ymKey(Logic.ymOf(now));
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
+  }
+
+  bool _isThisYear() {
+    final now = DateTime.now();
+    return _fromYm == '${now.year}-01' && _toYm == Logic.ymKey(Logic.ymOf(now));
+  }
+
   void _toNow() {
     if (!_hScroll.hasClients) return;
     _hScroll.jumpTo(_hScroll.position.maxScrollExtent);
@@ -106,6 +131,11 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
   static const _cellStyle = TextStyle(fontSize: 13);
   static const _headBg = Color(0xFFD8D2EC); // 종이 표와 같은 연보라 머리글
   static const _altBg = Color(0xFFF1EEF9);
+  /* 🚫 «낼 까닭이 없던 달» — 가입 전, 나간 다음 달부터.
+     빗금 대신 잿빛으로 눌러 둔다: 미납(−)이 있는 칸과 한눈에 갈린다.
+     ⚠️ 글자로도 갈려 있어야 한다(빈칸 vs −) — 색만으로 가르면 흑백 인쇄에서 사라진다. */
+  static const _outBg = Color(0xFFE4E4E7);
+  static const _exemptBg = Color(0xFFDCF3E4); // 면제해 준 달 — 연한 풀빛
   static const _lineColor = Color(0xFFBFC7D2);
 
   @override
@@ -116,30 +146,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_tab == 0 ? '회비 납부 현황' : '지출 내역'),
-        actions: [
-          PopupMenuButton<int>(
-            tooltip: '몇 달치를 볼지',
-            initialValue: _months,
-            onSelected: (v) {
-              if (v == -1) { _pickRange(); return; }
-              setState(() {
-                _months = v;
-                // 「최근 N개월」을 고르면 직접 고른 기간은 푼다 — 둘이 겹치면 어느 쪽인지 모른다
-                _fromYm = null;
-                _toYm = null;
-              });
-              // 달 수를 바꿔도 «이번 달»이 보이게
-              WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 3, child: Text('최근 3개월')),
-              PopupMenuItem(value: 6, child: Text('최근 6개월')),
-              PopupMenuItem(value: 12, child: Text('최근 12개월')),
-              PopupMenuItem(value: -1, child: Text('기간 직접 고르기…')),
-            ],
-            icon: const Icon(Icons.date_range),
-          ),
-        ],
+
       ),
       body: Column(
         children: [
@@ -159,6 +166,35 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
                    (2026-08-28 에뮬레이터에서 실제로 그랬다). */
                 WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
               },
+            ),
+          ),
+          /* 📅 «얼마 동안»을 볼지 — 회비·지출 줄 바로 옆에 둔다.
+             예전에는 위쪽 달력 그림 안에 숨어 있어, 총무가 그런 것이 있는 줄 몰랐다. */
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 4),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                ChoiceChip(
+                  label: const Text('최근 6개월'),
+                  selected: _fromYm == null && _months == 6,
+                  onSelected: (_) => _setMonths(6),
+                ),
+                ChoiceChip(
+                  label: const Text('올해'),
+                  selected: _isThisYear(),
+                  onSelected: (_) => _setThisYear(),
+                ),
+                ChoiceChip(
+                  avatar: const Icon(Icons.date_range, size: 16),
+                  label: Text(_fromYm != null && !_isThisYear()
+                      ? '$_fromYm ~ $_toYm'
+                      : '기간 설정'),
+                  selected: _fromYm != null && !_isThisYear(),
+                  onSelected: (_) => _pickRange(),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -239,17 +275,23 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
   }
 
   Widget _feeTable(List<String> months, {bool scroll = true}) {
-    final members = AppState.i.memberList;
+    // 나갔어도 «밀린 것이 남았으면» 표에 남는다 — 안 그러면 받을 돈이 묻힌다
+    final members = FeeSheet.rowMembers(months);
     return _grid(
       scroll: scroll,
       firstCol: [
         _box(const Text('회원명', style: _headStyle), w: 96, bg: _headBg),
         for (var i = 0; i < members.length; i++)
           _box(
-            Text('${i + 1}. ${members[i]['name'] ?? '회원'}',
+            Text(
+                '${i + 1}. ${members[i]['name'] ?? '회원'}'
+                // 나간 사람인 줄 모르면 총무가 「왜 안 나오지」 하며 찾는다
+                '${members[i]['left'] == true ? ' (탈퇴)' : ''}',
                 style: _cellStyle, overflow: TextOverflow.ellipsis),
             w: 96,
-            bg: i.isEven ? _altBg : null,
+            bg: members[i]['left'] == true
+                ? _outBg
+                : (i.isEven ? _altBg : null),
             align: Alignment.centerLeft,
           ),
         // 합계 줄 — 「이번 달 몇 명이 냈는지」가 총무가 가장 자주 보는 값이다
@@ -262,12 +304,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
         ],
         for (var i = 0; i < members.length; i++)
           [
-            for (final m in months)
-              _box(
-                Text(FeeSheet.cell(FeeSheet.mark(members[i]['uid'] as String, m)),
-                    style: _cellStyle),
-                bg: i.isEven ? _altBg : null,
-              )
+            for (final m in months) _feeCell(members[i], m, i.isEven)
           ],
         [
           for (final m in months)
@@ -276,6 +313,67 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
         ],
       ],
     );
+  }
+
+  /* 칸 하나 — 색으로 「셀 것이 있는 달인지」를 알려 주고, 눌러서 면제한다.
+
+     ⚠️ 누르는 것은 **회비를 다루는 사람만**이다. 평회원이 눌러 봐야
+        서버가 막으므로, 아예 안 눌리게 해서 헛수고를 없앤다. */
+  Widget _feeCell(Map<String, dynamic> member, String month, bool even) {
+    final uid = member['uid'] as String;
+    final mk = FeeSheet.mark(uid, month);
+    final bg = switch (mk) {
+      FeeMark.before || FeeMark.after => _outBg,
+      FeeMark.exempt => _exemptBg,
+      _ => even ? _altBg : null,
+    };
+    final box = _box(Text(FeeSheet.cell(mk), style: _cellStyle), bg: bg);
+    // 낸 달·회원이 아니던 달은 면제할 것이 없다
+    final canTap = AppState.i.isTreasurer &&
+        (mk == FeeMark.unpaid || mk == FeeMark.exempt);
+    if (!canTap) return box;
+    return InkWell(
+      onTap: () => _toggleExempt(member, month, mk == FeeMark.exempt),
+      child: box,
+    );
+  }
+
+  /* 🙇 그 달만 면제하기 / 되돌리기.
+     ⚠️ 되돌릴 때는 안 묻는다 — 잘못 눌러도 한 번 더 누르면 그만이라
+        확인 창이 성가시기만 하다(돈이 오가는 일이 아니다). */
+  Future<void> _toggleExempt(
+      Map<String, dynamic> member, String month, bool on) async {
+    final uid = member['uid'] as String;
+    final name = (member['name'] as String?) ?? '회원';
+    final label = FeeSheet.monthLabel(month);
+    if (!on) {
+      final ok = await confirmSheet(context, '$name님 $label 회비를 면제할까요?',
+          '그 달만 «안 내도 되는 달»로 둡니다. 밀린 셈에서 빠지고, 표에는 「면」으로 남아요.',
+          okLabel: '면제하기');
+      if (!ok || !mounted) return;
+    }
+    final code = AppState.i.code;
+    if (code == null) return;
+    final next = FeeSheet.exemptMonths(uid).toList();
+    if (on) {
+      next.remove(month);
+    } else if (!next.contains(month)) {
+      next.add(month);
+    }
+    next.sort();
+    /* 나간 사람은 `former` 쪽에 적힌다 — `members` 에 쓰면 아무 데도 안 남는다
+       (다듬기가 없는 회원의 칸을 지운다). 밀린 돈을 정리하려면 여기가 있어야 한다. */
+    final where = member['left'] == true ? 'former' : 'members';
+    var done = true;
+    try {
+      await Store.i.patchCouple(code, {'$where.$uid.feeFree': next});
+    } catch (_) {
+      done = false;
+    }
+    if (!mounted) return;
+    if (!done) return saveFailToast(context, '기록하지 못했어요 — 다시 눌러주세요');
+    toast(context, on ? '$name님 $label 면제를 풀었어요' : '$name님 $label 회비를 면제했어요');
+    setState(() {});
   }
 
   /// 만 원 단위로 짧게 — 표 칸에 원 단위를 다 적으면 가로가 두 배가 된다
