@@ -61,7 +61,7 @@ void main() {
         reason: '작은 그림의 품질이 웹(0.62)과 달라졌다 — '
             '올리면 기록마다 읽기 요금이 붙고, 내리면 웹에서 더 흐리게 보인다');
 
-    final web = File(r'C:\Users\asas3\Desktop\앞산배드민턴\index.html');
+    final web = File('../앞산배드민턴/index.html');
     if (!web.existsSync()) return;
     final t = web.readAsStringSync();
     expect(t, contains('thumb(img, max=${Store.thumbMax})'),
@@ -88,7 +88,7 @@ void main() {
   });
 
   test('웹이 아직 «되돌림 없이» 그 칸만 그린다 — 바뀌면 이 시험도 다시 봐야 한다', () {
-    final web = File(r'C:\Users\asas3\Desktop\앞산배드민턴\index.html');
+    final web = File('../앞산배드민턴/index.html');
     if (!web.existsSync()) return;
     final t = web.readAsStringSync();
     expect(t, contains(r'src="${p.thumb}"'),

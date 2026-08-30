@@ -183,8 +183,21 @@ ThemeData buildTheme(String? key, {bool dark = false}) {
          (레몬은 1.93:1) 밖에서 무엇을 골랐는지 안 보인다. 기준은 4.5:1.
          버튼은 이미 primary/onPrimary 짝으로 고쳐 두었는데 칩만 빠져 있었다. */
       selectedColor: primary,
-      labelStyle: TextStyle(color: dark ? Colors.white70 : t.accText, fontWeight: FontWeight.w600),
+      /* 🔴 **고른 칩의 글씨 색은 «상태»를 봐야 한다.**
+         `secondaryLabelStyle` 만 흰색으로 두면 ChoiceChip 은 멀쩡한데
+         **FilterChip 은 고른 뒤에도 `labelStyle` 을 쓴다** — 진한 강조색 바탕에
+         진한 글씨가 얹혀 「전체 3」이 **글자 없이 체크만 뜬 빈 알약**으로 보였다
+         (2026-08-30 사진첩에서 실제로 그랬다). 상태에 따라 갈라 준다. */
+      labelStyle: TextStyle(
+        color: WidgetStateColor.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? onPrimary
+                : (dark ? Colors.white70 : t.accText)),
+        fontWeight: FontWeight.w600,
+      ),
       secondaryLabelStyle: TextStyle(color: onPrimary, fontWeight: FontWeight.w700),
+      // 체크 표시도 같은 짝이라야 한다 — 안 그러면 진한 바탕에 진한 체크가 된다
+      checkmarkColor: onPrimary,
       /* ⚠️ 안 고른 칩은 «테두리»가 없으면 자리를 알 수 없다.
          2026-08-22 실측: 어두운 화면에서 칩 바탕(0xFF23262C)이 카드 색과 **완전히 같아** 대비 1.00.
          「모두 받기 / 공지만 / 끄기」처럼 고르는 칩이 **글씨만 둥둥 떠 있는 것**으로 보여

@@ -6,6 +6,7 @@ import '../moderation.dart';
 import '../comments.dart';
 import '../state.dart';
 import '../store.dart';
+import 'album.dart';
 import 'common.dart';
 import 'post_screen.dart';
 
@@ -111,27 +112,10 @@ class _BoardTabState extends State<BoardTab> {
     );
   }
 
-  Widget _photos(BuildContext context) {
-    final rows = [...Moderation.hide(AppState.i.by('photo'))]
-      ..sort((a, b) => ((b['createdAt'] as num?) ?? 0).compareTo((a['createdAt'] as num?) ?? 0));
-    if (rows.isEmpty) {
-      return Center(
-        child: Text('아직 사진이 없어요\n모임 사진을 올려보세요',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).hintColor, height: 1.6)),
-      );
-    }
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-      ),
-      itemCount: rows.length,
-      itemBuilder: (c, i) => _PhotoTile(item: rows[i], onChanged: _r),
-    );
-  }
+  /* 📸 사진첩 — **웹앱과 같은 사진첩**(설명·태그·즐겨찾기·반응·정리).
+     예전에는 여기에 격자만 있었다. 그래서 웹으로 정리한 회원과 앱만 쓰는 회원이
+     서로 다른 사진첩을 봤다 — 앨범 쪽에 모아 두고 여기서는 부르기만 한다. */
+  Widget _photos(BuildContext context) => AlbumView(onChanged: _r);
 
   Future<void> _writePost(BuildContext context) async {
     final ok = await showModalBottomSheet<bool>(
@@ -313,53 +297,6 @@ class _PostCard extends StatelessWidget {
       ),
       ),
     );
-  }
-}
-
-class _PhotoTile extends StatelessWidget {
-  final Map<String, dynamic> item;
-  final VoidCallback onChanged;
-  const _PhotoTile({required this.item, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      // 길게 누르면 지우기 (내 사진이거나 운영진일 때만)
-      onLongPress: () => _delete(context),
-      child: ClubPhoto(
-        photoId: item['photoId'] as String?,
-        radius: BorderRadius.circular(10),
-        decodeWidth: 400, // 격자 한 칸은 작다 — 원본 그대로 올리면 폰이 못 버틴다
-        onTap: () async {
-          final src = await Store.i.getPhoto(item['photoId'] as String?);
-          if (!context.mounted) return;
-          // 조용히 아무 일도 안 일어나면 회원은 화면이 멈춘 줄 알고 계속 누른다
-          if (src == null) return toast(context, '사진을 불러오지 못했어요 — 잠시 후 다시 눌러주세요');
-          showPhotoViewer(context, src);
-        },
-      ),
-    );
-  }
-
-  Future<void> _delete(BuildContext context) async {
-    // ⚠️ 권한 — 위와 같은 이유로 폰 바꾸기 전 번호까지 넓히지 않는다
-    final mine = item['by'] == Store.i.myUid;
-    if (!mine && !AppState.i.isAdmin) {
-      // 길게 눌렀는데 아무 반응이 없으면 눌린 건지 아닌지 알 수 없다
-      return toast(context, '내가 올린 사진만 지울 수 있어요 (운영진은 모두 지울 수 있어요)');
-    }
-    final ok = await confirmSheet(context, '이 사진을 지울까요?', '되돌릴 수 없어요',
-        okLabel: '지우기', danger: true);
-    if (!ok || !context.mounted) return;
-    final code = AppState.i.code;
-    if (code == null) return;
-    final done = await Store.i.deleteItem(code, item['id'] as String, 'photo');
-    if (!context.mounted) return;
-    if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
-    // 기록을 지웠으면 원본도 정리한다 (대기줄을 거치므로 실패해도 다음에 다시 시도한다)
-    Store.i.dropPhotos(Store.photoIdsOf(item));
-    toast(context, '사진을 지웠어요');
-    onChanged();
   }
 }
 

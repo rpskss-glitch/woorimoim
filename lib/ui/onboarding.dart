@@ -222,7 +222,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       await _doJoin(raw, name, birth, loginOnly: loginOnly);
     } catch (e) {
-      if (mounted) toast(context, '서버에 연결하지 못했어요 — 잠시 후 다시 눌러주세요');
+      /* ⚠️ **«거절»과 «끊김»은 다른 병이다 — 같은 말로 덮으면 안 된다.**
+         서버 규칙이 막은 것(이름·생년월일 불일치 등)인데 「연결하지 못했어요」라고 하면
+         회원은 인터넷 탓인 줄 알고 **같은 것을 몇 번이고 다시 누른다** —
+         2026-08-22 이어받기 403에서 실제로 그랬다(그때 한 갈래만 고치고 안내문은 남았다).
+         거절이면 «적은 내용을 다시 보라»고, 끊김이면 «잠시 후 다시»라고 갈라 말한다. */
+      if (mounted) {
+        final denied = '$e'.contains('permission-denied');
+        toast(
+            context,
+            denied
+                ? '서버가 요청을 받아주지 않았어요 — 모임 이름과 생년월일을 다시 확인해주세요'
+                : '서버에 연결하지 못했어요 — 잠시 후 다시 눌러주세요');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -572,27 +584,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 14),
                 _Label('생년월일', hint: '폰을 바꿔도 이름+생년월일로 바로 이어받아요'),
-                InkWell(
-                  onTap: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      initialDate: clampDate(_birth ?? DateTime(1990, 1, 1),
-                          DateTime(1920), DateTime(2020, 12, 31)),
-                      firstDate: DateTime(1920),
-                      lastDate: DateTime(2020, 12, 31),
-                      helpText: '생년월일을 골라주세요',
-                    );
-                    if (d != null) setState(() => _birth = d);
-                  },
-                  child: InputDecorator(
-                    decoration: const InputDecoration(),
-                    child: Text(
-                      _birthStr ?? '눌러서 고르기',
-                      style: TextStyle(
-                          color: _birth == null ? Theme.of(context).hintColor : null,
-                          fontSize: 16),
-                    ),
-                  ),
+                /* 숫자 6자리(800125)로 바로 친다 — 달력으로 수십 년 거슬러 가지 않게.
+                   (달력이 편하면 오른쪽 달력 단추 — 설정의 「내 정보」와 같은 칸이다) */
+                BirthInput(
+                  initial: _birth,
+                  onChanged: (d) => setState(() => _birth = d),
                 ),
                 const SizedBox(height: 14),
                 _Label('내 아바타', hint: '같은 이름이면 아바타로 구분해요'),
@@ -689,8 +685,16 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
+      /* ⚠️ **아래쪽 맞춤(end)으로 두면 안 된다.**
+         글자를 키운 회원(1.8배)에게는 설명이 두 줄이 되는데, 아래를 맞추면
+         설명의 «첫 줄이 제목보다 위»에 놓인다 — 화면에는 이렇게 보였다:
+              들어갈 모임 이름 · 새로 만들 이
+           모임 이름  름 · 받은 코드
+         제목보다 설명이 먼저 읽혀 무슨 칸인지 알 수 없다(2026-08-30 실기기 확인).
+         첫 줄끼리 맞추면(baseline) 제목 옆에서 시작해 아래로 흐른다. */
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
         children: [
           Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
           if (hint != null) ...[

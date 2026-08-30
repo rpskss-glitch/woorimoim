@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 🔐 서명 열쇠와 비밀번호 — 저장소가 «공개»라 절대 올리면 안 된다.
+#    (구글 google-services.json 은 앱에 박히는 공개값이라 올려도 된다 —
+#     파이어베이스 보안은 서버 규칙이 하지, 이 파일을 숨겨서 하는 것이 아니다)
+android/key.properties
+*.keystore
+*.jks
+*.p12
+*.p8

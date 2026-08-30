@@ -9,7 +9,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/ui/chat.dart';
 
-const _fn = r'C:\Users\asas3\Desktop\앞산배드민턴\functions\index.js';
+const _fn = '../앞산배드민턴/functions/index.js';
 
 String stripComments(String s) => s
     .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '')

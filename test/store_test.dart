@@ -119,10 +119,13 @@ void main() {
     // 원본(1600px) 그대로 올리면 한 장에 7MB쯤 잡아 값싼 폰에서 앱이 꺼진다.
     // 작게 보여주는 곳은 반드시 줄여서 올려야 한다.
     test('사진첩 격자·채팅은 줄여서 올리고, 크게 보기는 원본을 쓴다', () {
-      final board = readSource('lib/ui/board.dart');
+      /* ⚠️ 사진첩 격자는 board.dart 가 아니라 **album.dart** 에 있다
+         (웹앱과 같은 사진첩으로 옮기면서 나왔다). 옛 파일을 보면 격자에서
+         크기 지정이 통째로 빠져도 시험이 그냥 통과한다. */
+      final album = readSource('lib/ui/album.dart');
       final chat = readSource('lib/ui/chat.dart');
       final common = readSource('lib/ui/common.dart');
-      expect(board.contains('decodeWidth:'), isTrue, reason: '사진첩 격자에 크기 지정이 빠졌다');
+      expect(album.contains('decodeWidth:'), isTrue, reason: '사진첩 격자에 크기 지정이 빠졌다');
       expect(chat.contains('decodeWidth:'), isTrue, reason: '채팅 사진에 크기 지정이 빠졌다');
       expect(common.contains('cacheWidth: decodeWidth'), isTrue,
           reason: 'decodeWidth가 실제 그리기에 안 쓰이면 아무 소용이 없다');

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -470,8 +468,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final st = AppState.i;
     final code = st.code;
     if (code == null) return;
+    /* 👑 방장도 그냥 나갈 수 있다 — 방장 자리는 **자동으로** 다음 사람에게 넘어간다
+       (회장→총무→부회장→가입 순, Logic.nextOwnerUid).
+       예전에는 「먼저 넘겨주세요」라며 탈퇴를 막았는데, 그 화면을 못 찾는 방장은
+       앱을 지우는 걸로 «해결»했고 방은 주인 없는 채로 남았다.
+       누구에게 가는지는 **누르기 전에** 알려 준다. */
+    String handover = '';
     if (st.isOwner && st.memberList.length > 1) {
-      return toast(context, '방장은 먼저 👑 방장을 넘겨주세요 — 그래야 모임이 멈추지 않아요');
+      final succ = Logic.nextOwnerUid(
+          (st.couple?['members'] as Map?)?.cast<String, dynamic>() ?? {},
+          Store.i.myUid);
+      if (succ != null) {
+        handover = '\n\n👑 방장 자리는 «${st.nameOf(succ)}»님에게 자동으로 넘어가요 '
+            '(회장→총무→부회장→가입 순).';
+      }
     }
     final ok = await confirmSheet(
       context,
@@ -479,7 +489,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       '지워지는 것: 이 모임의 회원 자리(더는 들어올 수 없어요), 생년월일, 알림 설정, 읽음·접속 기록.\n'
       '남는 것: 이미 쓴 대화·글·사진, 그리고 그 글에 «글쓴이»로 보이는 이름과 아바타 '
       '(모임이 함께 쓴 기록이라, 지우면 남의 대화에 구멍이 나고 누가 쓴 글인지 알 수 없게 돼요).\n'
-      '그 글과 이름까지 모두 지우려면 설정의 「운영자에게 연락」으로 알려주세요.',
+      '그 글과 이름까지 모두 지우려면 설정의 「운영자에게 연락」으로 알려주세요.$handover',
       okLabel: '지우기',
       danger: true,
     );
@@ -527,19 +537,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: const InputDecoration(labelText: '내 이름', counterText: ''),
                 ),
                 const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final d = await showDatePicker(
-                      context: c,
-                      initialDate: clampDate(birth ?? DateTime(1990),
-                          DateTime(1920), DateTime(2020, 12, 31)),
-                      firstDate: DateTime(1920),
-                      lastDate: DateTime(2020, 12, 31),
-                    );
-                    if (d != null) setS(() => birth = d);
-                  },
-                  icon: const Icon(Icons.cake_outlined, size: 18),
-                  label: Text(birth == null ? '생년월일 고르기' : ymd(birth!)),
+                /* 숫자 6자리(800125)로 바로 친다 — 가입 화면과 같은 칸.
+                   폰을 바꿀 때 이 값으로 본인 확인을 하므로 여기서도 고칠 수 있어야 한다. */
+                BirthInput(
+                  initial: birth,
+                  onChanged: (d) => setS(() => birth = d),
                 ),
                 const SizedBox(height: 14),
                 Align(

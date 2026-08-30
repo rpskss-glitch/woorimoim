@@ -157,9 +157,10 @@ void main() {
       final store = bare('lib/store.dart');
       final at = store.indexOf('Future<bool> deleteMyData(');
       expect(at, greaterThan(0));
-      final body = store.substring(at, at + 900);
-      expect(body.contains("'members.\$uid': null"), isTrue, reason: '회원 자리가 안 지워진다');
-      expect(body.contains("'push.\$uid': null"), isTrue, reason: '지운 뒤에도 알림이 계속 온다');
+      final body = store.substring(at, at + 2400);
+      // 2026-08-31 탈퇴가 트랜잭션이 되며 겹친 모양('members': {uid: del})으로 바뀌었다
+      expect(body.contains("uid: del"), isTrue, reason: '회원 자리가 안 지워진다');
+      expect(body.contains("'push': {uid: del}"), isTrue, reason: '지운 뒤에도 알림이 계속 온다');
     });
   });
 }

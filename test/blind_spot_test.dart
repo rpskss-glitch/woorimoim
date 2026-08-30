@@ -80,7 +80,7 @@ void main() {
     });
 
     test('웹과 «같은 크기»다 — 두 회원이 같은 만큼 본다', () {
-      final f = File(r'C:\Users\asas3\Desktop\앞산배드민턴\index.html');
+      final f = File('../앞산배드민턴/index.html');
       if (!f.existsSync()) return;
       final m = RegExp(r'MSG_WINDOW\s*[:=]\s*(\d+)').firstMatch(f.readAsStringSync());
       expect(m, isNotNull, reason: '웹의 대화 창 크기를 못 찾았다');

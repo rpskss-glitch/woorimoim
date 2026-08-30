@@ -47,7 +47,7 @@ void main() {
   });
 
   test('서버가 아직 «자료만» 보낸다 — 바뀌면 이 잣대도 다시 봐야 한다', () {
-    final f = File(r'C:\Users\asas3\Desktop\앞산배드민턴\functions\index.js');
+    final f = File('../앞산배드민턴/functions/index.js');
     if (!f.existsSync()) return;
     final s = f.readAsStringSync();
     expect(s, contains('const payload = {'), reason: '보내는 꾸러미를 못 찾았다');

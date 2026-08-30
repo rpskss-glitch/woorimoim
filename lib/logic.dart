@@ -86,6 +86,86 @@ class Logic {
           if (reacts[k] != null) k
       ];
 
+  /* 👑 방장이 나가면 «누가 다음 방장인가».
+
+     방장이 폰을 잃거나 모임을 떠나면 방이 «주인 없는 채»로 남았다 —
+     예전에는 방장이 직접 넘겨주기 전에는 탈퇴도 못 하게 막았다.
+     이제 탈퇴하면 **자동으로** 다음 사람에게 넘어간다.
+
+     차례(사장님이 정한 규칙 그대로):
+       ① 직책 「회장」 → ② 「총무」 → ③ 「부회장」 → ④ 나머지 회원
+       같은 칸에 여럿이면 **먼저 가입한 사람**(joinedAt 이 작은 사람).
+     ⚠️ 가입일이 없는 옛 회원은 «맨 뒤»로 본다 — 있는 사람이 먼저다.
+     ⚠️ 운영진(role: admin)이라도 직책이 없으면 ④다 — 직책 순서가 우선이다. */
+  static String? nextOwnerUid(Map<String, dynamic> members, String leavingUid) {
+    int tier(Map m) {
+      switch (m['title']) {
+        case '회장':
+          return 0;
+        case '총무':
+          return 1;
+        case '부회장':
+          return 2;
+        default:
+          return 3;
+      }
+    }
+
+    final rows = members.entries
+        .where((e) =>
+            e.key != leavingUid &&
+            e.value is Map &&
+            ((e.value as Map)['uid'] as String?)?.isNotEmpty == true)
+        .map((e) => MapEntry(e.key, (e.value as Map).cast<String, dynamic>()))
+        .toList()
+      ..sort((a, b) {
+        final t = tier(a.value).compareTo(tier(b.value));
+        if (t != 0) return t;
+        final ja = (a.value['joinedAt'] as num?)?.toInt() ?? 1 << 62;
+        final jb = (b.value['joinedAt'] as num?)?.toInt() ?? 1 << 62;
+        final j = ja.compareTo(jb);
+        if (j != 0) return j;
+        return a.key.compareTo(b.key); // 끝까지 같으면 번호로 — 차례가 흔들리지 않게
+      });
+    return rows.isEmpty ? null : rows.first.key;
+  }
+
+  /* 🎂 생년월일을 «숫자만»으로 읽는다 — 6자리(800125) 또는 8자리(19800125).
+
+     왜 필요한가
+       가입 화면의 생년월일이 «달력에서 고르기»뿐이었다. 1960~80년대생이 많은데,
+       달력으로 수십 년을 거슬러 올라가려면 **수십 번을 눌러야** 했다.
+       6자리는 누구나 아는 주민번호 앞자리 그대로라 설명이 필요 없다.
+
+     6자리의 연도는 이렇게 정한다:
+       뒤 두 자리가 «올해 두 자리»보다 크면 1900년대, 아니면 2000년대.
+       (올해 26 기준: 80→1980 · 05→2005 · 27→1927)
+     ⚠️ 1920~1926년생은 6자리로 2020년대로 읽힌다 — 그분들은 8자리나 달력으로.
+        (앱의 생년월일 허용 범위가 1920~2020이라 2021+는 어차피 거른다)
+
+     돌려주는 값: 진짜 있는 날짜(1920-01-01~2020-12-31)면 그 날, 아니면 null. */
+  static DateTime? parseBirthDigits(String raw) {
+    final d = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    int y, m, day;
+    if (d.length == 6) {
+      final yy = int.parse(d.substring(0, 2));
+      y = yy > DateTime.now().year % 100 ? 1900 + yy : 2000 + yy;
+      m = int.parse(d.substring(2, 4));
+      day = int.parse(d.substring(4, 6));
+    } else if (d.length == 8) {
+      y = int.parse(d.substring(0, 4));
+      m = int.parse(d.substring(4, 6));
+      day = int.parse(d.substring(6, 8));
+    } else {
+      return null;
+    }
+    if (y < 1920 || y > 2020) return null;
+    final dt = DateTime(y, m, day);
+    // DateTime 은 2월 30일을 «3월 2일로 굴려» 만든다 — 되짚어 같아야 진짜 날짜다
+    if (dt.year != y || dt.month != m || dt.day != day) return null;
+    return dt;
+  }
+
   /// 그 번호가 «나»인지 — 폰을 바꾸기 전 번호도 나다.
   ///
   /// ⚠️ **보여 주는 데만 쓴다.** 지우기 같은 «권한»에 쓰면 안 된다:

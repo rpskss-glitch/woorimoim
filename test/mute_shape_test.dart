@@ -70,7 +70,7 @@ void main() {
   });
 
   test('서버가 아직 «그 두 가지만» 특별히 본다', () {
-    final f = File(r'C:\Users\asas3\Desktop\앞산배드민턴\functions\index.js');
+    final f = File('../앞산배드민턴/functions/index.js');
     if (!f.existsSync()) return;
     final s = f.readAsStringSync();
     expect(s, contains("mute === 'off'"),

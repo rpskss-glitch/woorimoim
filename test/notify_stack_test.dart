@@ -42,7 +42,7 @@ void main() {
   });
 
   test('기본 갈래가 서버가 보내는 값과 «같다»', () {
-    final f = File(r'C:\Users\asas3\Desktop\앞산배드민턴\functions\index.js');
+    final f = File('../앞산배드민턴/functions/index.js');
     if (!f.existsSync()) return;
     expect(f.readAsStringSync(), contains("tag: '${Push.defaultTag}'"),
         reason: '서버가 보내는 갈래가 바뀌었다 — 앱의 기본값도 맞춰야 한다');

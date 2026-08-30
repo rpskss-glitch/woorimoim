@@ -46,7 +46,7 @@ void main() {
   });
 
   test('보관함 한도가 아직 2MB 다 — 바뀌면 줄이는 크기도 다시 봐야 한다', () {
-    final f = File(r'C:\Users\asas3\Desktop\데이트장부\storage.rules');
+    final f = File('../데이트장부/storage.rules');
     if (!f.existsSync()) return; // 규칙 파일이 없는 곳에서는 넘어간다
     expect(f.readAsStringSync().replaceAll(' ', ''),
         contains('2*1024*1024'),

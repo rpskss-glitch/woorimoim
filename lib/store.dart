@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
 import 'demo.dart';
+import 'logic.dart';
 import 'fee.dart';
 
 /// 서버 저장소 — 웹앱(index.html)의 Store를 그대로 옮긴 것.
@@ -231,25 +232,42 @@ class Store {
   Future<bool> deleteMyData(String code) async {
     final uid = myUid;
     try {
-      final c = await getCouple(code);
-      final me = (c?['members'] as Map?)?[uid];
-      final name = (me is Map ? me['name'] : null) as String?;
-      final emoji = (me is Map ? me['emoji'] : null) as String?;
-      await patchCouple(code, {
-        'members.$uid': null,
-        'push.$uid': null,
-        'lastRead.$uid': null,
-        'lastSeen.$uid': null,
-        'typing.$uid': null,
-        // 옛 글에 이름이 보이도록 이름·아바타만 남긴다 (지우면 「알 수 없는 사람」이 된다)
-        'former.$uid': {
-          'uid': uid,
-          if (name != null) 'name': name,
-          if (emoji != null) 'emoji': emoji,
-          'leftAt': DateTime.now().millisecondsSinceEpoch,
-        },
-      }, sure: true);
-      return true;
+      /* 👑 내가 방장이면 나가면서 **다음 방장을 같은 트랜잭션에서** 세운다.
+         (회장→총무→부회장→가입 순 — Logic.nextOwnerUid)
+         ⚠️ 트랜잭션이라야 한다: 따로 두 번 쓰면, 첫 쓰기와 둘째 쓰기 사이에
+            방이 «주인 없는 채»로 보이고, 그 사이 누가 나가면 없는 사람을 방장으로 세운다.
+         ⚠️ 서버 규칙도 이 모양만 허락한다 — 나가는 방장은 아직 staff 이고,
+            남을 올리는 것이라 «자기 승격 금지»에도 안 걸린다. */
+      final done = await mutateCouple(code, (cur) {
+        final members = (cur['members'] as Map?)?.cast<String, dynamic>() ?? {};
+        final me = members[uid];
+        if (me is! Map) return null; // 이미 없다 — 지울 것이 없다
+        final iAmOwner = me['role'] == 'owner';
+        final succ =
+            iAmOwner ? Logic.nextOwnerUid(members, uid) : null;
+        final succEntry = succ == null ? null : members[succ] as Map?;
+        return {
+          'members': {
+            uid: del,
+            if (succEntry != null)
+              succ!: {...succEntry.cast<String, dynamic>(), 'role': 'owner'},
+          },
+          'push': {uid: del},
+          'lastRead': {uid: del},
+          'lastSeen': {uid: del},
+          'typing': {uid: del},
+          // 옛 글에 이름이 보이도록 이름·아바타만 남긴다 (지우면 「알 수 없는 사람」이 된다)
+          'former': {
+            uid: {
+              'uid': uid,
+              if (me['name'] != null) 'name': me['name'],
+              if (me['emoji'] != null) 'emoji': me['emoji'],
+              'leftAt': DateTime.now().millisecondsSinceEpoch,
+            }
+          },
+        };
+      });
+      return done;
     } catch (e) {
       _err(e, '내 자료 지우기');
       return false;
@@ -780,13 +798,17 @@ class Store {
     // 🧾 영수증 — 지출 기록 안에만 붙는다(사진첩과 따로). 웹앱과 같은 칸 이름이라야 서로 읽는다
     'rcptId', 'rcptThumb',
     'thumb',
+    /* 📝 사진 설명 — **웹이 적는 칸이다**(웹 사진첩은 설명·태그를 여기에 담는다).
+       앱이 이 칸을 모르면 다듬기를 그냥 지나가, 손으로 고친 백업의 5000자짜리 설명이
+       사진 격자 한 칸을 화면 밖으로 밀어낸다. 웹 입력칸은 40자라 60자면 넉넉하다. */
+    'caption',
   };
   /* 기록에서 «한 줄 자리»에 그대로 그려지는 칸 — 길면 화면 밖으로 나간다.
      2026-08-23 실측: 모르는 `repeat` 값(2000자)이 일정 카드 윗줄의 딱지로 그려져
      **21,458픽셀** 오른쪽으로 넘쳤다(`_repeatLabels[rep] ?? rep` — 모르면 그대로 쓴다).
      ⚠️ `text`·`memo`·`body` 는 «여러 줄이 당연한» 글이라 여기 넣으면 안 된다(알아서 줄바꿈된다).
      ⚠️ `by`·`uid`·`payer`·`replyTo`·`photoId` 는 **번호**라 자르면 그 기록을 못 찾는다. */
-  static const _itemOneLine = {'date', 'until', 'time', 'repeat', 'kind', 'cat'};
+  static const _itemOneLine = {'date', 'until', 'time', 'repeat', 'kind', 'cat', 'caption'};
 
   /* 💰 「회비통장」을 가리키는 «사람 자리» 값 — 회원 번호가 아니다.
      웹과 **글자 하나까지 같아야** 한다: 웹은 이 값을 보고 「회비통장」이라 쓰고,

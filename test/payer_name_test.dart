@@ -30,7 +30,7 @@ void main() {
   });
 
   test('그 말이 «웹과 똑같다»', () {
-    final web = File(r'C:\Users\asas3\Desktop\앞산배드민턴\index.html');
+    final web = File('../앞산배드민턴/index.html');
     if (!web.existsSync()) return; // 웹 파일이 없는 곳에서는 넘어간다
     final t = web.readAsStringSync();
     expect(t, contains("payer !== '${Store.walletPayer}'"),

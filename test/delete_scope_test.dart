@@ -8,7 +8,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-const _rules = r'C:\Users\asas3\Desktop\데이트장부\firestore.rules';
+/* 🔴 여기 «옛 PC 경로»(C:\Users\asas3)가 박혀 있었다.
+   이 기기에는 그런 폴더가 없어 아래 두 시험이 **조용히 건너뛰어졌다** —
+   앱의 잣대가 서버 규칙과 어긋나도 아무도 몰랐다.
+   (검사기 세 개도 같은 병이었다 — 옮겨 다니는 폴더라 «상대 경로»로 적는다) */
+const _rules = '../데이트장부/firestore.rules';
 
 String stripComments(String s) => s
     .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '')
@@ -33,10 +37,14 @@ void main() {
       expect(code.contains(expr), isTrue,
           reason: '$f 의 지우기 잣대가 「내 것 또는 운영진」이 아니다');
     });
-    // 사진첩은 «막는 쪽»으로 쓴다 — 뜻은 같다
-    final board = stripComments(File('lib/ui/board.dart').readAsStringSync());
-    expect(board.contains('!mine && !AppState.i.isAdmin'), isTrue,
-        reason: '사진 지우기 잣대가 바뀌었다');
+    /* 사진첩은 «막는 쪽»으로 쓴다 — 뜻은 같다.
+       ⚠️ 자리가 **album.dart 로 옮겨졌고 둘로 늘었다**(한 장 / 여러 장 한꺼번에).
+          여러 장 쪽이 더 위험하다 — 한 번에 남의 사진까지 지워 버릴 수 있다. */
+    final album = stripComments(File('lib/ui/album.dart').readAsStringSync());
+    expect(album.contains('!mine && !AppState.i.isAdmin'), isTrue,
+        reason: '사진 한 장 지우기 잣대가 바뀌었다');
+    expect(album.contains("!= Store.i.myUid && !AppState.i.isAdmin"), isTrue,
+        reason: '여러 장 한꺼번에 지울 때 잣대가 다르다 — 남의 사진까지 지워질 수 있다');
   });
 
   test('«권한»은 그대로 견주고, «보여 주기»는 폰 바꾸기를 잇는다', () {

@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/config.dart';
 import 'package:woorimoim/logic.dart';
 
-const _rules = r'C:\Users\asas3\Desktop\데이트장부\firestore.rules';
+const _rules = '../데이트장부/firestore.rules';
 
 void main() {
   test('돈을 다루는 직책이면 권한을 내려도 그대로다', () {

@@ -24,12 +24,17 @@ void main() {
       for (var i = 0; i < lines.length; i++) {
         final call = _returning.any((m) => lines[i].contains('Store.i.$m('));
         if (!call) continue;
-        // 결과를 받았나 — 같은 줄이나 바로 앞줄에 대입이 있으면 본 것으로 친다
+        /* 결과를 받았나 — 같은 줄이나 바로 앞줄에 대입이 있으면 본 것으로 친다.
+           ⚠️ `if (await …)` 도 **결과를 보는 것**이다. 대입만 세면
+              「지운 장수를 세는」 자리가 헛되이 잡힌다(실제로 그랬다). */
         final assigned = RegExp(r'(final|var|=)\s*\w*\s*=?\s*await').hasMatch(lines[i]) ||
+            RegExp(r'(if|while)\s*\(\s*!?\s*await').hasMatch(lines[i]) ||
             (i > 0 && RegExp(r'(final|var)\s+\w+\s*=\s*$').hasMatch(lines[i - 1].trim()));
         if (assigned) continue;
-        // 안 받았다면, 그 뒤 12줄 안에서 「됐다」고 말하는지 본다
-        final after = lines.sublist(i, (i + 12).clamp(0, lines.length)).join('\n');
+        /* 안 받았다면, 그 뒤 «몇 줄» 안에서 「됐다」고 말하는지 본다.
+           ⚠️ 12줄로는 아슬아슬하게 놓쳤다 — 「$done장 지웠어요」처럼
+              여러 줄로 나뉜 안내는 열세 번째 줄에 걸린다(미끼로 확인). */
+        final after = lines.sublist(i, (i + 18).clamp(0, lines.length)).join('\n');
         if (_saidOk.hasMatch(after)) bad.add('$rel:${i + 1}');
       }
     }

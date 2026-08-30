@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
      ② 앱이 모임 문서에 쓰는 최상위 칸을 «빠짐없이 세어» 새 칸이 생기면 알려준다.
      ③ 허락 밖의 칸을 쓰는 파일마다 «방장·운영진 문지기»가 있는지 본다. */
 void main() {
-  const rulesPath = r'C:\Users\asas3\Desktop\데이트장부\firestore.rules';
+  const rulesPath = '../데이트장부/firestore.rules';
 
   String bare(String p) => File(p)
       .readAsStringSync()
@@ -41,14 +41,29 @@ void main() {
 
   test('규칙이 평회원에게 허락한 칸을 «규칙 파일에서» 읽어 온다', () {
     final f = File(rulesPath);
-    if (!f.existsSync()) return;
-    final m = RegExp(r"hasOnly\(\[([^\]]*)\]\)").allMatches(f.readAsStringSync())
+    if (!f.existsSync()) {
+      markTestSkipped('규칙 파일을 못 찾았다 — 폴더 밖에 있다');
+      return;
+    }
+    final src = f.readAsStringSync();
+    final m = RegExp(r"hasOnly\(\[([^\]]*)\]\)").allMatches(src)
         .map((x) => x[1]!)
         .firstWhere((x) => x.contains('lastRead'), orElse: () => '');
     final allowed = RegExp(r"'(\w+)'").allMatches(m).map((x) => x[1]!).toSet();
-    expect(allowed, {'members', 'push', 'lastRead', 'lastSeen', 'typing'},
+    /* `former` 는 **앱 안에서 내 계정을 지울 때**(애플 5.1.1(v)) 쓴다 —
+       내 자리를 members 에서 빼고, 이름만 former 에 남겨 옛 글에 계속 보이게 한다.
+       ⚠️ 이 칸이 열려 있어도 괜찮은 것은 «내 칸만» 건드리게 묶여 있기 때문이다.
+          그 묶음이 풀리면 **아무 회원이나 남을 탈퇴 처리**할 수 있게 된다 — 아래에서 못 박는다. */
+    expect(allowed, {'members', 'push', 'lastRead', 'lastSeen', 'typing', 'former'},
         reason: '평회원이 고칠 수 있는 칸이 바뀌었다 — '
             '앱의 문지기(무엇을 방장·운영진만 하게 할지)도 같이 다시 봐야 한다');
+
+    /* 🔒 former 는 «내 칸»만. 이 줄이 사라지면 남의 이름도 손댈 수 있다. */
+    expect(
+        RegExp(r"former\.diff\(resource\.data\.former\)[\s\S]{0,120}?hasOnly\(\[request\.auth\.uid\]\)")
+            .hasMatch(src),
+        isTrue,
+        reason: 'former 를 «내 칸만» 고치도록 묶어 두지 않았다 — 남을 탈퇴 처리할 수 있다');
   });
 
   /// 앱이 모임 문서에 쓰는 «허락 밖» 칸 → 그것이 왜 괜찮은지

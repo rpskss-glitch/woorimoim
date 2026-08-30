@@ -63,6 +63,14 @@ void main() {
         if (lineEnd < 0) lineEnd = src.length;
         if (src.substring(lineStart, lineEnd).contains(_skip)) continue;
 
+        /* ⚠️ 「**없어야 한다**」를 보는 확인(isFalse)은 여기서 봐준다.
+           그런 시험은 «주석에만 남은 낱말»을 찾는 것이 오히려 맞다 —
+           예: 「총괄 비밀번호가 앱에 글자로 남아 있지 않다」는
+           lib/config.dart 의 «예전에는 adminPass 가 있었다» 설명을 지나가야 한다.
+           이걸 안 봐주면 **옳은 시험이 잡혀** 사람이 시험을 지우게 된다(실제로 그랬다). */
+        final tail = src.substring(m.end, (m.end + 60).clamp(0, src.length));
+        if (tail.contains('isFalse')) continue;
+
         // 바로 «앞»에서 읽은 파일이 그 확인의 대상이다 — 단 «같은 시험 안»이어야 한다
         final block = blockOf(m.start);
         final before = reads.where((r) => r.start < m.start && r.start >= block);

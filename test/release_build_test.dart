@@ -99,9 +99,13 @@ void main() {
     test('회비를 다룰 수 있는 직책이 «서버 규칙»과 같다', () {
       /* 앱은 이 목록으로 「기록하기」 단추를 보여 주고, 서버는 같은 목록으로 저장을 허락한다.
          어긋나면 단추는 보이는데 저장이 거절돼 회원이 영문을 모른다. */
-      final rules = File([r'C:', 'Users', 'asas3', 'Desktop', '데이트장부', 'firestore.rules']
-          .join(Platform.pathSeparator));
-      if (!rules.existsSync()) return; // 규칙은 세 앱이 함께 쓰는 «다른 폴더»에 있다 — 없으면 넘어간다
+      /* 🔴 여기도 «옛 PC 경로»가 박혀 있어, 이 기기에서는 이 대조가 몇 달째
+         그냥 넘어가고 있었다. 폴더째 옮겨 다니므로 상대 경로로 적는다. */
+      final rules = File('../데이트장부/firestore.rules');
+      if (!rules.existsSync()) {
+        markTestSkipped('규칙 파일을 못 찾았다 — 폴더 밖에 있다');
+        return;
+      }
 
       final cfg = File('lib/config.dart').readAsStringSync();
       final appList =

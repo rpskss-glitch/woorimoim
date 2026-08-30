@@ -9,7 +9,7 @@ import 'package:woorimoim/logic.dart';
    방장이 이미 없으면 **아무것도 안 하고 돌아갔다.**
    → 그 방은 방장을 다시 세울 길이 영영 없었다(눌러도 「맡지 못했어요」만 나온다). */
 
-const _rules = r'C:\Users\asas3\Desktop\데이트장부\firestore.rules';
+const _rules = '../데이트장부/firestore.rules';
 
 String stripComments(String s) => s
     .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '')

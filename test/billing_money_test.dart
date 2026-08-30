@@ -24,6 +24,43 @@ void main() {
   }
 
   group('돈이 새지 않게', () {
+    test('결제가 도는 중에는 «복원»이 잠금을 풀지 못한다', () {
+      /* 🔴 실제로 열려 있던 길 —
+           결제하기 → 스토어 창 → (답답해서) 구매 복원 → 4초 뒤 잠금이 풀림
+           → 결제 단추가 다시 살아남 → 한 번 더 누름 → **두 번 결제된다.**
+         `restore()` 는 `_setBusy(false)` 를 «무조건» 부르므로,
+         들어오는 자리에서 막지 않으면 결제 잠금이 통째로 무너진다. */
+      final r = bodyOf('Future<void> restore()');
+      expect(r.contains('if (busy.value)'), isTrue,
+          reason: '결제 중에도 복원이 들어와 잠금을 푼다 — 두 번 결제될 수 있다');
+      // 막는 자리가 «잠금을 푸는 곳보다 먼저»여야 뜻이 있다
+      expect(r.indexOf('if (busy.value)'), lessThan(r.indexOf('_setBusy')),
+          reason: '막기 전에 이미 잠금을 건드린다');
+    });
+
+    test('복원 단추도 결제 중에는 «잠긴다»', () {
+      /* 눌러도 거절할 단추를 살려 두면 「눌렀는데 아무 일도 안 나네」로 읽힌다. */
+      /* ⚠️ 그냥 「구매 복원」을 찾으면 **머리 주석**이 먼저 걸린다(내가 그렇게 짜서 헛짚었다).
+         회원이 «누르는 그 단추»의 글자로 찾는다. */
+      final at = ui.indexOf("Text('🔄 구매 복원')");
+      expect(at, greaterThan(0), reason: '구매 복원 단추가 사라졌다 — 애플 3.1.1');
+      final near = ui.substring((at - 500).clamp(0, ui.length), at);
+      /* ⚠️ 「가까이에 busy 가 있다」로는 못 잡는다 — 감싸는 틀만 남기고
+         `busy ? null :` 만 지워도 통과했다(미끼로 확인). **못 누르게 하는 그 자리**를 본다. */
+      expect(near.contains('busy ? null'), isTrue,
+          reason: '복원 단추가 결제 중에도 눌린다 — 두 번 결제로 가는 길이 열린다');
+    });
+
+    test('약관·개인정보 링크가 «터지지» 않는다', () {
+      /* `launchUrl` 은 던진다 — 브라우저가 없는 기기, 막아 둔 회사 폰.
+         받아 내지 않으면 애플 심사원이 꼭 눌러 보는 자리에서 아무 말 없이 죽는다. */
+      final at = ui.indexOf('Future<void> _open(');
+      expect(at, greaterThan(0), reason: '링크 여는 자리가 사라졌다');
+      final body = ui.substring(at, at + 500);
+      expect(body.contains('try {'), isTrue,
+          reason: '링크가 안 열리는 기기에서 그대로 터진다 — 애플 3.1.2 자리다');
+    });
+
     test('어떤 갈래로 끝나든 «완료»를 스토어에 알린다', () {
       /* 안 알리면 스토어가 미완료 거래로 보고 되돌린다 — 안드로이드는 사흘 뒤 자동 환불.
          돈은 안 들어오고 이용권만 살아 있는 꼴이 된다. */

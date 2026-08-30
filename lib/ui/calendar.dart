@@ -110,7 +110,14 @@ class _CalendarTabState extends State<CalendarTab> {
               padding: const EdgeInsets.only(top: 4),
               child: OutlinedButton(
                 onPressed: () => setState(() => _shown += 40),
-                child: Text('이전 회차 ${_total - rows.length}개 더 보기'),
+                /* ⚠️ **어느 쪽이 잘렸는지에 따라 말이 다르다.**
+                   「다가오는 모임」은 날짜 «오름차순»이라 잘린 것은 **뒤에 올** 회차이고,
+                   「지난 모임」은 최근 것부터라 잘린 것은 **더 예전** 회차다.
+                   둘 다 「이전 회차」라고 하면, 다가오는 목록에서 «지난 모임을 보여준다»는
+                   뜻으로 읽혀 회원이 안 누른다 — 정작 다음 달 모임이 거기 있다. */
+                child: Text(_showPast
+                    ? '이전 회차 ${_total - rows.length}개 더 보기'
+                    : '다음 회차 ${_total - rows.length}개 더 보기'),
               ),
             );
           }
@@ -225,16 +232,28 @@ class _EventCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              /* 웹 홈의 「오늘!」 날짜 상자 — 지난 모임은 날짜만 잔잔하게 */
+              _DateBox(date: date, past: past),
+              const SizedBox(width: 12),
+              /* ⚠️ 반복 딱지를 이 줄에 같이 두면 안 된다 — 상자+제목+딱지+메뉴가
+                 한 줄에 몰려 좁은 폰에서 4px 넘쳤다(그물이 잡음). 딱지는 제목 아래로. */
               Expanded(
-                child: Text((event['title'] as String?) ?? '모임',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-              ),
-              if (rep != 'none')
-                Chip(
-                  label: Text(_repeatLabels[rep] ?? rep, style: const TextStyle(fontSize: 11)),
-                  visualDensity: VisualDensity.compact,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text((event['title'] as String?) ?? '모임',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w800)),
+                    if (rep != 'none')
+                      Text(_repeatLabels[rep] ?? rep,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context).hintColor)),
+                  ],
                 ),
+              ),
               if (st.isAdmin)
                 PopupMenuButton<String>(
                   onSelected: (v) async {
@@ -263,18 +282,22 @@ class _EventCard extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${fmtDateFull(date)}${time == null || time.isEmpty ? '' : ' $time'}'
-            '${place == null || place.isEmpty ? '' : ' · $place'}',
-            style: TextStyle(color: Theme.of(context).hintColor),
-          ),
+          if ((time != null && time.isNotEmpty) ||
+              (place != null && place.isNotEmpty)) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${time == null || time.isEmpty ? '' : time}'
+              '${time != null && time.isNotEmpty && place != null && place.isNotEmpty ? ' · ' : ''}'
+              '${place ?? ''}',
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+          ],
           if (memo != null && memo.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(memo, style: const TextStyle(height: 1.5)),
           ],
           const SizedBox(height: 12),
-          if (!past)
+          if (!past) ...[
             Row(
               children: [
                 Expanded(
@@ -284,11 +307,30 @@ class _EventCard extends StatelessWidget {
                       backgroundColor: my == 'yes' ? cs.primary : null,
                       foregroundColor: my == 'yes' ? cs.onPrimary : null,
                       minimumSize: const Size.fromHeight(44),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
-                    child: Text('참석 $yes'),
+                    child: FittedBox(child: Text('🙆 참석 $yes')),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
+                /* 「미정」은 웹 회원들이 이미 찍는 값이다 — 앱이 안 보여 주면
+                   그 표가 «사라진 것»처럼 보인다 */
+                Expanded(
+                  child: BusyButton(
+                    onTap: () => _vote(context, 'maybe'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor:
+                          my == 'maybe' ? Colors.grey.shade700 : null,
+                      foregroundColor: my == 'maybe' ? Colors.white : null,
+                      minimumSize: const Size.fromHeight(44),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    child: FittedBox(
+                        child: Text(
+                            '🤔 미정 ${Logic.rsvpCount(event, date, 'maybe')}')),
+                  ),
+                ),
+                const SizedBox(width: 6),
                 Expanded(
                   child: BusyButton(
                     onTap: () => _vote(context, 'no'),
@@ -296,13 +338,37 @@ class _EventCard extends StatelessWidget {
                       backgroundColor: my == 'no' ? Colors.grey.shade700 : null,
                       foregroundColor: my == 'no' ? Colors.white : null,
                       minimumSize: const Size.fromHeight(44),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                     ),
-                    child: Text('불참 $no'),
+                    child: FittedBox(child: Text('🙅 불참 $no')),
                   ),
                 ),
               ],
-            )
-          else ...[
+            ),
+            if (yes > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text('참석 $yes명: ',
+                      style: TextStyle(
+                          fontSize: 12, color: Theme.of(context).hintColor)),
+                  Expanded(
+                    child: Text(
+                      Logic.asMap(event['rsvp'])
+                          .entries
+                          .where((e) =>
+                              e.value == 'yes' &&
+                              e.key.startsWith('${date}_'))
+                          .map((e) => AppState.i
+                              .emojiOf(e.key.substring(date.length + 1)))
+                          .join(' '),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ] else ...[
             /* ⚠️ `Wrap` 이라야 한다 — 「출석 N명」과 안내글이 한 줄에 다 못 들어가면
                오른쪽으로 넘친다. 폰 설정에서 글자를 키운 회원(중장년 동호회에는 흔하다)이
                좁은 폰(360px)으로 보면 실제로 넘쳤다 — 2026-08-29 실측 112픽셀.
@@ -677,3 +743,40 @@ class _EventFormState extends State<_EventForm> {
     );
   }
 }
+/* 📅 날짜 상자 — 웹 홈의 「오늘!」 상자와 같은 얼굴.
+   다가오는 모임은 «며칠 남았는지»가 첫 궁금증이라 D-n 을 크게,
+   지난 모임은 «언제였는지»만 잔잔하게 보여 준다. */
+class _DateBox extends StatelessWidget {
+  final String date;
+  final bool past;
+  const _DateBox({required this.date, required this.past});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final today = ymd(DateTime.now());
+    final dDays = DateTime.parse(date).difference(DateTime.parse(today)).inDays;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            past ? '지남' : (dDays <= 0 ? '오늘!' : 'D-$dDays'),
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: past ? Theme.of(context).hintColor : cs.primary),
+          ),
+          Text(fmtDateFull(date),
+              style:
+                  TextStyle(fontSize: 10, color: Theme.of(context).hintColor)),
+        ],
+      ),
+    );
+  }
+}
+

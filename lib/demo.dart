@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'demo_photos.dart';
 import 'state.dart';
 import 'store.dart';
 
@@ -403,6 +404,34 @@ class Demo {
         'date': last,
         'tags': ['공지'],
       }, 'u_yj', 2 * 86400000),
+      /* 📸 사진첩 — **비워 두면 안 된다.**
+         체험 모드는 스토어 심사원이 보는 화면인데, 사진첩만 「아직 사진이 없어요」면
+         「이 기능은 안 만들었나」로 읽혀 2.1(미완성)로 되돌려보낸다.
+         ⚠️ 칸 모양은 **진짜로 올릴 때와 똑같이** 맞춘다(`board.dart` 의 올리는 자리):
+            photoId(그림 그 자체) · thumb(작은 그림) · date.
+            하나라도 다르면 체험에서만 되고 진짜에서는 안 되는 자리가 생긴다.
+         ⚠️ 올린 사람을 서로 다르게 둔다 — 한 사람만 올린 것처럼 보이지 않게. */
+      item({
+        'type': 'photo',
+        'photoId': demoPhotoCourt,
+        'thumb': demoPhotoCourtThumb,
+        'caption': '수요일 정기모임 3코트',
+        'date': today,
+      }, 'u_yj', 3600000),
+      item({
+        'type': 'photo',
+        'photoId': demoPhotoTeam,
+        'thumb': demoPhotoTeamThumb,
+        'caption': '3월 정기 대회 8강! 🏆',
+        'date': last,
+      }, 'u_sh', 2 * 86400000),
+      item({
+        'type': 'photo',
+        'photoId': demoPhotoGear,
+        'thumb': demoPhotoGearThumb,
+        'caption': '새로 산 셔틀콕',
+        'date': last,
+      }, uid, 2 * 86400000 + 3600000),
       // 💰 회비·지출
       /* ⚠️ 이월금이 없으면 통장이 «-216,000원»(빨간 글씨)으로 뜬다.
          체험 모드는 심사원이 보는 화면이자 스토어 그림이라, 빚진 모임처럼 보이면 안 된다.

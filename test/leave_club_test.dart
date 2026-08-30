@@ -36,16 +36,19 @@ void main() {
 
   test('탈퇴하면 «회원 자리»와 개인정보가 실제로 지워진다', () {
     expect(del, isNotEmpty, reason: 'deleteMyData 를 못 찾았다');
-    for (final gone in ["'members.\$uid': null", "'push.\$uid': null"]) {
-      expect(del.contains(gone), isTrue, reason: '$gone 를 안 지운다 — 탈퇴가 탈퇴가 아니다');
+    /* ⚠️ 2026-08-31 탈퇴가 «트랜잭션»이 됐다(방장 자동 승계와 한 몸이 되려고).
+       점 경로가 아니라 겹친 모양('members': {uid: del})으로 지운다 — 뜻은 그대로다. */
+    for (final field in ['members', 'push', 'lastRead', 'lastSeen', 'typing']) {
+      expect(RegExp("'$field':\\s*\\{\\s*uid: del").hasMatch(del), isTrue,
+          reason: '$field 에서 내 칸을 안 지운다 — 탈퇴가 탈퇴가 아니다');
     }
   });
 
   test('옛 글의 글쓴이 이름·아바타는 «남긴다» (코드)', () {
-    expect(del.contains("'former.\$uid'"), isTrue,
+    expect(del.contains("'former'"), isTrue,
         reason: '이름을 안 남기면 지난 대화가 「알 수 없는 사람」이 된다');
-    expect(del.contains("'name': name"), isTrue);
-    expect(del.contains("'emoji': emoji"), isTrue);
+    expect(del.contains("'name': me['name']"), isTrue);
+    expect(del.contains("'emoji': me['emoji']"), isTrue);
   });
 
   test('화면에 적은 말이 그 «남긴다»와 어긋나지 않는다', () {

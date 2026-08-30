@@ -24,13 +24,16 @@ void main() {
     final src = File('lib/ui/wait.dart').readAsStringSync();
     final at = src.indexOf('pending.');
     expect(at, greaterThan(0));
-    final body = src.substring(at, at + 500);
+    /* ⚠️ 파일 끝을 넘어 읽으면 «시험이 터진다» — 코드가 짧아지기만 해도 그렇다.
+       (실제로 wait.dart 를 정리했더니 이 줄에서 RangeError 가 났다) */
+    final body = src.substring(at, (at + 500).clamp(0, src.length));
     expect(body.contains('취소하지 못했어요'), isTrue);
     // 실패했으면 프로필을 지우지 않고 이 화면에 머물러야 한다
     final fail = src.indexOf('취소하지 못했어요');
     final clear = src.indexOf('clearProfile');
     expect(fail, lessThan(clear), reason: '실패를 알린 뒤 «돌아가야» 한다');
-    expect(src.substring(fail - 200, fail).contains('return'), isTrue);
+    expect(src.substring((fail - 200).clamp(0, src.length), fail).contains('return'),
+        isTrue);
   });
 
   test('«불러오는 중» 화면에 갇히지 않는다', () {

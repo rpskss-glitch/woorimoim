@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 
 import '../config.dart';
 import '../moderation.dart';
 import '../fee.dart';
+import '../logic.dart';
 import '../state.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -614,7 +615,11 @@ class _ClubPhotoState extends State<ClubPhoto> {
 /// ⚠️ 닫는 길을 «눈에 보이게» 둬야 한다. 예전에는 화면을 가득 채운 대화상자뿐이라
 /// 바깥을 눌러 닫으려면 **10px 테두리**를 정확히 눌러야 했고,
 /// 아이폰에는 뒤로 단추도 없어 **사진을 열면 빠져나올 길이 사실상 없었다** (2026-08-22 실측).
-void showPhotoViewer(BuildContext context, String src) {
+/* [caption] 은 «웹에서 적은 사진 설명»이다.
+   웹 사진첩은 설명·태그를 사진에 달아 두는데, 앱이 안 보여 주면
+   같은 모임을 쓰면서도 **앱 회원만 그 글을 못 읽는다.** */
+void showPhotoViewer(BuildContext context, String src, {String? caption}) {
+  final note = (caption ?? '').trim();
   showDialog(
     context: context,
     builder: (d) => Dialog.fullscreen(
@@ -642,6 +647,23 @@ void showPhotoViewer(BuildContext context, String src) {
               ),
             ),
           ),
+          // 📝 사진 설명 — 있을 때만 아래에 깔린다 (없으면 사진을 가리지 않는다)
+          if (note.isNotEmpty)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                  color: const Color(0x99000000),
+                  child: Text(
+                    note,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     ),
@@ -892,6 +914,10 @@ class _AskTextDialogState extends State<_AskTextDialog> {
           decoration: InputDecoration(
             hintText: widget.hint,
             helperText: widget.helper,
+            /* ⚠️ 설명은 **기본이 한 줄**이라 뒤가 「…」로 잘린다.
+               「아이디가 맞으면 이름과 생년월일을 …」처럼 **정작 해야 할 말이 사라진다**
+               (2026-08-29 총괄 관리자 창에서 실제로 그랬다). */
+            helperMaxLines: 6,
             suffixText: widget.suffix,
             counterText: '', // 글자 수는 자리를 먹는다 — 한계는 저장할 때 알린다
           ),
@@ -905,3 +931,100 @@ class _AskTextDialogState extends State<_AskTextDialog> {
         ],
       );
 }
+/* 🎂 생년월일 입력칸 — **숫자 6자리(800125)나 8자리(19800125)를 친다.**
+
+   예전에는 달력에서 고르기뿐이었다. 이 앱 회원은 1960~80년대생이 많은데,
+   달력으로 수십 년을 거슬러 가려면 수십 번을 눌러야 했다.
+   6자리는 주민번호 앞자리 그대로라 설명이 필요 없다.
+
+   · 치는 대로 아래에 «1980년 1월 25일»로 읽어 준다 — 잘못 읽었으면 바로 보인다
+     (6자리의 연도 추정이 틀릴 수 있어 반드시 보여 줘야 한다)
+   · 달력이 편한 사람을 위해 오른쪽에 달력 단추도 남겨 둔다
+   · 가입 화면과 설정(내 정보)이 **같은 칸**을 쓴다 — 한쪽만 고치면 어긋난다 */
+class BirthInput extends StatefulWidget {
+  final DateTime? initial;
+  final ValueChanged<DateTime?> onChanged;
+  const BirthInput({super.key, this.initial, required this.onChanged});
+
+  @override
+  State<BirthInput> createState() => _BirthInputState();
+}
+
+class _BirthInputState extends State<BirthInput> {
+  final _c = TextEditingController();
+  DateTime? _picked;
+
+  @override
+  void initState() {
+    super.initState();
+    final i = widget.initial;
+    if (i != null) {
+      _picked = i;
+      _c.text = '${i.year}'
+          '${i.month.toString().padLeft(2, '0')}'
+          '${i.day.toString().padLeft(2, '0')}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _typed(String v) {
+    final d = Logic.parseBirthDigits(v);
+    setState(() => _picked = d);
+    widget.onChanged(d);
+  }
+
+  Future<void> _calendar() async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate:
+          clampDate(_picked ?? DateTime(1990), DateTime(1920), DateTime(2020, 12, 31)),
+      firstDate: DateTime(1920),
+      lastDate: DateTime(2020, 12, 31),
+      helpText: '생년월일을 골라주세요',
+    );
+    if (d == null) return;
+    setState(() {
+      _picked = d;
+      _c.text = '${d.year}'
+          '${d.month.toString().padLeft(2, '0')}'
+          '${d.day.toString().padLeft(2, '0')}';
+    });
+    widget.onChanged(d);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = _picked;
+    return TextField(
+      controller: _c,
+      /* ⚠️ «글자 거르개»(inputFormatters)는 안 단다 — 이 앱의 철칙이다.
+         거르개는 한글 조합 중인 글자까지 건드려 글자가 겹쳐 찍힌다(KoInput 실사례).
+         숫자만 받는 것은 자판(keyboardType)으로, 길이는 maxLength 로,
+         점·빈칸이 섞여 들어와도 읽는 쪽(parseBirthDigits)이 숫자만 골라 읽는다. */
+      keyboardType: TextInputType.number,
+      maxLength: 8,
+      onChanged: _typed,
+      decoration: InputDecoration(
+        hintText: '예) 800125',
+        counterText: '',
+        /* ⚠️ 읽어낸 날짜를 **반드시 보여 준다.** 6자리의 연도는 추정이라
+           (80→1980, 05→2005) 틀리게 읽었으면 회원이 여기서 알아채야 한다. */
+        helperText: p != null
+            ? '${p.year}년 ${p.month}월 ${p.day}일'
+            : '주민번호 앞 6자리(800125)나 8자리(19800125)로 적어주세요',
+        helperMaxLines: 2,
+        suffixIcon: IconButton(
+          tooltip: '달력에서 고르기',
+          onPressed: _calendar,
+          icon: const Icon(Icons.calendar_month_outlined),
+        ),
+      ),
+    );
+  }
+}
+

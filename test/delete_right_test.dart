@@ -83,7 +83,7 @@ void main() {
   });
 
   test('서버 규칙이 아직 «role 만» 보는지 — 바뀌면 이 잣대도 다시 봐야 한다', () {
-    final f = File(r'C:\Users\asas3\Desktop\데이트장부\firestore.rules');
+    final f = File('../데이트장부/firestore.rules');
     if (!f.existsSync()) return;
     final r = f.readAsStringSync();
     expect(r, contains("m.role == 'owner' || m.role == 'admin'"),

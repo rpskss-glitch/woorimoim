@@ -8,7 +8,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/store.dart';
 
-const _web = r'C:\Users\asas3\Desktop\앞산배드민턴\index.html';
+const _web = '../앞산배드민턴/index.html';
 
 String stripComments(String s) => s
     .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '')

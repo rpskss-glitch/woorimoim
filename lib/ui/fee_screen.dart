@@ -52,9 +52,18 @@ class _FeeScreenState extends State<FeeScreen> {
     Billing.i.lastMessage.value = null;
   }
 
+  /* 🔗 약관·개인정보 링크를 연다.
+     ⚠️ `launchUrl` 은 **던진다** — 브라우저가 없는 기기, 막아 둔 회사 폰 등.
+        받아 내지 않으면 애플 심사원이 반드시 눌러 보는 그 자리에서
+        아무 말 없이 아무 일도 안 나는 단추가 된다(3.1.2 로 되돌려보낸다). */
   Future<void> _open(String url) async {
-    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    if (!ok && mounted) toast(context, '주소를 열지 못했어요');
+    var ok = false;
+    try {
+      ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok && mounted) toast(context, '주소를 열지 못했어요 — 인터넷 연결을 확인해주세요');
   }
 
   @override
@@ -145,10 +154,15 @@ class _FeeScreenState extends State<FeeScreen> {
                           style: const TextStyle(fontSize: 13)),
                     ),
                   const SizedBox(height: 8),
-                  // 🔄 구매 복원 — 자동갱신 구독이면 반드시 있어야 한다(3.1.1)
-                  OutlinedButton(
-                    onPressed: () => Billing.i.restore(),
-                    child: const Text('🔄 구매 복원'),
+                  /* 🔄 구매 복원 — 자동갱신 구독이면 반드시 있어야 한다(3.1.1).
+                     ⚠️ **결제가 도는 중에는 잠근다.** 눌러도 거절할 단추를 살려 두면
+                        회원은 「눌렀는데 아무 일도 안 나네」로 읽는다. */
+                  ValueListenableBuilder<bool>(
+                    valueListenable: Billing.i.busy,
+                    builder: (c, busy, _) => OutlinedButton(
+                      onPressed: busy ? null : () => Billing.i.restore(),
+                      child: const Text('🔄 구매 복원'),
+                    ),
                   ),
                 ],
               ),

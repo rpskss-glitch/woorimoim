@@ -341,6 +341,11 @@ class _AdminConsoleState extends State<AdminConsole> {
       final meta = await Store.i.getCouple(_metaDoc);
       final raw = meta?['adminUids'];
       list = raw is List ? raw.whereType<String>().toList() : <String>[];
+      /* ⚠️ **옛 방식(기기 한 대)으로 묶인 기기도 보여 준다.**
+         안 보여 주면 그 기기는 목록에 없어 **뺄 길이 없다** — 잃어버린 폰이 영영 남는다.
+         (서버도 옛 값을 함께 본다 — 한쪽만 고치면 어긋난다) */
+      final old = meta?['adminUid'];
+      if (old is String && old.isNotEmpty && !list.contains(old)) list.add(old);
     } catch (_) {
       if (mounted) toast(context, '기기 목록을 받아오지 못했어요 — 연결을 확인해주세요');
       return;

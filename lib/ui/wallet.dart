@@ -356,6 +356,8 @@ class _WalletTabState extends State<WalletTab> {
   }
 }
 
+/* 💰 통장 카드 — 웹 홈의 두 상자(잔액·지출)와 같은 얼굴.
+   큰 잔액 아래에 «이번 달 수입·지출» 상자를 나란히 — 총무가 이 셋을 제일 자주 본다. */
 class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -363,6 +365,40 @@ class _BalanceCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     // 통장이 비면(마이너스면) 한눈에 보여야 한다
     final color = bal < 0 ? moneyOut(context) : cs.primary;
+    final month = ymd(DateTime.now()).substring(0, 7);
+    var mIn = 0, mOut = 0;
+    for (final l in AppState.i.by('ledger')) {
+      if (!((l['date'] as String?) ?? '').startsWith(month)) continue;
+      final amt = ((l['amount'] as num?) ?? 0).toInt();
+      if (l['kind'] == 'out') {
+        mOut += amt;
+      } else {
+        mIn += amt;
+      }
+    }
+    Widget box(String label, String value, Color c) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            decoration: BoxDecoration(
+              color: cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 12, color: Theme.of(context).hintColor)),
+                const SizedBox(height: 2),
+                FittedBox(
+                  child: Text(value,
+                      style: TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.w900, color: c)),
+                ),
+              ],
+            ),
+          ),
+        );
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -372,6 +408,14 @@ class _BalanceCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(fmtWon(bal),
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: color)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                box('이번 달 수입', fmtWon(mIn), moneyIn(context)),
+                const SizedBox(width: 10),
+                box('이번 달 지출', fmtWon(mOut), moneyOut(context)),
+              ],
+            ),
           ],
         ),
       ),
@@ -940,7 +984,7 @@ class _ReceiptThumb extends StatelessWidget {
 
     // 원본 없이 썸네일만 있는 옛 기록 — 그것이라도 보여 준다
     return GestureDetector(
-      onTap: () => showPhotoViewer(context, thumb!),
+      onTap: () => showPhotoViewer(context, thumb),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(

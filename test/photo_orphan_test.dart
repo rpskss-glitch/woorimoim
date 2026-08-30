@@ -36,7 +36,9 @@ void main() {
       final rel = f.path.replaceAll(r'\', '/');
       if (rel.endsWith('lib/store.dart')) continue; // 올리는 함수 «자신»이 있는 곳
       final code = stripComments(f.readAsStringSync());
-      for (final m in RegExp(r'savePhoto\(').allMatches(code)) {
+      /* ⚠️ 앞뒤가 «글자»면 다른 이름이다 — `_savePhoto(` 같은 이름이 걸려
+         사진을 올리지도 않는 파일이 「원본을 안 치운다」고 잡혔다(실제로 그랬다). */
+      for (final m in RegExp(r'(?<![\w_])savePhoto\(').allMatches(code)) {
         final body = methodAround(code, m.start);
         /* ⚠️ 「dropPhotos 가 있나」만 보면 안 된다 — 이 메서드에는 «성공했을 때
            옛 사진을 치우는» dropPhotos 도 있어서, 정작 실패 갈래를 통째로 지워도

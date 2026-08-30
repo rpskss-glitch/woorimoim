@@ -3,14 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/demo.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/theme.dart';
+import 'package:woorimoim/ui/album.dart';
+import 'package:woorimoim/ui/admin.dart';
 import 'package:woorimoim/ui/board.dart';
+import 'package:woorimoim/ui/fee_screen.dart';
 import 'package:woorimoim/ui/calendar.dart';
 import 'package:woorimoim/ui/chat.dart';
 import 'package:woorimoim/ui/fee_sheet_screen.dart';
 import 'package:woorimoim/ui/home.dart';
 import 'package:woorimoim/ui/members.dart';
+import 'package:woorimoim/ui/onboarding.dart';
 import 'package:woorimoim/ui/post_screen.dart';
 import 'package:woorimoim/ui/settings.dart';
+import 'package:woorimoim/ui/wait.dart';
 import 'package:woorimoim/ui/shell.dart';
 import 'package:woorimoim/ui/wallet.dart';
 
@@ -99,6 +104,17 @@ void main() {
     '설정': () => const SettingsScreen(),
     '회원 관리': () => const MembersScreen(),
     '회비 표': () => const FeeSheetScreen(),
+    /* 🔴 아래 셋은 그물에 아예 안 걸려 있었다.
+         · 가입 화면  — **회원이 제일 처음 보는 곳**이자 스토어 심사원이 첫 화면으로 본다
+         · 이용권 화면 — 애플이 반드시 눌러 보는 곳(3.1.1·3.1.2)
+         · 대기 화면  — 승인 기다리는 회원이 며칠씩 보는 곳
+       빠져 있으면 여기가 깨져도 아무도 모른다. */
+    '가입 화면': () => OnboardingScreen(onJoined: () {}),
+    '이용권': () => const FeeScreen(),
+    '승인 대기': () => const WaitScreen(),
+    /* 총괄 콘솔은 사장님만 보는 곳이지만, 여기가 깨지면 **모임을 만들 수가 없다.**
+       (새 모임 만들기·방장 코드 내주기가 전부 여기 있다) */
+    '총괄 콘솔': () => const AdminConsole(),
   };
 
   for (final scale in [1.0, 2.0]) {
@@ -112,6 +128,49 @@ void main() {
             reason: '${e.key} 이 360px·${scale}배에서 넘친다');
       });
     }
+  }
+
+  /* 📸 사진첩은 게시판 «안»에 있는데 기본이 「글」쪽이라 위 그물에 안 걸린다.
+     그런데 여기가 제일 잘 넘친다 — 딱지(전체·즐겨찾기·최신순·#태그)가 한 줄에 몰리고,
+     사진 격자 한 칸에 설명까지 얹힌다. 따로 그려 본다. */
+  for (final scale in [1.0, 1.5, 2.0]) {
+    testWidgets('사진첩 — 360px · 글자 ${scale}배', (t) async {
+      small(t, scale);
+      seed();
+      // 태그가 붙은 사진도 있어야 «태그 띠»까지 그려진다
+      st.setItems([
+        ...st.items,
+        {
+          'id': 'ph1', 'type': 'photo', 'by': 'u_yj', 'photoId': 'p1',
+          'date': '2026-08-28', 'fav': true,
+          'caption': '앞산 체육관 정기모임 단체사진 #대회 #단체복',
+          'createdAt': 11,
+        },
+      ]);
+      await t.pumpWidget(host(AlbumView(onChanged: () {})));
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull,
+          reason: '사진첩이 360px·${scale}배에서 넘친다 — 딱지나 단추를 못 누른다');
+    });
+
+    testWidgets('사진 크게 보기 — 360px · 글자 ${scale}배', (t) async {
+      small(t, scale);
+      seed();
+      final rows = [
+        {
+          'id': 'ph1', 'type': 'photo', 'by': 'u_yj', 'photoId': 'p1',
+          'date': '2026-08-28',
+          'caption': '앞산 체육관 정기모임 단체사진 #대회 #단체복',
+          'reacts': {'u_sh': '❤️', 'u_mj': '😂', 'u_dh': '👍', 'u_jh': '😍'},
+          'createdAt': 11,
+        },
+      ];
+      await t.pumpWidget(
+          MaterialApp(theme: buildTheme('sky'), home: PhotoPage(rows: rows, start: 0)));
+      await t.pumpAndSettle();
+      expect(t.takeException(), isNull,
+          reason: '사진 크게 보기가 360px·${scale}배에서 넘친다 — 반응을 못 누른다');
+    });
   }
 
   testWidgets('꺼풀(탭 다섯) — 360px · 글자 2배', (t) async {
