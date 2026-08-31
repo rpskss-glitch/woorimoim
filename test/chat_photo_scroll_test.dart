@@ -34,20 +34,22 @@ void main() {
     /* 읽던 자리를 잃으면 어디까지 읽었는지 다시 찾아야 한다 — 긴 대화방에서는 치명적이다. */
     final at = chat.indexOf('void _followGrowth()');
     expect(at, greaterThan(0));
-    final body = chat.substring(at, (at + 900).clamp(0, chat.length));
-    expect(body.contains('maxScrollExtent'), isTrue,
-        reason: '얼마나 위에 있는지 안 보고 무조건 내리고 있다');
-    expect(body.contains('return'), isTrue, reason: '멀리 있으면 그냥 두는 갈래가 없다');
+    final body = chat.substring(at, (at + 500).clamp(0, chat.length));
+    expect(body.contains('!_stick'), isTrue,
+        reason: '올려 둔 사람(_stick=false)을 그냥 두는 갈래가 없다 — 무조건 내리고 있다');
+    expect(body.contains('return'), isTrue, reason: '그냥 두는 갈래가 없다');
   });
 
-  test('«이미 자란 뒤»라는 걸 셈에 넣는다', () {
-    /* 이 알림은 사진이 자란 «다음»에 온다. 평소의 아래 판정(80px)을 그대로 쓰면
-       아래를 보고 있던 사람도 사진 높이만큼 밀려 「아래가 아니다」가 되어 버린다. */
-    final at = chat.indexOf('void _followGrowth()');
-    final body = chat.substring(at, (at + 900).clamp(0, chat.length));
-    final m = RegExp(r'maxScrollExtent - p\.pixels > (\d+)').firstMatch(body);
-    expect(m, isNotNull, reason: '여유 값이 안 보인다');
-    expect(int.parse(m!.group(1)!), greaterThan(200),
-        reason: '여유가 사진 높이보다 작으면 정작 밀린 사람을 못 잡는다');
+  test('붙기 여부(_stick)는 «손동작으로만» 바뀐다 — 사진이 자라는 것으로는 안 바뀐다', () {
+    /* 핵심이다. 사진이 뒤늦게 떠서 내용이 자라면 위치가 흔들리는데, 그걸 「사용자가 올렸다」로
+       오해하면 엉뚱하게 끌려 내려간다. 그래서 _stick 은 **손으로 끄는 중(dragDetails)이거나
+       스크롤이 완전히 멈췄을 때(ScrollEnd)**만 다시 정한다. */
+    final at = chat.indexOf('bool _onScrollNotif(');
+    expect(at, greaterThan(0), reason: '스크롤 알림을 «가려서» 받는 자리가 없다');
+    final body = chat.substring(at, (at + 300).clamp(0, chat.length));
+    expect(body.contains('dragDetails != null'), isTrue,
+        reason: '손으로 끄는 중인지 안 가린다 — 내용이 자라는 것까지 손으로 친다');
+    expect(body.contains('ScrollEndNotification'), isTrue,
+        reason: '스크롤이 멈춘 때(플링 끝)를 안 챙긴다');
   });
 }

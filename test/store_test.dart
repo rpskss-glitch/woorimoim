@@ -498,7 +498,7 @@ void main() {
     });
 
     test('맨 아래를 보고 있었을 때만 새 대화를 따라 내려간다', () {
-      expect(src.contains('wasAtBottom'), isTrue,
+      expect(src.contains('final follow = _stick') && src.contains('_stick'), isTrue,
           reason: '위쪽에서 옛 대화를 읽는 중에 끌어내리면 읽던 자리를 잃는다');
     });
 

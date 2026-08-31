@@ -345,29 +345,36 @@ class _EventCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (yes > 0) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text('참석 $yes명: ',
+            /* 🙆 참석·미정·불참을 «이름으로 바로» 보여 준다 (사장님 지시, 2026-08-31).
+               예전에는 참석한 사람의 «아바타 이모지»만 한 줄 보여 줘서, 누가 왔는지·
+               누가 안 오는지 알아보기 어려웠다. 이제 세 줄로 이름을 편다.
+               ⚠️ 표가 없는 줄(0명)은 그리지 않는다 — 빈 「불참 0명:」이 자리만 차지한다. */
+            for (final r in const [
+              ('yes', '🙆 참석', Color(0xFF2563EB)),
+              ('maybe', '🤔 미정', Color(0xFF6B7280)),
+              ('no', '🙅 불참', Color(0xFF6B7280)),
+            ])
+              if (Logic.rsvpNames(event, date, r.$1).isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${r.$2} ${Logic.rsvpNames(event, date, r.$1).length} · ',
                       style: TextStyle(
-                          fontSize: 12, color: Theme.of(context).hintColor)),
-                  Expanded(
-                    child: Text(
-                      Logic.asMap(event['rsvp'])
-                          .entries
-                          .where((e) =>
-                              e.value == 'yes' &&
-                              e.key.startsWith('${date}_'))
-                          .map((e) => AppState.i
-                              .emojiOf(e.key.substring(date.length + 1)))
-                          .join(' '),
-                      overflow: TextOverflow.ellipsis,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: r.$3),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Expanded(
+                      child: Text(
+                        Logic.rsvpNames(event, date, r.$1).join(', '),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
           ] else ...[
             /* ⚠️ `Wrap` 이라야 한다 — 「출석 N명」과 안내글이 한 줄에 다 못 들어가면
                오른쪽으로 넘친다. 폰 설정에서 글자를 키운 회원(중장년 동호회에는 흔하다)이

@@ -83,6 +83,12 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   int _typingSentAt = 0;
   bool _loadingOlder = false;
 
+  /* 📌 «맨 아래에 붙어 따라갈까»(_stick) — **손으로 스크롤할 때만** 바뀐다.
+     사진이 뒤늦게 떠서 내용이 자라는 것으로는 안 바뀐다. 예전에는 «바닥에서 500px 이내면
+     무조건 따라간다»여서, 조금 위로 올려 다시 읽으려 해도 사진 한 장이 렌더되면 도로
+     바닥으로 끌려갔다(사장님 지적, 2026-08-31). 이제 올려 두면 그 자리에 그대로 둔다. */
+  bool _stick = true;
+
   @override
   void initState() {
     super.initState();
@@ -138,17 +144,27 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     if (!mounted) return;
     // 다시 그리기 «전에» 내가 맨 아래를 보고 있었는지 봐 둔다.
     // 아래에 있었으면 새 대화를 따라 내려가고, 위쪽에서 옛 대화를 읽는 중이면 건드리지 않는다.
-    final wasAtBottom = _atBottom;
+    // 손으로 위로 올려 둔 사람은 안 끌어내린다 (_stick 은 손동작으로만 바뀐다)
+    final follow = _stick && !_keepPosition;
     setState(() {});
     _markSeen();
-    if (wasAtBottom && !_keepPosition) _scrollToBottom();
+    if (follow) _scrollToBottom();
   }
 
-  /// 지금 대화 맨 아래를 보고 있는지 (아직 안 그려졌으면 그렇다고 본다 — 첫 화면은 맨 아래여야 하므로)
-  bool get _atBottom {
-    if (!_scrollC.hasClients) return true;
+  /* 스크롤이 «손동작으로» 움직였을 때만 붙기 여부를 다시 정한다. 바닥에서 120px 이내면 붙는다.
+     ⚠️ 사진이 떠서 자라는 것(dragDetails 없는 알림)으로는 안 부른다 — 그건 손이 아니다. */
+  void _updateStick() {
+    if (!_scrollC.hasClients) return;
     final p = _scrollC.position;
-    return p.maxScrollExtent - p.pixels < 80;
+    _stick = (p.maxScrollExtent - p.pixels) < 120;
+  }
+
+  bool _onScrollNotif(ScrollNotification n) {
+    if ((n is ScrollUpdateNotification && n.dragDetails != null) ||
+        n is ScrollEndNotification) {
+      _updateStick();
+    }
+    return false;
   }
 
   void _onLive() {
@@ -390,13 +406,11 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
      ⚠️ 위에서 옛 대화를 읽는 중인 사람을 끌어내리면 안 된다 — 읽던 자리를 잃는다.
         그래서 자라기 «전»에 아래였는지 묻고(_atBottom), 아니면 아무것도 안 한다. */
   void _followGrowth() {
-    if (!mounted || _keepPosition || !_scrollC.hasClients) return;
-    final p = _scrollC.position;
-    /* ⚠️ 여기서 `_atBottom`(80px)을 쓰면 안 된다 — 이 알림은 그림이 **이미 자란 뒤**에 온다.
-       그 사이 아래쪽이 그림 높이만큼 밀려 나가서, 아래를 보고 있던 사람도
-       「아래가 아니다」로 판정돼 버린다. 그림 한 장이 자라는 높이(폭 200에 세로로 긴 표면
-       400~500px)를 여유로 준다. 옛 대화를 읽는 사람은 그보다 훨씬 위에 있어 안 끌려온다. */
-    if (p.maxScrollExtent - p.pixels > 500) return;
+    /* 사진이 뒤늦게 떠서 자랐을 때 — «맨 아래에 붙어 있던 사람만»(_stick) 따라 내려간다.
+       ⚠️ 「바닥에서 얼마나 가깝나」로 재면, 사진이 자란 뒤라 아래를 보던 사람도 「아래가
+          아니다」로 잘못 잡히고, 조금 위로 올린 사람은 끌려 내려온다. _stick 은 손으로만
+          바뀌므로, 올려 둔 사람은 그대로 둔다. */
+    if (!mounted || _keepPosition || !_stick) return;
     _scrollToBottom();
   }
 
@@ -592,7 +606,9 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                     ],
                   ),
                 )
-              : ListView.builder(
+              : NotificationListener<ScrollNotification>(
+                  onNotification: _onScrollNotif,
+                  child: ListView.builder(
                   controller: _scrollC,
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                   itemCount: msgs.length + 1,
@@ -628,6 +644,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                     );
                   },
                 ),
+              ),
         ),
         /* 「○○님이 입력 중…」은 **안 그린다** — 위 `_onTyping` 의 설명 참고.
            (웹앱이 적어 둔 값이 와도 이 화면에는 안 띄운다) */

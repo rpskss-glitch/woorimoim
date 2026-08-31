@@ -485,6 +485,22 @@ class Logic {
     return who.length;
   }
 
+  /* 🙆 그 회차에 그 표(yes·maybe·no)를 남긴 «지금 회원»의 «이름» 목록.
+     일정 카드에서 참석·불참을 이름으로 바로 보여 주는 데 쓴다.
+     ⚠️ 세는 규칙은 rsvpCount 와 똑같이 — 탈퇴자·폰 바꾼 옛 번호를 빼고 사람 단위로 한 번만. */
+  static List<String> rsvpNames(Map<String, dynamic> e, String date, String want) {
+    final map = asMap(e['rsvp']);
+    final now = AppState.i.members;
+    final who = <String>{};
+    map.forEach((k, v) {
+      if (v != want) return;
+      if (k.length < 12 || !k.startsWith('${date}_')) return;
+      final uid = liveUid(k.substring(11));
+      if (now.containsKey(uid)) who.add(uid);
+    });
+    return [for (final u in who) AppState.i.nameOf(u)];
+  }
+
   /* 🗝 그 사람이 그 날 남긴 «표»의 열쇠들 — 폰을 바꾸기 «전» 번호까지.
 
      참석 투표(rsvp)·출석(attend)은 「날짜_번호」로 적힌다. 세는 쪽(`rsvpCount`·`_countAttend`)은
