@@ -349,10 +349,13 @@ class _EventCard extends StatelessWidget {
                예전에는 참석한 사람의 «아바타 이모지»만 한 줄 보여 줘서, 누가 왔는지·
                누가 안 오는지 알아보기 어려웠다. 이제 세 줄로 이름을 편다.
                ⚠️ 표가 없는 줄(0명)은 그리지 않는다 — 빈 「불참 0명:」이 자리만 차지한다. */
+            /* ⚠️ 색은 «테마»에서 가져온다 — 예전에 파랑·회색을 숫자로 박았더니
+               다크모드에서 회색(미정·불참)이 어두운 카드에 묻혔다(2026-08-31 스스로 잡음).
+               참석은 강조색, 미정·불참은 흐린 글자색으로 — 밝음·다크 둘 다 또렷하다. */
             for (final r in const [
-              ('yes', '🙆 참석', Color(0xFF2563EB)),
-              ('maybe', '🤔 미정', Color(0xFF6B7280)),
-              ('no', '🙅 불참', Color(0xFF6B7280)),
+              ('yes', '🙆 참석'),
+              ('maybe', '🤔 미정'),
+              ('no', '🙅 불참'),
             ])
               if (Logic.rsvpNames(event, date, r.$1).isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -364,7 +367,9 @@ class _EventCard extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: r.$3),
+                          color: r.$1 == 'yes'
+                              ? cs.primary
+                              : Theme.of(context).hintColor),
                     ),
                     Expanded(
                       child: Text(
