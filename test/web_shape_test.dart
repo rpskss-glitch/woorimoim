@@ -17,7 +17,10 @@ String ymdOf(DateTime d) => '${d.year}-${d2(d.month)}-${d2(d.day)}';
 
 void main() {
   final now = DateTime.now();
-  final lastWeek = DateTime(now.year, now.month, now.day - 7);
+  // ⚠️ 「지난주」가 달을 넘어가면(1~7일) monthRank·회비가 이번 달에서 비어 시험이 그날만
+  //    깨진다(2026-09-01에 겪음). 이번 달 안에 머물게 날을 여민다.
+  final lastWeek = DateTime(
+      now.year, now.month, now.day > 7 ? now.day - 7 : now.day);
   final thisMonth = '${now.year}-${d2(now.month)}';
   final joined = DateTime(now.year, now.month - 2, 1).millisecondsSinceEpoch;
 

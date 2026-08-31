@@ -593,7 +593,27 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
           ),
         Expanded(
           child: msgs.isEmpty
-              ? Center(
+              ? (Store.i.chatLoading && _room.isEmpty
+                  /* ⏳ 첫 묶음 불러오는 중 — 빈 「첫 인사」를 먼저 띄우면 대화가 뒤늦게
+                     툭 나타나 바닥으로 튄다. 스피너로 한 번에 자리 잡게 한다. */
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                                width: 26,
+                                height: 26,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2.5)),
+                            SizedBox(height: 12),
+                            Text('대화를 불러오는 중이에요…'),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -605,7 +625,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                           style: TextStyle(color: Theme.of(context).hintColor, height: 1.5)),
                     ],
                   ),
-                )
+                ))
               : NotificationListener<ScrollNotification>(
                   onNotification: _onScrollNotif,
                   child: ListView.builder(

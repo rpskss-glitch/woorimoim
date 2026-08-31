@@ -39,10 +39,12 @@ void seedAfterMove() {
   });
   AppState.i.setItems(Store.tidy([
     // 옛 번호로 쌓인 출석 세 번 (세 회차)
+    // ⚠️ 날짜는 «오늘부터 하루씩 전»으로 — 「7·14·21일 전」으로 두면 달 초(1~7일)에는
+    //    셋 다 지난달로 빠져 「이번 달 순위」가 비어 시험이 그날만 깨진다(2026-09-01에 겪음).
     for (var i = 0; i < 3; i++)
       {'id': 'e$i', 'type': 'event', 'title': '모임', 'repeat': 'none',
-       'date': ymdOf(DateTime(now.year, now.month, now.day - 7 * (i + 1))),
-       'attend': {'${ymdOf(DateTime(now.year, now.month, now.day - 7 * (i + 1)))}_u9': true},
+       'date': ymdOf(DateTime(now.year, now.month, now.day - i)),
+       'attend': {'${ymdOf(DateTime(now.year, now.month, now.day - i))}_u9': true},
        'createdAt': lw.millisecondsSinceEpoch + i},
     // 옛 번호로 낸 이번 달 회비
     {'id': 'l1', 'type': 'ledger', 'kind': 'in', 'payer': 'u9', 'amount': 20000,

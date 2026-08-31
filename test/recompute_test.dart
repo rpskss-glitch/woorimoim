@@ -13,9 +13,13 @@ Map<String, dynamic> event(String id) => {
       'attend': {'2026-08-03_u1': true}, 'createdAt': 1755800000000,
     };
 
+// ⚠️ 회비 달은 «이번 달»로 — '2026-08' 처럼 박아 두면 달이 바뀐 «다음 달 1일»에
+// unpaidMonths 가 이번 달을 미납으로 잡아 시험이 그날만 깨진다(2026-09-01에 겪음).
+final _thisMonth =
+    '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}';
 Map<String, dynamic> ledger(String id) => {
       'id': id, 'type': 'ledger', 'kind': 'in', 'payer': 'u1', 'amount': 10000,
-      'feeMonths': const ['2026-08'], 'createdAt': 1755800000000, 'date': '2026-08-03',
+      'feeMonths': [_thisMonth], 'createdAt': 1755800000000, 'date': '$_thisMonth-03',
     };
 
 Map<String, dynamic> msg(String id, int at) =>

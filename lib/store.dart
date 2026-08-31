@@ -627,6 +627,14 @@ class Store {
   List<Map<String, dynamic>> _core = [];
   List<Map<String, dynamic>> _recent = [];
   List<Map<String, dynamic>> _older = [];
+
+  /* ⏳ 대화의 «첫 묶음»이 아직 안 왔나 — 대화 탭이 로딩 표시를 띄우는 데 쓴다.
+     예전에는 첫 스냅샷 전에 «빈 대화방»(첫 인사 화면)이 잠깐 떴다가 대화가 툭 나타나
+     바닥으로 튀었다 — 회원은 「자꾸 아래로 내려간다」고 느꼈다(사장님 지적).
+     이제 첫 스냅샷이 올 때까지 «불러오는 중»을 보여, 한 번에 자리 잡고 끝낸다. */
+  bool _msgsIn = false;
+  // ⚠️ «구독이 도는 중»일 때만 로딩이다 — 시험은 구독 없이 자료를 직접 넣으므로 로딩이 아니다
+  bool get chatLoading => !Demo.on && _msgsSub != null && !_msgsIn;
   DocumentSnapshot? _curRecent, _curOlder; // 「더 보기」용 문서 커서
   bool _hasMore = false;
   /// 옛 대화를 끝까지 불러왔는지. 새 대화가 와서 창이 다시 차더라도
@@ -644,6 +652,7 @@ class Store {
     _core = [];
     _recent = [];
     _older = [];
+    _msgsIn = false; // 새로 구독하면 «아직 안 옴»으로 되돌린다
     _curRecent = _curOlder = null;
     _hasMore = false;
     _noMoreOlder = false;
@@ -677,6 +686,7 @@ class Store {
       }
       _recent = next;
       _hasMore = s.docs.length >= msgWindow;
+      _msgsIn = true; // 첫 묶음이 왔다 — 이제 로딩 표시를 내린다
       emit();
     }, onError: (e) => _err(e, 'msgs'));
   }
