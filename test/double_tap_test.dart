@@ -6,7 +6,6 @@ import 'package:woorimoim/demo.dart';
 import 'package:woorimoim/logic.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/theme.dart';
-import 'package:woorimoim/ui/board.dart';
 import 'package:woorimoim/ui/calendar.dart';
 import 'package:woorimoim/ui/wallet.dart';
 

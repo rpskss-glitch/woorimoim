@@ -50,7 +50,7 @@ class _HomeTabState extends State<HomeTab> {
     if (mounted) setState(() {});
   }
 
-  /// 아래쪽 탭으로 옮긴다 (0홈 1채팅 2일정 3회비 4게시판) — 꺼풀(shell)이 듣고 있다
+  /// 아래쪽 탭으로 옮긴다 (0홈 1채팅 2일정 3게시판 4회비 — 웹과 같은 순서) — 꺼풀(shell)이 듣고 있다
   void _go(int tab) => AppState.i.openTab.value = tab;
 
   /* 🤫 숨은 입구 — 모임 «상징»을 다섯 번 두드리면 총괄 콘솔.
@@ -263,9 +263,9 @@ class _HomeTabState extends State<HomeTab> {
       children: [
         tile('📅', '일정', () => _go(2)),
         const SizedBox(width: 8),
-        tile('✏️', '글 쓰기', () => _go(4)),
+        tile('✏️', '글 쓰기', () => _go(3)),
         const SizedBox(width: 8),
-        tile('💰', '회비 장부', () => _go(3)),
+        tile('💰', '회비 장부', () => _go(4)),
         const SizedBox(width: 8),
         tile('📸', '사진첩', () => _openAlbum(context)),
       ],
@@ -446,7 +446,7 @@ class _HomeTabState extends State<HomeTab> {
                         style: TextStyle(
                             fontSize: 12, color: Theme.of(context).hintColor)),
                   ),
-                  TextButton(onPressed: () => _go(3), child: const Text('회비 받기')),
+                  TextButton(onPressed: () => _go(4), child: const Text('회비 받기')),
                 ],
               ),
             ] else if (!st.isTreasurer && !iPaid) ...[
@@ -499,7 +499,7 @@ class _HomeTabState extends State<HomeTab> {
     return [
       SectionCard(
         title: '💰 회비 장부',
-        trailing: TextButton(onPressed: () => _go(3), child: const Text('자세히 ›')),
+        trailing: TextButton(onPressed: () => _go(4), child: const Text('자세히 ›')),
         child: Row(
           children: [
             box('현재 잔액', fmtWon(bal)),
@@ -568,7 +568,7 @@ class _HomeTabState extends State<HomeTab> {
     return [
       SectionCard(
         title: '📔 최근 게시판',
-        trailing: TextButton(onPressed: () => _go(4), child: const Text('전체 ›')),
+        trailing: TextButton(onPressed: () => _go(3), child: const Text('전체 ›')),
         child: InkWell(
           onTap: () => Navigator.push(
             context,

@@ -68,12 +68,14 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
     final title = (st.couple?['title'] as String?) ?? Cfg.appName;
     final pendingN = st.isAdmin ? st.pending.length : 0;
 
+    // ⚠️ 순서는 «웹과 같게» — 홈·채팅·일정·게시판·회비 (사장님 지시 2026-09-01).
+    //    아래 destinations, home 의 _go(…), owner_guide 의 onGo(…)가 이 번호를 따른다.
     final pages = [
       const HomeTab(),
       ChatTab(active: _tab == 1),
       const CalendarTab(),
-      const WalletTab(),
       const BoardTab(),
+      const WalletTab(),
     ];
 
     return Scaffold(
@@ -126,24 +128,22 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
           AppState.i.currentTab = i;   // 채팅을 보는 중에는 알림을 안 띄우기 위해
           widget.onTouch();
         },
+        /* 🎨 아래 단추는 «웹과 같은 색 이모지»로 (사장님 지시 2026-09-01).
+           고른 것/안 고른 것 같은 이모지를 쓴다 — 고른 표시는 네비바가 «알약 배경»으로 해준다
+           (이모지엔 «칠한 것/빈 것» 짝이 없으므로). 순서도 웹과 같다: 홈·채팅·일정·게시판·회비. */
         destinations: [
-          const NavigationDestination(
-              icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: '홈'),
+          const NavigationDestination(icon: _NavEmoji('🏠'), label: '홈'),
           NavigationDestination(
             icon: Badge(
               isLabelVisible: _unreadChat > 0 && _tab != 1,
               label: Text('$_unreadChat'),
-              child: const Icon(Icons.chat_bubble_outline),
+              child: const _NavEmoji('💬'),
             ),
-            selectedIcon: const Icon(Icons.chat_bubble),
             label: '채팅',
           ),
-          const NavigationDestination(
-              icon: Icon(Icons.event_outlined), selectedIcon: Icon(Icons.event), label: '일정'),
-          const NavigationDestination(
-              icon: Icon(Icons.savings_outlined), selectedIcon: Icon(Icons.savings), label: '회비'),
-          const NavigationDestination(
-              icon: Icon(Icons.article_outlined), selectedIcon: Icon(Icons.article), label: '게시판'),
+          const NavigationDestination(icon: _NavEmoji('📅'), label: '일정'),
+          const NavigationDestination(icon: _NavEmoji('📔'), label: '게시판'),
+          const NavigationDestination(icon: _NavEmoji('💰'), label: '회비'),
         ],
       ),
     );
@@ -259,4 +259,19 @@ class _LockBar extends StatelessWidget {
       ),
     );
   }
+}
+
+/* 🎨 아래 네비게이션의 «색 이모지» 아이콘 한 칸. 웹과 같은 느낌을 내려고 Material 아이콘 대신
+   이모지를 쓴다. 폰 설정으로 글자를 키워도 아이콘이 너무 커지지 않게 «배율을 1로 고정»한다
+   (안 그러면 중장년 회원의 큰 글자 설정에서 네비바가 넘친다). */
+class _NavEmoji extends StatelessWidget {
+  final String emoji;
+  const _NavEmoji(this.emoji);
+
+  @override
+  Widget build(BuildContext context) => Text(
+        emoji,
+        textScaler: TextScaler.noScaling,
+        style: const TextStyle(fontSize: 22),
+      );
 }

@@ -7,7 +7,6 @@ import 'package:woorimoim/store.dart';
 import 'package:woorimoim/theme.dart';
 import 'package:woorimoim/ui/chat.dart';
 import 'package:woorimoim/ui/home.dart';
-import 'package:woorimoim/ui/shell.dart';
 
 /* 🔒 「운영진 방이 새지 않는가」
 

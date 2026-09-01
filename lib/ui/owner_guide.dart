@@ -170,7 +170,7 @@ class _OwnerGuideCardState extends State<OwnerGuideCard> {
                           '총무가 회비 탭에서 받은 것을 기록합니다.'
                       : '아직 회비가 정해지지 않았습니다. 회비를 안 걷는 모임이면 그대로 두셔도 됩니다.',
                   action: OutlinedButton(
-                    onPressed: () => widget.onGo(3),
+                    onPressed: () => widget.onGo(4),
                     child: const Text('회비 탭 열기'),
                   )),
 

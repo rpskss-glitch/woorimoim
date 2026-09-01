@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:woorimoim/store.dart';
 
 /* 👥👥 「두 사람이 거의 같은 때에 고치면」
 

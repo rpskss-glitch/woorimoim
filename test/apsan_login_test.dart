@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:woorimoim/config.dart';
 
 /* 🏸 「지금은 앞산 배드민턴으로만 쓴다」 + 「로그인하기」. */
 void main() {
