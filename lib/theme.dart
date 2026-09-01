@@ -116,25 +116,36 @@ ThemeData buildTheme(String? key, {bool dark = false}) {
     onPrimary: onPrimary,
   );
   final base = dark ? ThemeData.dark(useMaterial3: true) : ThemeData.light(useMaterial3: true);
+
+  /* 🌙 어두운 화면에서도 «테마 색이 보이게». 예전에는 다크 배경이 고정 회색이라,
+     모임 색을 바꿔도 강조색만 살짝 달라 «테마 선택이 안 되는 것처럼» 보였다
+     (2026-09-01 사장님: 아이폰에서 테마가 작동 안 하는 것 같다 — 다크 모드였다).
+     이제 다크 배경에 모임 강조색을 옅게 섞어, 테마마다 바탕 색조가 다르게 보인다. */
+  Color darkBg(Color slate, double amount) =>
+      Color.alphaBlend(t.acc.withValues(alpha: amount), slate);
+  final scaffoldDark = darkBg(const Color(0xFF16181C), 0.07);
+  final barDark = darkBg(const Color(0xFF1E2126), 0.09);
+  final cardDark = darkBg(const Color(0xFF23262C), 0.08);
+
   return base.copyWith(
     colorScheme: scheme,
-    scaffoldBackgroundColor: dark ? const Color(0xFF16181C) : t.bg,
+    scaffoldBackgroundColor: dark ? scaffoldDark : t.bg,
     appBarTheme: AppBarTheme(
-      backgroundColor: dark ? const Color(0xFF1E2126) : Colors.white,
+      backgroundColor: dark ? barDark : Colors.white,
       foregroundColor: dark ? Colors.white : const Color(0xFF2A2E35),
       elevation: 0,
       scrolledUnderElevation: 0.5,
       centerTitle: false,
     ),
     cardTheme: CardThemeData(
-      color: dark ? const Color(0xFF23262C) : Colors.white,
+      color: dark ? cardDark : Colors.white,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     // 하단 탭바는 반드시 불투명 — 반투명으로 두면 뒤 카드가 비쳐 글씨가 안 읽힌다
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: dark ? const Color(0xFF1E2126) : Colors.white,
+      backgroundColor: dark ? barDark : Colors.white,
       indicatorColor: dark ? t.acc.withValues(alpha: .28) : t.accLight,
       elevation: 0,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
@@ -160,7 +171,7 @@ ThemeData buildTheme(String? key, {bool dark = false}) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: dark ? const Color(0xFF23262C) : Colors.white,
+      fillColor: dark ? cardDark : Colors.white,
       /* 적는 칸의 «테두리». 손으로 고른 회색이었는데 실측해 보니
          바탕과 1.12~1.68 밖에 안 나와, 카드 안에 놓인 칸은 **테두리가 안 보였다**
          (어두운 화면에서는 칸 바탕까지 카드와 같은 색이라 칸의 자리를 알 수 없었다).
@@ -177,7 +188,7 @@ ThemeData buildTheme(String? key, {bool dark = false}) {
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: dark ? const Color(0xFF23262C) : t.accLight,
+      backgroundColor: dark ? cardDark : t.accLight,
       /* 「고른 칩」도 버튼과 «같은 짝»을 써야 한다.
          옅은 강조색(t.acc) 위에 흰 글씨를 얹으면 밝은 화면에서 대비가 2~3:1밖에 안 나와
          (레몬은 1.93:1) 밖에서 무엇을 골랐는지 안 보인다. 기준은 4.5:1.
