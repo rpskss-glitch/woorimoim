@@ -345,7 +345,7 @@ class _PostFormState extends State<_PostForm> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(context).viewInsets.bottom + 18),
+      padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).viewPadding.bottom + 18),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

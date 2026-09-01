@@ -853,7 +853,16 @@ class _LedgerFormState extends State<_LedgerForm> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(context).viewInsets.bottom + 18),
+      /* ⚠️ 아래 여백은 «키보드»(viewInsets)뿐 아니라 «내비게이션바»(viewPadding.bottom)도
+         비워야 한다 — 안 그러면 키보드 없을 때 저장 단추가 시스템 내비게이션바에 가린다
+         (2026-09-01 사장님 실기기에서 잡음). */
+      padding: EdgeInsets.fromLTRB(
+          18,
+          0,
+          18,
+          MediaQuery.of(context).viewInsets.bottom +
+              MediaQuery.of(context).viewPadding.bottom +
+              18),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,

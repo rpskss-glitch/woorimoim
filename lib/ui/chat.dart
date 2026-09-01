@@ -372,7 +372,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       isScrollControlled: true, // 글판이 올라와도 칸이 가려지지 않게
       showDragHandle: true,
       builder: (c) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
+        padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom + MediaQuery.of(c).viewPadding.bottom),
         child: const PollForm(),
       ),
     );

@@ -51,10 +51,11 @@ void main() {
   });
 
   group('설정', () {
-    test('③ 모임에서 나갈 때 «이 폰의 알림 자리»를 비운다', () {
+    test('③ 로그아웃할 때 «이 폰의 알림 자리»를 비운다', () {
+      // 2026-09-01: 「모임에서 나가기」→「로그아웃」으로 이름을 바꿨다(탈퇴와 헷갈리지 않게)
       final s = bare('lib/ui/settings.dart');
-      final at = s.indexOf("okLabel: '나가기'");
-      expect(at, greaterThan(0), reason: '나가기 단추를 못 찾았다');
+      final at = s.indexOf("okLabel: '로그아웃'");
+      expect(at, greaterThan(0), reason: '로그아웃 단추를 못 찾았다');
       final blk = s.substring(at, s.indexOf('clearProfile()', at));
       expect(blk, contains("'push."),
           reason: '나가고도 알림 자리가 남는다 — '

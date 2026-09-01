@@ -25,8 +25,9 @@ void main() {
   final members = stripComments(File('lib/ui/members.dart').readAsStringSync());
 
   test('스스로 나갈 때 «알림 받는 자리»를 비운다', () {
-    final at = settings.indexOf("'모임에서 나가기'");
-    expect(at, greaterThan(0), reason: '나가기 단추를 못 찾았다');
+    // 2026-09-01: 「모임에서 나가기」→「로그아웃」으로 이름을 바꿨다(탈퇴와 헷갈리지 않게)
+    final at = settings.indexOf("label: const Text('로그아웃')");
+    expect(at, greaterThan(0), reason: '로그아웃 단추를 못 찾았다');
     // 단추의 처리는 그 위에 있다 (onPressed 가 먼저 온다)
     final body = settings.substring((at - 2200).clamp(0, at), at);
     expect(body.contains("'push."), isTrue,
@@ -51,7 +52,8 @@ void main() {
 
   test('회원 자리는 «그대로» 둔다 — 다시 들어올 수 있어야 한다', () {
     /* 나가기는 「이 폰에서만」이다. 서버의 members 를 지우면 이름·직책·출석이 통째로 날아간다. */
-    final at = settings.indexOf("'모임에서 나가기'");
+    final at = settings.indexOf("label: const Text('로그아웃')");
+    expect(at, greaterThan(0), reason: '로그아웃 단추를 못 찾았다');
     final body = settings.substring((at - 2200).clamp(0, at), at);
     expect(body.contains("'members."), isFalse,
         reason: '나가기가 서버의 회원 자리를 건드리면 안 된다');

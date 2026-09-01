@@ -692,7 +692,7 @@ Future<int?> askMonths(
     showDragHandle: true,
     builder: (ctx) => Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 4, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          20, 4, 20, MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).viewPadding.bottom + 24),
       child: StatefulBuilder(
         builder: (ctx, setSheet) {
           final typed = int.tryParse(c.text.trim()) ?? 0;

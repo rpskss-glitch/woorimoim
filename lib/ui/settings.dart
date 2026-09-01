@@ -371,44 +371,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          /* 🚪 로그아웃 — «탈퇴가 아니다». 이 폰의 세션(누구로 로그인했는지)만 지우고,
+             서버의 회원 자리는 그대로 둔다. 같은 이름·생년월일로 다시 로그인하면 이어받는다.
+             (실제 탈퇴는 위의 「모임 탈퇴 · 내 자료 지우기」가 한다. 되돌릴 수 있는 일이라
+              여기는 «위험(빨강)»으로 칠하지 않는다. 사장님 지시 2026-09-01) */
           Center(
-            child: TextButton(
+            child: TextButton.icon(
               onPressed: () async {
                 final ok = await confirmSheet(
                   context,
-                  st.isOwner && st.memberList.length > 1
-                      ? '방장이신데 나가시겠어요?'
-                      : '이 모임에서 나갈까요?',
-                  st.isOwner && st.memberList.length > 1
-                      ? '나가도 방장 자리는 그대로 남아, 가입 승인·설정을 할 사람이 없어져요.\n'
-                          '먼저 회원 화면에서 👑 방장 넘기기를 해주세요.\n\n'
-                          '이 폰에서만 나가는 거예요 — 알림도 더 오지 않아요. '
-                          '같은 이름·생년월일로 다시 들어오면 그대로 이어받습니다.'
-                      : '이 폰에서만 나가는 거예요 — 알림도 더 오지 않아요. '
-                          '같은 이름·생년월일로 다시 들어오면 그대로 이어받습니다.',
-                  okLabel: '나가기',
-                  danger: true,
+                  '로그아웃할까요?',
+                  (st.isOwner && st.memberList.length > 1
+                          ? '방장 자리는 그대로 남아요 — 로그아웃해도 모임은 없어지지 않아요.\n\n'
+                          : '') +
+                      '이 폰에서 로그아웃해요. 모임에서 «탈퇴»하는 게 아니에요.\n'
+                      '같은 이름·생년월일로 다시 로그인하면 그대로 이어받아요.\n'
+                      '(로그아웃하면 이 폰으로는 알림이 오지 않아요)',
+                  okLabel: '로그아웃',
                 );
                 if (!ok) return;
-                /* 🔕 이 폰으로는 «알림도» 그쳐야 한다.
-                   서버의 회원 자리는 그대로 두되(다시 들어올 수 있게) **알림 받는 자리만** 비운다.
-                   안 비우면 나간 모임의 대화 알림이 이 폰에 계속 오고,
-                   눌러도 그 모임 화면이 없어 엉뚱한 데로 간다.
-                   (탈퇴 처리는 처음부터 `push.$uid` 를 비웠는데 «스스로 나가기»만 빠져 있었다)
-                   ⚠️ 못 비워도 나가기는 막지 않는다 — 신호가 없다고 못 나가면 더 나쁘다.
-                      다시 들어오면 새 토큰이 그 자리를 덮는다. */
+                /* 🔕 로그아웃해도 이 폰으로는 «알림도» 그쳐야 한다. 서버의 회원 자리는
+                   그대로 두되(다시 로그인할 수 있게) 알림 받는 자리만 비운다.
+                   ⚠️ 못 비워도 로그아웃은 막지 않는다 — 다시 로그인하면 새 토큰이 덮는다. */
                 final leaving = st.code;
                 if (leaving != null) {
                   try {
                     await Store.i
                         .patchCouple(leaving, {'push.${Store.i.myUid}': null});
-                  } catch (_) {/* 다음에 다시 들어올 때 덮인다 */}
+                  } catch (_) {/* 다음에 다시 로그인할 때 덮인다 */}
                 }
                 Store.i.stopAll();
                 await AppState.i.clearProfile();
                 if (context.mounted) Navigator.pop(context);
               },
-              child: Text('모임에서 나가기', style: TextStyle(color: dangerText(context))),
+              icon: const Icon(Icons.logout, size: 18),
+              label: const Text('로그아웃'),
             ),
           ),
         ],
@@ -530,7 +527,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       showDragHandle: true,
       builder: (c) => StatefulBuilder(
         builder: (c, setS) => Padding(
-          padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(c).viewInsets.bottom + 18),
+          padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(c).viewInsets.bottom + MediaQuery.of(c).viewPadding.bottom + 18),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
