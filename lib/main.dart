@@ -499,7 +499,7 @@ class _WooriAppState extends State<WooriApp> {
 
   @override
   Widget build(BuildContext context) {
-    final themeKey = st.couple?['theme'] as String?;
+    final themeKey = st.effectiveTheme; // 내 폰 설정 우선, 없으면 모임 기본
     Widget home;
     if (st.code == null) {
       home = OnboardingScreen(onJoined: _enter);

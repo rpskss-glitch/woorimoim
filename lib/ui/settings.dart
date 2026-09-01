@@ -205,50 +205,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
 
           SectionCard(
-            title: '🎨 테마',
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            title: '🎨 테마 — 내 화면 색',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final t in clubThemes)
-                  GestureDetector(
-                    onTap: st.isAdmin
-                        ? () async {
-                            final code = st.code;
-                            if (code == null) return;
-                            try {
-                              await Store.i.setCouple(code, {'theme': t.key});
-                            } catch (_) {
-                              if (context.mounted) toast(context, '테마를 바꾸지 못했어요');
-                              return;
-                            }
-                            _r();
-                          }
-                        : null,
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: t.acc,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: (st.couple?['theme'] as String? ?? 'sky') == t.key
-                              ? Colors.black87
-                              : Colors.transparent,
-                          width: 3,
+                /* 🎨 동그라미는 «이 폰»의 색을 바꾼다 — 회원 누구나 바꿀 수 있고 바로 적용된다
+                   (서버가 아니라 이 폰에만 저장되므로 즉시). 방장이 정한 모임 기본색 위에 덮어쓴다. */
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final t in clubThemes)
+                      GestureDetector(
+                        onTap: () => AppState.i.setMyTheme(t.key),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: t.acc,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: (st.effectiveTheme ?? 'sky') == t.key
+                                  ? Colors.black87
+                                  : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
                         ),
                       ),
+                  ],
+                ),
+                /* 👑 방장·운영진은 «지금 색»을 모임 기본으로 정할 수 있다 —
+                   그러면 아직 자기 색을 안 고른 회원들이 이 색으로 보인다. */
+                if (st.isAdmin) ...[
+                  const SizedBox(height: 10),
+                  /* ⚠️ 가로 꽉 채운다 — 줄 안에 두면 큰 글자(2배)에서 라벨이 넘친다
+                     (360px·2배에서 83px 넘침, member_guide_test 가 잡음). */
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final code = st.code;
+                        final now = st.effectiveTheme ?? 'sky';
+                        if (code == null) return;
+                        try {
+                          await Store.i.setCouple(code, {'theme': now});
+                        } catch (_) {
+                          if (context.mounted) toast(context, '모임 기본색을 바꾸지 못했어요');
+                          return;
+                        }
+                        if (context.mounted) toast(context, '이 색을 모임 기본으로 정했어요');
+                        _r();
+                      },
+                      icon: const Icon(Icons.groups, size: 18),
+                      label: const Text('모임 기본으로', textAlign: TextAlign.center),
+                    ),
+                  ),
+                ],
+                /* 내 폰만의 색을 골랐으면 «모임 기본으로 되돌리기»를 준다 —
+                   안 그러면 모임 기본이 바뀌어도 내 폰만 옛 색에 머문다. */
+                if (st.myThemeOverride != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => AppState.i.setMyTheme(null),
+                      icon: const Icon(Icons.restart_alt, size: 16),
+                      label: const Text('모임 기본색으로'),
                     ),
                   ),
               ],
             ),
           ),
-          if (!st.isAdmin)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text('테마는 방장·운영진이 바꿀 수 있어요',
-                  style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
-            ),
           const SizedBox(height: 12),
 
           /* 🗑 **못 지운 사진 원본** — 있을 때만 나온다.

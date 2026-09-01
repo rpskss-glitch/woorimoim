@@ -25,6 +25,15 @@ class AppState extends ChangeNotifier {
 
   static const _profileKey = 'club_profile_v1';
   static const _lastMeKey = 'club_lastme';
+  static const _myThemeKey = 'club_my_theme_v1'; // 이 폰의 개인 테마 (모임 기본 위에 덮어씀)
+
+  /* 🎨 «이 폰만»의 테마. 방장이 정한 모임 기본색(couple.theme) 위에 덮어쓴다.
+     null 이면 모임 기본색을 따른다. 개인 취향(다크처럼)이라 서버에 안 올리고 이 폰에만 둔다.
+     (2026-09-01 사장님: 방장이 기본을 정하고, 회원도 각자 폰에서 바꿀 수 있게 — 「둘 다」) */
+  String? _myTheme;
+  String? get myThemeOverride => _myTheme;
+  /// 실제로 그릴 테마 — 내 폰 설정이 있으면 그것, 없으면 모임 기본
+  String? get effectiveTheme => _myTheme ?? (couple?['theme'] as String?);
 
   /// 내가 속한 모임과 내 자리 {code, slot(=내 uid), name}
   Map<String, dynamic>? profile;
@@ -217,6 +226,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> loadProfile() async {
+    _myTheme = Store.i.getStr(_myThemeKey); // 이 폰의 개인 테마도 함께 읽는다
     final raw = Store.i.getStr(_profileKey);
     if (raw == null) return;
     try {
@@ -224,6 +234,17 @@ class AppState extends ChangeNotifier {
     } catch (_) {
       profile = null;
     }
+  }
+
+  /* 🎨 이 폰의 테마를 바꾼다(또는 null 로 모임 기본색 따르기). 바로 앱 전체가 다시 그린다. */
+  Future<void> setMyTheme(String? key) async {
+    _myTheme = key;
+    if (key == null) {
+      await Store.i.remove(_myThemeKey);
+    } else {
+      await Store.i.setStr(_myThemeKey, key);
+    }
+    notifyListeners();
   }
 
   Future<void> saveProfile(String code, String slot, String name) async {
