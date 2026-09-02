@@ -62,6 +62,15 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) Store.i.flushDeletes();
   }
 
+  /* 탭 옮기기 — 아래 단추와 «옆으로 밀기»가 같은 길을 쓴다.
+     ⚠️ 범위를 벗어나면 아무것도 안 한다 (맨 끝에서 더 밀어도 조용히 머문다). */
+  void _goTab(int i) {
+    if (i < 0 || i > 4 || i == _tab) return;
+    setState(() => _tab = i);
+    AppState.i.currentTab = i; // 채팅을 보는 중에는 알림을 안 띄우기 위해
+    widget.onTouch();
+  }
+
   @override
   Widget build(BuildContext context) {
     final st = AppState.i;
@@ -118,16 +127,30 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
           if (Demo.on && !Cfg.shotMode) const _DemoBar(),
           // 💳 이용권이 꺼졌을 때 — 읽기는 그대로, 새로 쓰는 것만 멈춘다
           if (!Demo.on && Fee.locked) const _LockBar(),
-          Expanded(child: IndexedStack(index: _tab, children: pages)),
+          /* 👉 **옆으로 밀어 화면 넘기기** (사장님 지시 2026-09-03, 안드·아이폰 공통).
+
+             ⚠️ PageView 로 갈아타지 않는다 — 이 앱은 «탭 다섯이 동시에 살아 있는» 구조
+                (IndexedStack)에 여러 곳이 기대고 있다: 채팅의 active 판정, 각 탭의 스크롤 자리,
+                홈·회비의 셈 묶음. PageView 는 화면 밖 탭을 버려서 그 자리를 다 잃는다.
+                그래서 «틀은 그대로 두고» 수평 끌기만 얹는다.
+             ⚠️ 자식이 가로로 스크롤하는 곳(표·사진)은 제스처 다툼에서 **자식이 이긴다** —
+                그 자리에서는 탭이 안 넘어간다(그게 맞다). */
+          Expanded(
+            child: GestureDetector(
+              onHorizontalDragEnd: (d) {
+                // 살짝 스친 것으로는 안 넘어간다 — 너무 예민하면 글 읽다가 화면이 튄다
+                final v = d.primaryVelocity ?? 0;
+                if (v.abs() < 250) return;
+                _goTab(v < 0 ? _tab + 1 : _tab - 1);
+              },
+              child: IndexedStack(index: _tab, children: pages),
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) {
-          setState(() => _tab = i);
-          AppState.i.currentTab = i;   // 채팅을 보는 중에는 알림을 안 띄우기 위해
-          widget.onTouch();
-        },
+        onDestinationSelected: _goTab,
         /* 🎨 아래 단추는 «웹과 같은 색 이모지»로 (사장님 지시 2026-09-01).
            고른 것/안 고른 것 같은 이모지를 쓴다 — 고른 표시는 네비바가 «알약 배경»으로 해준다
            (이모지엔 «칠한 것/빈 것» 짝이 없으므로). 순서도 웹과 같다: 홈·채팅·일정·게시판·회비. */
