@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:app_settings/app_settings.dart';
 import '../config.dart';
 import '../fee.dart';
 import '../logic.dart';
@@ -155,13 +154,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(fontSize: 12)),
                   trailing: const Icon(Icons.open_in_new, size: 18),
                   onTap: () async {
-                    try {
-                      await AppSettings.openAppSettings(
-                          type: AppSettingsType.notification);
-                    } catch (_) {
-                      if (context.mounted) {
-                        toast(context, '폰 설정을 열지 못했어요 — 폰의 설정 → 앱 → 우리 모임 → 알림에서 바꿀 수 있어요');
-                      }
+                    final ok = await Push.i.openPhoneNotificationSettings();
+                    if (!ok && context.mounted) {
+                      // 못 열었을 때만 길을 알려 준다 — 열렸으면 아무 말도 필요 없다
+                      toast(context,
+                          '폰 설정을 열지 못했어요 — 폰의 설정 → 앱 → ${Cfg.appName} → 알림에서 바꿀 수 있어요');
                     }
                   },
                 ),

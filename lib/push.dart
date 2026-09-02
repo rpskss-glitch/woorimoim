@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'config.dart';
@@ -82,6 +83,25 @@ class Push {
     description: '새 대화·공지 알림',
     importance: Importance.high,
   );
+
+  /* 🔔 폰의 «이 앱 알림 설정»을 연다 — 소리·진동은 거기서 고른다.
+
+     ⚠️ 꾸러미(app_settings)를 안 쓴다: 그쪽은 화면을 못 찾으면 **아무것도 안 하고
+        «됐다»고 돌려준다.** 그러면 눌러도 아무 일이 없는데 앱은 안내조차 못 한다
+        (2026-09-03 사장님: 「알림 눌러도 안 되네」). 우리 화면에서 직접 열고,
+        못 열면 «못 열었다»고 돌려받아 다른 길을 알려 준다.
+     ⚠️ 안드로이드는 알림 묶음을 만든 뒤엔 앱이 소리를 못 바꾼다 — 폰 설정이 정석이다. */
+  static const _settingsCh = MethodChannel('club/appsettings');
+
+  Future<bool> openPhoneNotificationSettings() async {
+    try {
+      final ok = await _settingsCh.invokeMethod<bool>('openNotificationSettings');
+      return ok ?? false;
+    } catch (e) {
+      _note(e, '알림 설정 열기');
+      return false;
+    }
+  }
 
   /// 자국만 남기고 넘어간다 — 알림 준비가 안 되는 것은 «고장»이 아니라 «지금은 못 함»인 경우가 많다
   static void _note(Object e, String what) {
