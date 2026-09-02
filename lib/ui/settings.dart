@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'package:app_settings/app_settings.dart';
 import '../config.dart';
 import '../fee.dart';
 import '../logic.dart';
@@ -139,6 +140,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? dangerText(context)
                         : Theme.of(context).hintColor,
                   ),
+                ),
+                /* 🔊 알림 «소리·진동»은 폰이 정한다 — 안드로이드는 «알림 묶음»을 한 번 만들면
+                   앱이 소리를 못 바꾸고, 회원이 폰 설정에서 고르는 구조다(정석). 그 자리를 바로 열어 준다.
+                   (iOS 도 소리 켬/끔·배너 방식을 여기서 고른다) 2026-09-01 사장님 요청. */
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.volume_up_outlined),
+                  title: const Text('알림 소리·진동 바꾸기'),
+                  subtitle: const Text('폰의 이 앱 알림 설정을 열어요 (소리·진동은 폰에서 고릅니다)',
+                      style: TextStyle(fontSize: 12)),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () async {
+                    try {
+                      await AppSettings.openAppSettings(
+                          type: AppSettingsType.notification);
+                    } catch (_) {
+                      if (context.mounted) {
+                        toast(context, '폰 설정을 열지 못했어요 — 폰의 설정 → 앱 → 우리 모임 → 알림에서 바꿀 수 있어요');
+                      }
+                    }
+                  },
                 ),
               ],
             ),
