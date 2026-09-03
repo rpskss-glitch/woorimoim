@@ -30,6 +30,11 @@ void main() {
       if (!f.path.endsWith('.dart')) continue;
       if (f.path.endsWith('test_health_test.dart')) continue; // 자기 자신은 뺀다
       final text = f.readAsStringSync();
+      /* ⚠️ **lib 소스를 안 보는 시험은 뺀다.** iOS·안드로이드 설정 파일(pbxproj·plist·
+         gradle)을 보는 시험이 있는데, 그 글자가 lib 주석에 우연히 겹치면 «주석에만 있다»고
+         잘못 잡힌다 (2026-09-03 ios_push_setup_test2 가 그랬다 — 그 시험은 lib 을 아예 안 읽는다).
+         이 규칙이 지키려는 것은 «lib 동작을 글자로 확인하는 시험»뿐이다. */
+      if (!text.contains("'lib/") && !text.contains('"lib/')) continue;
       /* «있어야 한다»고 하는 것만 모은다.
          «없어야 한다»(isFalse)거나 목록을 훑는 검사는 주석에 걸려도 «시끄럽게» 실패하므로
          스스로 드러난다. 조용히 통과해 버리는 쪽은 «있어야 한다» 뿐이다. */
