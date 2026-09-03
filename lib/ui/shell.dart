@@ -29,6 +29,13 @@ class ShellScreen extends StatefulWidget {
 class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
   int _tab = 0;
 
+  /* 📖 손가락을 따라 «페이지가 밀려오게» 한다 (사장님 지시 2026-09-03).
+     예전에는 IndexedStack + 수평 끌기라 화면이 «확» 바뀌었다 — 넘어가는 결이 없었다.
+     ⚠️ 그렇다고 그냥 PageView 로 바꾸면 화면 밖 탭이 버려져 그 자리를 잃는다
+        (채팅 active 판정·각 탭 스크롤 자리·홈/회비 셈 묶음이 그것에 기대고 있다).
+        그래서 «살려 두기(_KeepAlive)»로 감싼다 — 밀려오는 결도, 살아 있는 탭도 같이 얻는다. */
+  final _pageC = PageController();
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +48,7 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _pageC.dispose();
     AppState.i.openTab.removeListener(_onOpenTab);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -66,9 +74,21 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
      ⚠️ 범위를 벗어나면 아무것도 안 한다 (맨 끝에서 더 밀어도 조용히 머문다). */
   void _goTab(int i) {
     if (i < 0 || i > 4 || i == _tab) return;
-    setState(() => _tab = i);
-    AppState.i.currentTab = i; // 채팅을 보는 중에는 알림을 안 띄우기 위해
-    widget.onTouch();
+    /* 아래 단추로 옮길 때도 «밀려오게» 한다 — 손으로 민 것과 결이 같아야 한다.
+       ⚠️ 멀리 뛸 때(홈→회비)까지 다 훑으면 어지럽다. 한 칸이면 밀고, 멀면 바로 간다.
+       ⚠️ 값(_tab)은 onPageChanged 가 맞춰 준다 — 여기서 또 setState 하면 두 번 그린다. */
+    if (!_pageC.hasClients) {
+      setState(() => _tab = i);
+      AppState.i.currentTab = i;
+      widget.onTouch();
+      return;
+    }
+    if ((i - _tab).abs() == 1) {
+      _pageC.animateToPage(i,
+          duration: const Duration(milliseconds: 260), curve: Curves.easeOutCubic);
+    } else {
+      _pageC.jumpToPage(i);
+    }
   }
 
   @override
@@ -127,23 +147,24 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
           if (Demo.on && !Cfg.shotMode) const _DemoBar(),
           // 💳 이용권이 꺼졌을 때 — 읽기는 그대로, 새로 쓰는 것만 멈춘다
           if (!Demo.on && Fee.locked) const _LockBar(),
-          /* 👉 **옆으로 밀어 화면 넘기기** (사장님 지시 2026-09-03, 안드·아이폰 공통).
-
-             ⚠️ PageView 로 갈아타지 않는다 — 이 앱은 «탭 다섯이 동시에 살아 있는» 구조
-                (IndexedStack)에 여러 곳이 기대고 있다: 채팅의 active 판정, 각 탭의 스크롤 자리,
-                홈·회비의 셈 묶음. PageView 는 화면 밖 탭을 버려서 그 자리를 다 잃는다.
-                그래서 «틀은 그대로 두고» 수평 끌기만 얹는다.
-             ⚠️ 자식이 가로로 스크롤하는 곳(표·사진)은 제스처 다툼에서 **자식이 이긴다** —
-                그 자리에서는 탭이 안 넘어간다(그게 맞다). */
+          /* 👉 **옆으로 밀어 화면 넘기기** — 손가락을 따라 페이지가 밀려온다.
+             ⚠️ 자식이 가로로 스크롤하는 곳(표·사진)에서는 **자식이 이긴다** —
+                그 자리에서는 페이지가 안 넘어간다(그게 맞다). */
           Expanded(
-            child: GestureDetector(
-              onHorizontalDragEnd: (d) {
-                // 살짝 스친 것으로는 안 넘어간다 — 너무 예민하면 글 읽다가 화면이 튄다
-                final v = d.primaryVelocity ?? 0;
-                if (v.abs() < 250) return;
-                _goTab(v < 0 ? _tab + 1 : _tab - 1);
+            child: PageView(
+              controller: _pageC,
+              onPageChanged: (i) {
+                if (i == _tab) return;
+                setState(() => _tab = i);
+                AppState.i.currentTab = i; // 채팅을 보는 중에는 알림을 안 띄우기 위해
+                widget.onTouch();
               },
-              child: IndexedStack(index: _tab, children: pages),
+              /* 🔑 «자리»가 아니라 «이름»으로 짝짓는다 — 키가 없으면 탭을 지나칠 때
+                 남의 상태가 옮겨 붙을 수 있다(list_key_test 가 지키는 규칙). */
+              children: [
+                for (var i = 0; i < pages.length; i++)
+                  _KeepAlive(key: ValueKey('tab$i'), child: pages[i]),
+              ],
             ),
           ),
         ],
@@ -297,4 +318,29 @@ class _NavEmoji extends StatelessWidget {
         textScaler: TextScaler.noScaling,
         style: const TextStyle(fontSize: 22),
       );
+}
+
+/* 🧷 «살려 두기» — PageView 안에서도 그 탭이 안 버려지게 한다.
+
+   ⚠️ 이것이 없으면 옆으로 넘길 때마다 화면 밖 탭이 버려진다:
+      읽던 자리·채팅 스크롤·홈의 셈이 매번 처음으로 돌아간다.
+      (예전에 IndexedStack 을 고집한 까닭이 바로 이것이었다 — 이제 둘 다 얻는다) */
+class _KeepAlive extends StatefulWidget {
+  final Widget child;
+  const _KeepAlive({super.key, required this.child});
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // ⚠️ 꼭 불러야 «살려 두기»가 걸린다
+    return widget.child;
+  }
 }
