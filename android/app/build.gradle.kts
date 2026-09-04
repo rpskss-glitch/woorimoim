@@ -44,7 +44,12 @@ android {
     productFlavors {
         create("woori") {
             dimension = "brand"
-            applicationId = "com.taejinsoft.woorimoim"
+            /* ⚠️ 옛 이름(com.taejinsoft.woorimoim)은 **Play 에서 다시 못 쓴다** —
+               조직 계정에서 지웠는데도 이름이 풀리지 않았다(2026-09-04).
+               그래서 판매용 갈래만 «2»를 붙였다. 아이폰은 옛 이름 그대로다.
+               ⚠️ 자료는 Firestore 안의 «모임 코드»로 묶이므로, 이름이 달라도
+                  안드로이드·아이폰이 **같은 모임을 그대로 함께 쓴다.** */
+            applicationId = "com.taejinsoft.woorimoim2"
             resValue("string", "app_name", "우리 모임")
         }
         create("apsan") {

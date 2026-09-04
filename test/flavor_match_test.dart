@@ -13,7 +13,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 const _flavors = {
-  'woori': 'com.taejinsoft.woorimoim',
+  // ⚠️ 판매용은 «2»가 붙는다 — 옛 이름은 Play 에서 다시 못 쓴다(2026-09-04)
+  'woori': 'com.taejinsoft.woorimoim2',
   'apsan': 'com.taejinsoft.apsanclub',
 };
 

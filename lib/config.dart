@@ -70,7 +70,7 @@ class Cfg {
      (값은 android/app/src/{woori,apsan}/google-services.json 과 같아야 한다 — 시험이 대조한다) */
   static const _androidWoori = FirebaseOptions(
     apiKey: 'AIzaSyAfcPqqeVz2STcl-yiHqZLJ2KSa0uPvFHY',
-    appId: '1:267251126205:android:a90f52e90c6b8ffc5accd4',
+    appId: '1:267251126205:android:6f55ddd2d6c1ae8d5accd4', // woorimoim2 (판매용)
     messagingSenderId: '267251126205',
     projectId: 'wedding-246e7',
     storageBucket: 'wedding-246e7.firebasestorage.app',
