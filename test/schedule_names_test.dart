@@ -11,6 +11,14 @@ import 'package:woorimoim/ui/calendar.dart';
 void main() {
   final st = AppState.i;
 
+  /* ⚠️ 날짜를 «박아 두면» 그 날이 지나는 순간 시험이 깨진다 —
+     일정 탭은 «다가오는 모임»만 그리므로 지난 날짜는 아예 안 나온다
+     (2026-09-06 에 겪었다: '2026-09-04' 로 박아 두었더니 이틀 뒤 넷이 깨졌다).
+     늘 «사흘 뒤»로 만든다. */
+  final _d = DateTime.now().add(const Duration(days: 3));
+  final day = '${_d.year}-${_d.month.toString().padLeft(2, '0')}-'
+      '${_d.day.toString().padLeft(2, '0')}';
+
   void seed() {
     st.profile = {'code': 'C', 'slot': 'me', 'name': '나'};
     final members = <String, dynamic>{
@@ -20,25 +28,25 @@ void main() {
     for (var i = 0; i < 12; i++) {
       members['u$i'] = {'uid': 'u$i', 'name': '김아무개$i번회원'};
     }
-    final rsvp = <String, dynamic>{'2026-09-04_me': 'yes'};
+    final rsvp = <String, dynamic>{'${day}_me': 'yes'};
     for (var i = 0; i < 12; i++) {
-      rsvp['2026-09-04_u$i'] = i.isEven ? 'yes' : 'no';
+      rsvp['${day}_u$i'] = i.isEven ? 'yes' : 'no';
     }
     // 탈퇴자·옛 번호 표는 이름에 안 껴야 한다
-    rsvp['2026-09-04_gone'] = 'yes';
+    rsvp['${day}_gone'] = 'yes';
     st.setCouple({
       'title': '앞산 배드민턴',
       'members': members,
       'events': {
         'e1': {
           'id': 'e1', 'type': 'event', 'title': '대회 연습',
-          'date': '2026-09-04', 'time': '10:00', 'place': '앞산 체육관',
+          'date': day, 'time': '10:00', 'place': '앞산 체육관',
           'rsvp': rsvp,
         },
       },
     });
     st.setItems([
-      {'id': 'e1', 'type': 'event', 'title': '대회 연습', 'date': '2026-09-04',
+      {'id': 'e1', 'type': 'event', 'title': '대회 연습', 'date': day,
        'time': '10:00', 'place': '앞산 체육관', 'rsvp': rsvp},
     ]);
   }
@@ -51,12 +59,12 @@ void main() {
   test('rsvpNames 는 지금 회원만 — 탈퇴자·옛 번호는 안 낀다', () {
     seed();
     final e = st.items.first;
-    final yes = Logic.rsvpNames(e, '2026-09-04', 'yes');
+    final yes = Logic.rsvpNames(e, day, 'yes');
     expect(yes.contains('나'), isTrue);
     expect(yes.any((n) => n.contains('김아무개')), isTrue);
     // 'gone'은 members 에 없으니 빠져야
     expect(yes.length, 7, reason: '나 + 짝수 6명 = 7 (탈퇴자 gone 제외)');
-    final no = Logic.rsvpNames(e, '2026-09-04', 'no');
+    final no = Logic.rsvpNames(e, day, 'no');
     expect(no.length, 6);
   });
 
