@@ -618,35 +618,125 @@ class _ClubPhotoState extends State<ClubPhoto> {
 /* [caption] 은 «웹에서 적은 사진 설명»이다.
    웹 사진첩은 설명·태그를 사진에 달아 두는데, 앱이 안 보여 주면
    같은 모임을 쓰면서도 **앱 회원만 그 글을 못 읽는다.** */
-void showPhotoViewer(BuildContext context, String src, {String? caption}) {
-  final note = (caption ?? '').trim();
+void showPhotoViewer(BuildContext context, String src, {String? caption}) =>
+    showPhotoPages(context, [PhotoShot(src: src, caption: caption)], 0);
+
+/// 크게 볼 사진 한 장. 저장소에 든 사진은 [photoId], 주소가 이미 있으면 [src].
+class PhotoShot {
+  final String? photoId;
+  final String? src;
+  final String? caption;
+  const PhotoShot({this.photoId, this.src, this.caption});
+}
+
+/* 📚 사진을 크게 보면서 «옆으로 밀어» 다음·이전 사진으로 넘어간다.
+
+   ⚠️ 예전에는 누른 그 한 장만 띄웠다. 대화방에 사진이 스무 장 올라와 있어도
+      한 장 보고 닫고, 다시 찾아 누르고를 되풀이해야 했다 (2026-09-23 요청).
+   ⚠️ 확대한 동안에는 **넘기기를 멈춘다** — 안 그러면 확대한 사진을 밀어 보려다
+      다음 사진으로 넘어가 버려 확대가 쓸모없어진다 (사진첩에서 겪은 것과 같다). */
+void showPhotoPages(BuildContext context, List<PhotoShot> pages, int start) {
+  if (pages.isEmpty) return;
+  final at = start.clamp(0, pages.length - 1);
   showDialog(
     context: context,
-    builder: (d) => Dialog.fullscreen(
+    builder: (d) => _PhotoPagesView(pages: pages, start: at),
+  );
+}
+
+class _PhotoPagesView extends StatefulWidget {
+  final List<PhotoShot> pages;
+  final int start;
+  const _PhotoPagesView({required this.pages, required this.start});
+
+  @override
+  State<_PhotoPagesView> createState() => _PhotoPagesViewState();
+}
+
+class _PhotoPagesViewState extends State<_PhotoPagesView> {
+  late final PageController _pc = PageController(initialPage: widget.start);
+  late int _i = widget.start;
+  bool _zoomed = false;
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final many = widget.pages.length > 1;
+    final note = (widget.pages[_i].caption ?? '').trim();
+    return Dialog.fullscreen(
       backgroundColor: Colors.black,
       child: Stack(
         children: [
-          // 사진 «바깥»의 까만 데를 누르면 닫힌다 (사진을 누르면 안 닫힌다 — 확대하다 잘못 닫히지 않게)
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.pop(d),
+          PageView.builder(
+            controller: _pc,
+            physics: _zoomed
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
+            itemCount: widget.pages.length,
+            onPageChanged: (i) => setState(() => _i = i),
+            /* ⚠️ 닫는 길을 «장마다» 깐다. 넘기는 판(PageView)이 화면을 덮고 있어서
+               그 «밑에» 깔아 둔 까만 데는 손이 닿지 않는다 — 예전처럼 한 장에
+               한 겹만 깔면 사진 바깥을 눌러도 안 닫힌다(시험이 잡았다).
+               사진 자체를 누를 때는 안 닫는다 — 확대하다 잘못 닫히지 않게. */
+            itemBuilder: (c, i) => Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ),
+                Center(
+                  child: GestureDetector(
+                    onTap: () {}, // 사진을 누른 것은 «닫으라는 뜻이 아니다»
+                    child: ZoomPhoto(
+                      key: ValueKey('page$i'),
+                      photoId: widget.pages[i].photoId,
+                      src: widget.pages[i].src,
+                      onZoom: (z) {
+                        if (z != _zoomed) setState(() => _zoomed = z);
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Center(
-            child: InteractiveViewer(child: ClubPhoto.fromSrc(src, fit: BoxFit.contain)),
           ),
           SafeArea(
             child: Align(
               alignment: Alignment.topRight,
               child: IconButton(
                 tooltip: '닫기',
-                onPressed: () => Navigator.pop(d),
+                onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close, color: Colors.white),
                 style: IconButton.styleFrom(backgroundColor: const Color(0x66000000)),
               ),
             ),
           ),
+          // 🔢 몇 장 중 몇 째인지 — 넘길 것이 더 있는지 알려 준다
+          if (many)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0x66000000),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text('${_i + 1} / ${widget.pages.length}',
+                        style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  ),
+                ),
+              ),
+            ),
           // 📝 사진 설명 — 있을 때만 아래에 깔린다 (없으면 사진을 가리지 않는다)
           if (note.isNotEmpty)
             SafeArea(
@@ -666,8 +756,60 @@ void showPhotoViewer(BuildContext context, String src, {String? caption}) {
             ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+/* 🔍 확대해서 볼 수 있는 사진 한 장.
+
+   🔴 `InteractiveViewer` 를 그냥 두면 **좌우로 미는 손짓을 통째로 먹는다** —
+      그래서 다음 사진으로 «넘길 수가 없었다»(2026-08-30 실측).
+      확대하지 않은 동안에는 밀기를 끄고, 확대했을 때만 켠다. */
+class ZoomPhoto extends StatefulWidget {
+  final String? photoId;
+  final String? src;
+  final ValueChanged<bool> onZoom;
+  const ZoomPhoto({super.key, this.photoId, this.src, required this.onZoom});
+
+  @override
+  State<ZoomPhoto> createState() => _ZoomPhotoState();
+}
+
+class _ZoomPhotoState extends State<ZoomPhoto> {
+  final _tc = TransformationController();
+  bool _on = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tc.addListener(_check);
+  }
+
+  @override
+  void dispose() {
+    _tc.removeListener(_check);
+    _tc.dispose();
+    super.dispose();
+  }
+
+  void _check() {
+    // 1보다 커졌으면 «확대한 것» — 아주 작은 흔들림은 무시한다
+    final z = _tc.value.getMaxScaleOnAxis() > 1.02;
+    if (z == _on) return;
+    setState(() => _on = z);
+    widget.onZoom(z);
+  }
+
+  @override
+  Widget build(BuildContext context) => InteractiveViewer(
+        transformationController: _tc,
+        panEnabled: _on, // 확대했을 때만 민다 — 아니면 넘기기가 막힌다
+        minScale: 1,
+        maxScale: 5,
+        child: widget.src != null
+            ? ClubPhoto.fromSrc(widget.src!, fit: BoxFit.contain)
+            : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain),
+      );
 }
 
 /* 🔢 「몇 개월치인가」를 고르거나 **직접 적는** 시트.

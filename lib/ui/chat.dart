@@ -461,6 +461,26 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   /// 옛 대화를 불러오는 중에는 맨 아래로 끌어내리지 않는다 (읽던 자리를 잃는다)
   bool get _keepPosition => _loadingOlder;
 
+  /* 📚 사진을 누르면 «이 방에 올라온 사진 전부»를 넘겨 가며 본다.
+
+     ⚠️ 예전에는 누른 그 한 장만 띄웠다 — 사진이 여러 장 올라온 날에는
+        한 장 보고 닫고, 위로 올라가 다시 누르기를 되풀이해야 했다 (2026-09-23 요청).
+     ⚠️ «지금 화면에 든 대화»에서만 모은다. 더 위의 사진은 「이전 대화 더 보기」로
+        불러온 만큼만 들어온다 — 없는 것을 넘기는 척하지 않는다. */
+  void _openPhotos(List<Map<String, dynamic>> msgs, Map<String, dynamic> tapped) {
+    final shots = <PhotoShot>[];
+    var at = 0;
+    for (final m in msgs) {
+      if (m['kind'] != 'img') continue;
+      final id = m['photoId'] as String?;
+      if (id == null) continue;
+      if (identical(m, tapped) || m['id'] == tapped['id']) at = shots.length;
+      shots.add(PhotoShot(photoId: id));
+    }
+    if (shots.isEmpty) return;
+    showPhotoPages(context, shots, at);
+  }
+
   Future<void> _menu(Map<String, dynamic> m) async {
     /* ⚠️ 여기는 «권한»이다 — `Logic.isMe` 로 넓히면 안 된다.
        서버는 글에 적힌 번호만 보므로 폰 바꾸기 «전» 글은 지우기를 거절한다
@@ -659,6 +679,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                           othersCount: st.memberList.length - 1,
                           onLongPress: () => _menu(m),
                           onPhotoShown: _followGrowth,
+                          onPhotoTap: () => _openPhotos(msgs, m),
                         ),
                       ],
                     );
@@ -807,6 +828,8 @@ class _Bubble extends StatelessWidget {
   final VoidCallback onLongPress;
   /// 사진이 그려져 «키가 자랐을 때» 알린다 — 목록이 따라 내려갈 수 있게
   final VoidCallback onPhotoShown;
+  /// 사진을 누르면 «이 방의 사진 전부»를 넘겨 가며 본다 (이 사진부터)
+  final VoidCallback? onPhotoTap;
 
   const _Bubble({
     required this.msg,
@@ -816,6 +839,7 @@ class _Bubble extends StatelessWidget {
     required this.othersCount,
     required this.onLongPress,
     required this.onPhotoShown,
+    this.onPhotoTap,
   });
 
   @override
@@ -881,6 +905,7 @@ class _Bubble extends StatelessWidget {
                 photoId: msg['photoId'] as String?,
                 width: 200,
                 decodeWidth: 600,
+                onTap: onPhotoTap,
                 onShown: onPhotoShown)
           else if (msg['kind'] == 'poll')
             PollCard(msg: msg, mine: mine, myUid: Store.i.myUid)

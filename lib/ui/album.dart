@@ -617,7 +617,7 @@ class _PhotoPageState extends State<PhotoPage> {
               itemCount: widget.rows.length,
               onPageChanged: (i) => setState(() => _i = i),
               itemBuilder: (c, i) => Center(
-                child: _ZoomPhoto(
+                child: ZoomPhoto(
                   key: ValueKey(widget.rows[i]['id']),
                   photoId: widget.rows[i]['photoId'] as String?,
                   onZoom: (z) {
@@ -794,53 +794,4 @@ class _PhotoPageState extends State<PhotoPage> {
     toast(context, '사진을 지웠어요');
     Navigator.pop(context);
   }
-}
-
-/* 🔍 확대해서 볼 수 있는 사진 한 장.
-
-   🔴 `InteractiveViewer` 를 그냥 두면 **좌우로 미는 손짓을 통째로 먹는다** —
-      그래서 사진첩에서 다음 사진으로 «넘길 수가 없었다»(2026-08-30 실측).
-      확대하지 않은 동안에는 밀기를 끄고, 확대했을 때만 켠다. */
-class _ZoomPhoto extends StatefulWidget {
-  final String? photoId;
-  final ValueChanged<bool> onZoom;
-  const _ZoomPhoto({super.key, required this.photoId, required this.onZoom});
-
-  @override
-  State<_ZoomPhoto> createState() => _ZoomPhotoState();
-}
-
-class _ZoomPhotoState extends State<_ZoomPhoto> {
-  final _tc = TransformationController();
-  bool _on = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tc.addListener(_check);
-  }
-
-  @override
-  void dispose() {
-    _tc.removeListener(_check);
-    _tc.dispose();
-    super.dispose();
-  }
-
-  void _check() {
-    // 1보다 커졌으면 «확대한 것» — 아주 작은 흔들림은 무시한다
-    final z = _tc.value.getMaxScaleOnAxis() > 1.02;
-    if (z == _on) return;
-    setState(() => _on = z);
-    widget.onZoom(z);
-  }
-
-  @override
-  Widget build(BuildContext context) => InteractiveViewer(
-        transformationController: _tc,
-        panEnabled: _on, // 확대했을 때만 민다 — 아니면 넘기기가 막힌다
-        minScale: 1,
-        maxScale: 5,
-        child: ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain),
-      );
 }

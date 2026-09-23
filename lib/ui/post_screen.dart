@@ -106,6 +106,20 @@ class _PostScreenState extends State<PostScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      if (post['pinned'] == true) ...[
+                        Container(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text('📌 고정',
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w800)),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       if (post['notice'] == true) ...[
                         Container(
                           padding:

@@ -552,9 +552,9 @@ class _HomeTabState extends State<HomeTab> {
 
   // ── 📔 최근 게시판 ──────────────────────────────────────────────
   List<Widget> _boardCard(BuildContext context, AppState st) {
-    final diaries = [...Moderation.hide(st.by('diary'))]
-      ..sort((a, b) =>
-          ((b['createdAt'] as num?) ?? 0).compareTo((a['createdAt'] as num?) ?? 0));
+    /* 고정·공지를 게시판 탭과 «같은 차례»로 세운다 — 홈에 보이는 글과
+       들어가서 보는 맨 위 글이 다르면 회원은 글이 사라진 줄 안다. */
+    final diaries = [...Moderation.hide(st.by('diary'))]..sort(Logic.byNotice);
     if (diaries.isEmpty) return const [];
     final d = diaries.first;
     final photos = st.by('photo').length;

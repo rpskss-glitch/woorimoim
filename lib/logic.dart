@@ -1033,12 +1033,18 @@ class Logic {
     return null;
   }
 
-  /// 게시판 차례 — «공지가 먼저», 그 안에서 새 글이 먼저.
+  /// 게시판 차례 — «고정한 글이 맨 위», 그다음 «공지», 그 안에서 새 글이 먼저.
   ///
   /// ⚠️ 예전에는 올린 때 하나로만 줄을 세워서, 운영진이 「📌 공지로 올리기」를 켜도
   /// **다음 글 하나만 올라오면 그대로 밀렸다.** 운영진만 켤 수 있는 스위치인데
   /// 글쓴이 이름 옆에 📌 를 그리는 것 말고는 하는 일이 없었다.
+  ///
+  /// ⚠️ 「고정」은 공지와 **따로** 둔다 — 회칙·계좌번호처럼 «공지는 아니지만 늘 위에
+  /// 있어야 하는 글»이 있다. 공지로만 올리면 새 공지가 생길 때마다 아래로 밀린다
+  /// (2026-09-23 요청).
   static int byNotice(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final ap = a['pinned'] == true, bp = b['pinned'] == true;
+    if (ap != bp) return ap ? -1 : 1;
     final an = a['notice'] == true, bn = b['notice'] == true;
     if (an != bn) return an ? -1 : 1;
     return asInt(b['createdAt']).compareTo(asInt(a['createdAt']));

@@ -203,6 +203,7 @@ class _PostCard extends StatelessWidget {
        서버는 글에 적힌 번호만 보므로 지우기를 거절한다(눌러도 안 되는 헛단추가 된다). */
     final mine = item['by'] == Store.i.myUid;
     final notice = item['notice'] == true;
+    final pinned = item['pinned'] == true;
     final id = item['id'] as String?;
     /* 📄 글을 누르면 «글 안»으로 들어간다 — 거기서 전문을 읽고 댓글을 단다.
        목록에서는 글이 잘려 보이므로, 들어갈 길이 없으면 뒷내용을 읽을 방법이 아예 없다. */
@@ -235,6 +236,20 @@ class _PostCard extends StatelessWidget {
               if (mine || st.isAdmin)
                 PopupMenuButton<String>(
                   onSelected: (v) async {
+                    /* 📌 위에 고정 — 회칙·계좌번호처럼 «늘 맨 위에 있어야 하는 글».
+                       ⚠️ 운영진만 할 수 있다. 글쓴이 아무나 고정하면
+                          너도나도 올려 붙여 게시판 맨 위가 뒤죽박죽이 된다. */
+                    if (v == 'pin') {
+                      final code = st.code;
+                      final id = item['id'] as String?;
+                      if (code == null || id == null) return;
+                      await Store.i
+                          .updateItem(code, id, 'diary', {'pinned': !pinned});
+                      if (!context.mounted) return;
+                      toast(context, pinned ? '고정을 풀었어요' : '맨 위에 고정했어요 📌');
+                      onChanged();
+                      return;
+                    }
                     if (v != 'del') return;
                     final ok = await confirmSheet(context, '이 글을 지울까요?', '되돌릴 수 없어요',
                         okLabel: '지우기', danger: true);
@@ -252,11 +267,29 @@ class _PostCard extends StatelessWidget {
                     toast(context, '글을 지웠어요');
                     onChanged();
                   },
-                  itemBuilder: (_) => const [PopupMenuItem(value: 'del', child: Text('지우기'))],
+                  itemBuilder: (_) => [
+                    if (st.isAdmin)
+                      PopupMenuItem(
+                          value: 'pin',
+                          child: Text(pinned ? '고정 풀기' : '📌 맨 위에 고정')),
+                    const PopupMenuItem(value: 'del', child: Text('지우기')),
+                  ],
                 ),
             ],
           ),
           const SizedBox(height: 10),
+          if (pinned) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.tertiaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text('📌 고정',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 8),
+          ],
           if (notice) ...[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
