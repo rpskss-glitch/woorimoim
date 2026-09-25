@@ -350,6 +350,9 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     // 🔒 잠긴 모임이면 고르기 «전에» 말한다 — 올렸다 도로 지우고 연결 탓하지 않게 (board 의 _addPhotos 와 같다)
     final locked = Store.lockReason();
     if (locked != null) return toast(context, locked);
+    /* 🔒 «누른 방»을 지금 잡아 둔다 — 올라가는 사이 방을 바꾸면 남은 장이 바꾼 방으로 갔다.
+       운영진 방 사진이 회원 모두에게 보일 수 있었다(2026-09-25 조사). */
+    final room = _roomTag;
     var picked = await ImagePicker()
         .pickMultiImage(maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
     if (picked.isEmpty) return;
@@ -365,7 +368,13 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
 
     var fail = 0;
     for (var i = 0; i < picked.length; i++) {
-      final bytes = await picked[i].readAsBytes();
+      final Uint8List bytes;
+      try {
+        bytes = await picked[i].readAsBytes();
+      } catch (_) {
+        fail++; // 고른 뒤 지워졌거나 못 읽는 파일 — 이 장만 빼고 나머지는 보낸다
+        continue;
+      }
       final photoId = await Store.i.savePhoto(code, bytes);
       if (photoId == null) {
         fail++;
@@ -379,7 +388,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
         'kind': 'img',
         'photoId': photoId,
         'text': '',
-        ..._roomTag, // 🔴 이게 없어서 운영진 방 사진이 모두에게 보였다
+        ...room, // 🔴 이게 없어서 운영진 방 사진이 모두에게 보였다
         if (i == 0 && reply != null) 'replyTo': reply['id'],
         if (thumb != null) 'thumb': thumb,
       });
@@ -619,6 +628,17 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       if (!mounted) return;
       if (!ok) return saveFailToast(context, '반응을 남기지 못했어요 — 연결을 확인해주세요');
     } else if (pick == 'del') {
+      /* ⚠️ 한 번 더 묻는다 — 예전에는 누르자마자 지워졌고 되돌리기도 없었다(2026-09-25 조사).
+         운영진이 «남의 대화»를 지울 때는 누구 것인지 적어 둔다. */
+      if (!mounted) return;
+      final sure = await confirmSheet(
+        context,
+        mine ? '이 메시지를 지울까요?' : '${AppState.i.nameOf(m['by'] as String?)}님의 대화를 지울까요?',
+        '회원 모두의 화면에서 사라지고 되돌릴 수 없어요',
+        okLabel: '지우기',
+        danger: true,
+      );
+      if (!sure || !mounted) return;
       final ok = await Store.i.deleteItem(code, m['id'] as String, 'msg');
       // 창 밖이면 구독이 안 알려준다 — 안 빼면 «지운 대화가 화면에 그대로» 남는다
       if (ok) await Store.i.syncOlder(m['id'] as String, 'msg', removed: true);

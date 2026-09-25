@@ -1,3 +1,8 @@
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:image/image.dart' as img;
+
 import 'logic.dart';
 import 'state.dart';
 
@@ -35,7 +40,10 @@ class FeeSheet {
     var a = Logic.ymOfKey(fromYm), b = Logic.ymOfKey(toYm);
     if (a == null || b == null) return monthKeys(6);
     if (b < a) { final t = a; a = b; b = t; }
-    final n = (b - a + 1).clamp(1, 120);
+    /* 120개월(10년)을 넘으면 «옛 달»을 버린다 — 이번 달이 표 끝에 남아야 한다.
+       ⚠️ 예전에는 앞에서부터 120칸을 세어 **끝(가장 최근 달)**이 잘렸다(2026-09-25 에뮬). */
+    if (b - a + 1 > 120) a = b - 119;
+    final n = b - a + 1;
     return [for (var i = 0; i < n; i++) Logic.ymKey(a + i)];
   }
 
@@ -213,6 +221,41 @@ class FeeSheet {
   }
 
   /// 기간 한 줄 — 「3월~9월」, 해가 걸치면 「25년 3월~26년 2월」.
+  /* 🖼 대화방에 올릴 표 그림의 크기.
+     ⚠️ 예전에는 늘 3배로 그렸다 — 기간은 120개월까지 고를 수 있어, 긴 표는 가로가 수만 px 가 되어
+        폰 그래픽이 못 그리거나, 보관함 한도(한 장 2MB)에 걸려 「연결을 확인해주세요」만 나왔다
+        (2026-09-25 조사). 한 변 4096px · 1,200만 화소 안으로 배율을 낮춘다. */
+  static const captureMaxSide = 4096.0;
+  static const captureMaxPixels = 12e6;
+
+  /// 표(논리 크기 w×h)를 그릴 배율 — 1배보다 줄여야 하면 null(글자를 못 읽는다 → 기간을 나눠야 한다)
+  static double? captureRatio(double w, double h) {
+    if (w <= 0 || h <= 0) return 3;
+    var r = 3.0;
+    r = math.min(r, captureMaxSide / math.max(w, h));
+    r = math.min(r, math.sqrt(captureMaxPixels / (w * h)));
+    return r < 1 ? null : r;
+  }
+
+  /// 보관함 규칙(2MB 미만)보다 여유 있게
+  static const uploadLimit = 1800 * 1024;
+
+  /// 한도를 넘는 그림은 JPG 로 줄인다 — 한도 안이면 그대로, 끝내 못 넣으면 null
+  static Uint8List? fitUpload(Uint8List bytes) {
+    if (bytes.length <= uploadLimit) return bytes;
+    var src = img.decodeImage(bytes);
+    if (src == null) return null;
+    for (var round = 0; round < 6; round++) {
+      for (final q in const [88, 75, 62]) {
+        final out = Uint8List.fromList(img.encodeJpg(src!, quality: q));
+        if (out.length <= uploadLimit) return out;
+      }
+      // 그래도 크면 가로세로를 0.8배로 줄여 다시
+      src = img.copyResize(src!, width: (src.width * 0.8).round());
+    }
+    return null;
+  }
+
   static String spanLabel(List<String> months) {
     if (months.isEmpty) return '';
     String one(String ym) => _spansYears(months)

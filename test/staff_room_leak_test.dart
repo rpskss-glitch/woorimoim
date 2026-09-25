@@ -50,14 +50,17 @@ void main() {
          한 곳(_roomTag)에서 만들어 세 곳이 그걸 쓴다. */
       expect(chat.contains('get _roomTag'), isTrue,
           reason: '방 표시를 한 자리에서 만들지 않는다 — 또 빠뜨린다');
-      expect(RegExp(r'\.\.\._roomTag').allMatches(chat).length, 3,
-          reason: '글·사진·투표 셋 다 붙여야 한다 (지금 붙은 곳이 셋이 아니다)');
+      // 사진은 «누른 방»을 먼저 잡아 두고(`final room = _roomTag;`) 그걸 붙인다 (photo_room_switch_test)
+      expect(RegExp(r'\.\.\._roomTag').allMatches(chat).length, 2,
+          reason: '글·투표는 그 자리에서 붙인다');
+      expect(chat, contains('final room = _roomTag;'));
+      expect(chat, contains('...room,'), reason: '사진에 방 표시가 빠졌다');
     });
 
     test('사진 올리는 자리에 붙어 있다', () {
       final at = chat.indexOf("'kind': 'img'");
       expect(at, greaterThan(0));
-      expect(chat.substring(at, at + 260).contains('_roomTag'), isTrue,
+      expect(chat.substring(at, at + 260).contains('...room,'), isTrue,
           reason: '운영진 방에서 올린 사진이 모두의 방으로 샌다');
     });
 

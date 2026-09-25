@@ -1,6 +1,6 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
@@ -86,15 +86,22 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
     if (b == null) return;
     if (!mounted) return;
 
+    // 120개월보다 길면 표가 실제로 보여 줄 기간으로 맞춘다 — 칩·안내가 표와 같은 기간을 말하게
+    final picked = FeeSheet.monthRange(Logic.ymKey(Logic.ymOf(a)), Logic.ymKey(Logic.ymOf(b)));
+    final cut = (Logic.ymOf(a) - Logic.ymOf(b)).abs() + 1 > picked.length;
     setState(() {
-      _fromYm = Logic.ymKey(Logic.ymOf(a));
-      _toYm = Logic.ymKey(Logic.ymOf(b));
+      _fromYm = picked.first;
+      _toYm = picked.last;
     });
     // 기간을 바꾸면 표를 «맨 끝»(가장 최근 달)으로 — 안 그러면 옛 달만 보인다
     WidgetsBinding.instance.addPostFrameCallback((_) => _toNow());
     if (!mounted) return;
     final n = FeeSheet.monthRange(_fromYm!, _toYm!).length;
-    toast(context, '$_fromYm ~ $_toYm · $n개월을 봅니다');
+    toast(
+        context,
+        cut
+            ? '10년이 넘어 최근 120개월만 봅니다 ($_fromYm ~ $_toYm)'
+            : '$_fromYm ~ $_toYm · $n개월을 봅니다');
   }
 
   /// 「최근 N개월」로 — 직접 고른 기간은 푼다(둘이 겹치면 어느 쪽인지 모른다)
@@ -447,9 +454,16 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
 
     setState(() => _busy = true);
     try {
-      final bytes = await _capture(_tab == 0
+      final shot = await _capture(_tab == 0
               ? _feeTable(months, scroll: false)
               : _outTable(months, scroll: false));
+      if (shot.tooBig) {
+        if (mounted) toast(context, '기간이 너무 길어요 — 1~2년씩 나눠서 올려주세요');
+        return;
+      }
+      // 보관함 한도(2MB)를 넘으면 JPG 로 줄인다 — 넘긴 채 올리면 거절되고 엉뚱한 «연결» 탓을 한다
+      final png = shot.bytes;
+      final bytes = png == null ? null : await compute(FeeSheet.fitUpload, png);
       if (bytes == null) {
         if (mounted) toast(context, '표를 그림으로 만들지 못했어요');
         return;
@@ -485,7 +499,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
      ⚠️ 화면에 붙인 `RepaintBoundary` 를 찍는 흔한 방법은 **스크롤 밖을 못 담는다** —
         회원 30명이면 화면에 보이는 예닐곱 줄만 찍혀 나간다.
         그래서 여기서는 그리기 나무를 손으로 세워 표 «전체»를 담는다. */
-  Future<Uint8List?> _capture(Widget table) async {
+  Future<({Uint8List? bytes, bool tooBig})> _capture(Widget table) async {
     try {
       final boundary = RenderRepaintBoundary();
       final owner = PipelineOwner();
@@ -523,12 +537,16 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
         ..flushCompositingBits()
         ..flushPaint();
 
-      final img = await boundary.toImage(pixelRatio: 3);
+      // 표가 크면 배율을 낮춘다 — 늘 3배면 긴 기간·큰 모임에서 그래픽 한도를 넘는다
+      final ratio = FeeSheet.captureRatio(boundary.size.width, boundary.size.height);
+      if (ratio == null) return (bytes: null, tooBig: true);
+      final img = await boundary.toImage(pixelRatio: ratio);
       final data = await img.toByteData(format: ui.ImageByteFormat.png);
-      return data?.buffer.asUint8List();
+      img.dispose();
+      return (bytes: data?.buffer.asUint8List(), tooBig: false);
     } catch (e) {
       debugPrint('표 그림 만들기 실패: $e');
-      return null;
+      return (bytes: null, tooBig: false);
     }
   }
 }
