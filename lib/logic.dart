@@ -1030,6 +1030,11 @@ class Logic {
         표에만 반영하면 표는 「면」인데 회비 화면은 「3달 밀림」이라 하고,
         회비를 받으려 하면 면제한 달부터 채워진다 — 같은 앱이 세 가지 말을 한다.
      ⚠️ 나간 사람은 `former` 에 적힌다 — 둘 다 본다. */
+  /// 🏦 그 달에 «낼 사람» — 그 달을 면제받은 회원은 뺀다.
+  /// ⚠️ 홈 카드가 면제 회원을 「미납」 명단과 전체 수에 넣고 있었다(2026-09-26 조사) — 회비 표는 「면」으로 그린다.
+  static List<Map<String, dynamic>> monthDue(List<Map<String, dynamic>> members, String month) =>
+      [for (final m in members) if (!feeFree(m['uid'] as String? ?? '').contains(month)) m];
+
   static Set<String> feeFree(String uid) {
     final m = AppState.i.members[uid];
     final rec = m is Map ? m : (AppState.i.former[uid] is Map

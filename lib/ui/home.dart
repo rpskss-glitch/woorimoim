@@ -405,7 +405,8 @@ class _HomeTabState extends State<HomeTab> {
   // ── 🏦 이번 달 회비 — 몇 명 냈고 누가 남았나 (웹의 초록 카드) ────
   List<Widget> _feeCard(
       BuildContext context, AppState st, String month, int feeAmount) {
-    final members = st.memberList;
+    // 이번 달을 면제받은 회원은 «낼 사람»에서 뺀다 — 안 빼면 매달 「미납」 명단에 오른다(2026-09-26 조사)
+    final members = Logic.monthDue(st.memberList, month);
     if (members.isEmpty) return const [];
     final paid = members
         .where((m) => Logic.paidIn(m['uid'] as String? ?? '', month))
@@ -445,6 +446,9 @@ class _HomeTabState extends State<HomeTab> {
             Text(
               iPaid
                   ? '나는 냈어요 ✓${unpaidNames.isEmpty ? ' — 모두 냈어요 🎉' : ' — 아직 ${unpaidNames.length}명 남았어요'}'
+                  // 이번 달을 면제받았으면 «안 냈어요»가 아니다 (2026-09-26 조사)
+                  : Logic.feeFree(Store.i.myUid).contains(month)
+                      ? '이번 달은 회비 면제예요${unpaidNames.isEmpty ? '' : ' — ${unpaidNames.length}명 남았어요'}'
                   : myLate.isEmpty
                       ? '이번 달 회비를 아직 안 냈어요'
                       /* «이상»을 빼먹으면 안 된다 — 밀린 달은 12까지만 세므로,
