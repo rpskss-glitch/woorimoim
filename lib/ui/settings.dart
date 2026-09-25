@@ -958,6 +958,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) toast(context, '회비가 너무 커요 — 자릿수를 다시 확인해주세요');
       return;
     }
+    /* ⚠️ 켜져 있던 회비를 «끄는» 것은 한 번 더 묻는다 — 칸을 지운 채 저장만 눌러도 0원이 되어
+          회원들의 밀린 회비가 전부 안 보이고 홈의 회비 카드도 사라졌다(2026-09-25 조사). */
+    if (cur > 0 && amount == 0) {
+      if (!mounted) return;
+      final off = await confirmSheet(
+        context,
+        '회비를 쓰지 않도록 할까요?',
+        '칸이 비어 있어 0원으로 저장돼요. 끄면 회원들의 밀린 회비가 안 보이고 홈의 회비 카드도 사라져요.\n'
+            '(기록은 남아 있어 다시 금액을 넣으면 돌아와요)',
+        okLabel: '회비 끄기',
+        danger: true,
+      );
+      if (!off) return;
+    }
     final code = st.code;
     if (code == null) return;
     try {
