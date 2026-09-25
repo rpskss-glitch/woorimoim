@@ -142,6 +142,8 @@ class _CalendarTabState extends State<CalendarTab> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      // 끌어 내리기는 막는다 — 묻지 못하고 닫혀 적은 것이 사라진다(바깥·뒤로 가기는 폼이 묻는다)
+      enableDrag: false,
       builder: (c) => _EventForm(edit: edit),
     );
     if (ok == true) _r();
@@ -579,7 +581,23 @@ class _EventFormState extends State<_EventForm> {
         _time = TimeOfDay(hour: int.tryParse(p[0]) ?? 19, minute: int.tryParse(p[1]) ?? 0);
       }
     }
+    // 처음 모습을 적어 두고, 글자가 바뀌면 «닫아도 되는지»를 다시 따진다
+    _start = [_title.text, _place.text, _memo.text];
+    for (final c in [_title, _place, _memo]) {
+      c.addListener(_r);
+    }
   }
+
+  late final List<String> _start;
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
+  /// 처음과 달라진 글자가 있는가 — 있으면 닫기 전에 묻는다(2026-09-26, 게시판 글 쓰기와 같은 고침)
+  bool get _dirty =>
+      _title.text.trim() != _start[0].trim() ||
+      _place.text.trim() != _start[1].trim() ||
+      _memo.text.trim() != _start[2].trim();
 
   @override
   void dispose() {
@@ -657,7 +675,17 @@ class _EventFormState extends State<_EventForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    /* ✍️ 적은 것이 있으면 바깥·뒤로 가기에도 바로 닫지 않고 묻는다(저장은 이 문을 안 거친다). */
+    return PopScope(
+      canPop: !_dirty || _busy,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final drop = await confirmSheet(context, '쓰던 글을 버릴까요?', '지금 창을 닫으면 적은 내용이 사라져요.',
+            okLabel: '버리기', danger: true);
+        if (!drop || !context.mounted) return; // 「취소」면 적은 것 그대로 둔다
+        Navigator.pop(context);
+      },
+      child: Padding(
       padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).viewPadding.bottom + 18),
       child: SingleChildScrollView(
         child: Column(
@@ -796,6 +824,7 @@ class _EventFormState extends State<_EventForm> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
