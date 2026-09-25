@@ -243,6 +243,8 @@ class Store {
               운영자에게 요청하면 된다(개인정보 처리방침에 그렇게 적어 두었다). */
   Future<bool> deleteMyData(String code) async {
     final uid = myUid;
+    // 내 얼굴 사진(아바타 원본) — 지우기가 되면 보관함에서도 치운다(아래)
+    String? myPhoto;
     try {
       /* 👑 내가 방장이면 나가면서 **다음 방장을 같은 트랜잭션에서** 세운다.
          (회장→총무→부회장→가입 순 — Logic.nextOwnerUid)
@@ -251,9 +253,11 @@ class Store {
          ⚠️ 서버 규칙도 이 모양만 허락한다 — 나가는 방장은 아직 staff 이고,
             남을 올리는 것이라 «자기 승격 금지»에도 안 걸린다. */
       final done = await mutateCouple(code, (cur) {
+        myPhoto = null; // 다시 돌 때를 대비해 맨 위에서 되돌린다(트랜잭션 규칙)
         final members = (cur['members'] as Map?)?.cast<String, dynamic>() ?? {};
         final me = members[uid];
         if (me is! Map) return null; // 이미 없다 — 지울 것이 없다
+        myPhoto = me['photo'] is String ? me['photo'] as String : null;
         final iAmOwner = me['role'] == 'owner';
         final succ =
             iAmOwner ? Logic.nextOwnerUid(members, uid) : null;
@@ -281,6 +285,10 @@ class Store {
           },
         };
       });
+      /* 🗑 얼굴 사진 원본도 지운다 — 운영진이 내보낼 때(_kick)는 치우는데 여기만 빠져,
+         스스로 지워도 얼굴 사진이 보관함에 남았다(2026-09-26 조사 · 애플 5.1.1(v) 자료 삭제).
+         ⚠️ 지우기가 «된 뒤»에만 — 거절됐는데 사진만 지우면 남은 회원 칸의 사진이 깨진다. */
+      if (done && myPhoto != null) dropPhotos([myPhoto]);
       return done;
     } catch (e) {
       _err(e, '내 자료 지우기');
