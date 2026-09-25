@@ -455,7 +455,7 @@ class _EventCard extends StatelessWidget {
                        회차까지 넣는 것은, 같은 자리에 «다른 날 카드»가 와도 안 섞이게 하려는 것. */
                     key: ValueKey('${event['id']}|$date|${m['uid']}'),
                     uid: m['uid'] as String,
-                    name: m['name'] as String? ?? '회원',
+                    name: st.listName(m['uid'] as String?), // 같은 이름이면 아바타를 붙여 구별
                     on: Logic.attended(event, date, m['uid'] as String),
                     onTap: st.isAdmin ? () => _toggleAttend(context, m['uid'] as String) : null,
                   ),

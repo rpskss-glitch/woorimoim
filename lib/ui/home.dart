@@ -414,7 +414,7 @@ class _HomeTabState extends State<HomeTab> {
     final unpaidNames = [
       for (final m in members)
         if (!Logic.paidIn(m['uid'] as String? ?? '', month))
-          (m['name'] as String?) ?? '회원'
+          st.listName(m['uid'] as String?) // 같은 이름이면 아바타를 붙여 구별
     ];
     final iPaid = Logic.paidIn(Store.i.myUid, month);
     final myLate = Logic.unpaidMonths(Store.i.myUid);

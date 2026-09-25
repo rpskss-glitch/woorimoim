@@ -521,7 +521,7 @@ class Logic {
      일정 카드에서 참석·불참을 이름으로 바로 보여 주는 데 쓴다.
      ⚠️ 세는 규칙은 rsvpCount 와 똑같이 — 탈퇴자·폰 바꾼 옛 번호를 빼고 사람 단위로 한 번만. */
   static List<String> rsvpNames(Map<String, dynamic> e, String date, String want) =>
-      [for (final u in rsvpUids(e, date, want)) AppState.i.nameOf(u)];
+      [for (final u in rsvpUids(e, date, want)) AppState.i.listName(u)]; // 같은 이름이면 아바타를 붙여 구별
 
   /* 🗝 그 사람이 그 날 남긴 «표»의 열쇠들 — 폰을 바꾸기 «전» 번호까지.
 

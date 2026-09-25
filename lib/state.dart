@@ -215,6 +215,16 @@ class AppState extends ChangeNotifier {
     return '지난 회원';
   }
 
+  /* 👥 얼굴 없이 이름만 늘어놓는 자리(참석·미납 명단, 출석 칸)에 쓸 이름.
+     이 앱은 아바타만 다르면 같은 이름 가입을 허락한다 — 이름만 보이면 「김민수, 김민수」가 된다.
+     그래서 **지금 회원 중 이름이 겹칠 때만** 아바타를 붙인다(2026-09-26 조사). */
+  String listName(String? uid) {
+    final name = nameOf(uid);
+    final dup = members.entries.where((e) =>
+        e.key != uid && e.value is Map && (e.value as Map)['name'] == name);
+    return dup.isEmpty ? name : '$name${emojiOf(uid)}';
+  }
+
   String emojiOf(String? uid) {
     final m = members[uid] as Map?;
     if (m != null) return (m['emoji'] as String?) ?? defaultAvatar;
