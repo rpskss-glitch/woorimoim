@@ -358,11 +358,15 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     final room = _roomTag;
     var picked = await pickManyPhotos(context); // 권한 거절 등은 공용 길이 받아 까닭을 말한다
     if (picked.isEmpty) return;
-    if (picked.length > 5) {
-      picked = picked.take(5).toList();
-      if (mounted) toast(context, '한 번에 5장까지 보낼 수 있어요 (많은 사진은 사진첩에 올려주세요)');
+    /* ⚠️ 안내는 «한 번»에 — 따로 두 번 띄우면 「5장까지」가 곧바로 「올리는 중」에 덮여
+          뒤 사진이 안 간 줄 아무도 몰랐다(2026-09-25 에뮬). */
+    final over = picked.length - 5;
+    if (over > 0) picked = picked.take(5).toList();
+    if (mounted) {
+      toast(context, over > 0
+          ? '한 번에 5장까지라 앞 5장만 올려요 ($over장은 빠져요 — 많은 사진은 사진첩에)'
+          : '사진 ${picked.length}장 올리는 중…');
     }
-    if (mounted) toast(context, '사진 ${picked.length}장 올리는 중…');
 
     // 답장 중이었다면 첫 장에만 붙인다 (모든 장에 붙으면 대화가 어수선해진다)
     final reply = _replyTo;
