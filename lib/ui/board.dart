@@ -227,6 +227,10 @@ class _PostCard extends StatelessWidget {
     final notice = item['notice'] == true;
     final pinned = item['pinned'] == true;
     final id = item['id'] as String?;
+    /* 🚩 남의 글에는 신고·차단 — 애플 1.2. 예전에는 메뉴가 내 글·운영진에게만 떠서
+       회원은 게시판 글을 신고할 길이 없었다(2026-09-25 조사).
+       «남인가»는 폰 바꾸기 전 번호까지 이어 본다(Moderation.canBlock). */
+    final canReport = Moderation.canBlock(item['by'] as String?, Store.i.myUid);
     /* 📄 글을 누르면 «글 안»으로 들어간다 — 거기서 전문을 읽고 댓글을 단다.
        목록에서는 글이 잘려 보이므로, 들어갈 길이 없으면 뒷내용을 읽을 방법이 아예 없다. */
     return InkWell(
@@ -255,9 +259,15 @@ class _PostCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (mine || st.isAdmin)
+              if (mine || st.isAdmin || canReport)
                 PopupMenuButton<String>(
                   onSelected: (v) async {
+                    if (v == 'report') {
+                      return reportSheet(context, item, snippet: postSnippet(item));
+                    }
+                    if (v == 'block') {
+                      return blockSheet(context, item['by'] as String?, onChanged);
+                    }
                     /* 📌 위에 고정 — 회칙·계좌번호처럼 «늘 맨 위에 있어야 하는 글».
                        ⚠️ 운영진만 할 수 있다. 글쓴이 아무나 고정하면
                           너도나도 올려 붙여 게시판 맨 위가 뒤죽박죽이 된다. */
@@ -304,7 +314,12 @@ class _PostCard extends StatelessWidget {
                       PopupMenuItem(
                           value: 'pin',
                           child: Text(pinned ? '고정 풀기' : '📌 맨 위에 고정')),
-                    const PopupMenuItem(value: 'del', child: Text('지우기')),
+                    if (mine || st.isAdmin)
+                      const PopupMenuItem(value: 'del', child: Text('지우기')),
+                    if (canReport) ...[
+                      const PopupMenuItem(value: 'report', child: Text('신고하기')),
+                      const PopupMenuItem(value: 'block', child: Text('이 사람 차단')),
+                    ],
                   ],
                 ),
             ],

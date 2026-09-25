@@ -920,6 +920,14 @@ Future<int?> askMonths(
    ⚠️ 이 둘은 애플 1.2 가 요구하는 것이라 «이용자 글이 보이는 모든 자리»에 있어야 한다.
       대화방에만 두고 게시판 댓글에 빠뜨리면 그 자리가 반려 사유가 된다.
       그래서 화면마다 따로 짜지 않고 여기 한 곳에 둔다 — 길이 둘이면 한쪽만 고쳐진다. */
+/// 신고함에 보일 «무엇을 신고했나» — 게시판 글은 제목까지, 사진은 설명(없으면 「사진」)
+String postSnippet(Map<String, dynamic> item) {
+  final title = ((item['title'] as String?) ?? '').trim();
+  final text = ((item['text'] as String?) ?? (item['caption'] as String?) ?? '').trim();
+  final s = [title, text].where((x) => x.isNotEmpty).join(' — ');
+  return s.isNotEmpty ? s : (item['type'] == 'photo' ? '📷 사진' : '');
+}
+
 Future<void> reportSheet(BuildContext context, Map<String, dynamic> item,
     {String? snippet}) async {
   final code = AppState.i.code;

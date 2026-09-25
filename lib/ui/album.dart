@@ -792,15 +792,29 @@ class _PhotoPageState extends State<PhotoPage> {
     /* ⚠️ 예전 메뉴는 「설명·날짜 고치기」였는데 **설명만** 고쳐졌다 — 날짜를 바꿀 길이 없었다
           (2026-09-25 조사). 지난 모임 사진을 늦게 올리면 오늘 달로 묶여 찾기 어렵다.
           둘을 따로 둔다. */
+    /* 🚩 남의 사진에는 신고·차단 — 애플 1.2. 예전에는 사진첩에 신고할 길이 없었다(2026-09-25 조사). */
+    final by = p['by'] as String?;
+    final canReport = Moderation.canBlock(by, Store.i.myUid);
     final pick = await chooseSheet(context, '사진', '', [
       ['edit', '✏️ 설명 고치기'],
       ['date', '📅 찍은 날짜 바꾸기'],
       ['delete', '🗑 지우기'],
+      if (canReport) ...[
+        ['report', '🚩 신고하기'],
+        ['block', '🚫 ${AppState.i.nameOf(by)}님 차단하기'],
+      ],
     ]);
     if (pick == null || !mounted) return;
     if (pick == 'edit') return _edit(p);
     if (pick == 'date') return _editDate(p);
     if (pick == 'delete') return _delete(p);
+    if (pick == 'report') return reportSheet(context, p, snippet: postSnippet(p));
+    if (pick == 'block') {
+      return blockSheet(context, by, () {
+        // 차단하면 그 사람 사진은 안 보여야 한다 — 크게 보기에서 나간다
+        if (mounted && Moderation.isBlocked(by)) Navigator.pop(context);
+      });
+    }
   }
 
   /// 📅 찍은 날짜 — 사진첩은 이 날짜로 «몇 년 몇 월»에 묶는다.

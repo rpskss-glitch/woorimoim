@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../comments.dart';
 import '../config.dart';
 import '../logic.dart';
 import '../moderation.dart';
@@ -146,6 +147,8 @@ class _MembersScreenState extends State<MembersScreen> {
     if (!mounted) return;
     if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
     Store.i.dropPhotos(Store.photoIdsOf(target));
+    // 게시판 글이면 딸린 댓글도 — 안 지우면 «주인 없는 댓글»이 영영 남는다 (게시판 지우기와 같다)
+    if (target['type'] == 'diary') await Comments.removeAllOf(target['id'] as String);
     await _closeReport(r, quiet: true);
     if (mounted) toast(context, '신고된 글을 지우고 처리했어요');
   }

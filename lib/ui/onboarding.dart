@@ -268,6 +268,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await tryAdminLogin(context, id: raw);
       return;
     }
+    // 위에서 서버에 물어보는(await) 사이 화면이 닫혔을 수 있다 — 닫힌 화면에 글·setState 를 쓰면 터진다
+    if (!mounted) return;
 
     final name = _nameC.text.trim();
     if (name.isEmpty) return toast(context, '이름을 입력해주세요');

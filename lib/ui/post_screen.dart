@@ -55,13 +55,15 @@ class _PostScreenState extends State<PostScreen> {
   Widget build(BuildContext context) {
     final post = _post;
     // 글이 사라졌다 — 안내하고 되돌아간다 (빈 화면에 갇히면 나갈 길을 못 찾는다)
-    if (post == null) {
+    // 차단한 회원의 글 — 목록에서는 이미 가려진다. 알림 등으로 들어와도 여기서 보이면 안 된다
+    final blocked = post != null && Moderation.isBlocked(post['by'] as String?);
+    if (post == null || blocked) {
       return Scaffold(
         appBar: AppBar(title: const Text('게시글')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(30),
-            child: Text('이 글이 지워졌어요',
+            child: Text(blocked ? '차단한 회원의 글이에요' : '이 글이 지워졌어요',
                 style: TextStyle(color: Theme.of(context).hintColor)),
           ),
         ),
@@ -73,8 +75,31 @@ class _PostScreenState extends State<PostScreen> {
         .toList();
     final st = AppState.i;
 
+    final by = post['by'] as String?;
     return Scaffold(
-      appBar: AppBar(title: const Text('게시글')),
+      appBar: AppBar(
+        title: const Text('게시글'),
+        /* 🚩 글 «자체»에도 신고·차단 — 애플 1.2. 예전에는 댓글에만 있었다(2026-09-25 조사). */
+        actions: [
+          if (Moderation.canBlock(by, Store.i.myUid))
+            PopupMenuButton<String>(
+              onSelected: (v) async {
+                if (v == 'report') {
+                  await reportSheet(context, post, snippet: postSnippet(post));
+                } else if (v == 'block') {
+                  await blockSheet(context, by, () {
+                    // 차단하면 그 사람 글은 안 보여야 한다 — 이 화면에 남아 있으면 안 된다
+                    if (mounted && Moderation.isBlocked(by)) Navigator.pop(context);
+                  });
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'report', child: Text('신고하기')),
+                PopupMenuItem(value: 'block', child: Text('이 사람 차단')),
+              ],
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
