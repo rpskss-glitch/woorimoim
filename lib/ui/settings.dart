@@ -747,13 +747,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // 새로 고른 사진은 «보관함에 올리고 번호만» 회원 칸에 적는다 (모임 상징과 같은 방식)
     final oldPhoto = st.me?['photo'] is String ? st.me!['photo'] as String : null;
+    /* 📷 사진만 못 올렸으면 «나머지는» 저장한다.
+       ⚠️ 예전에는 사진 올리기가 실패하면 그 자리에서 돌아가, 함께 고친 이름·생년월일·이모지까지
+          통째로 버려졌다 — 창은 이미 닫혀 있어 다시 다 적어야 했다(2026-09-25 조사). */
+    var photoFailed = false;
     if (picked != null) {
       final id = await Store.i.savePhoto(code, picked!);
       if (id == null) {
-        if (mounted) toast(context, '사진을 올리지 못했어요 — 다시 눌러주세요');
-        return;
+        photoFailed = true;
+        photo = oldPhoto; // 사진은 예전 그대로
+        // 사진이 없는 채로 남으면 «같은 이름·같은 아바타»를 다시 봐야 한다
+        final noPhoto = photo == null || photo!.isEmpty;
+        if (noPhoto &&
+            Logic.avatarClash(st.memberList, name, emoji, skipUid: Store.i.myUid) != null) {
+          if (mounted) toast(context, '사진을 올리지 못했어요 — 다시 눌러주세요');
+          return;
+        }
+      } else {
+        photo = id;
       }
-      photo = id;
     }
     final newPhoto = photo;
 
@@ -776,13 +788,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // 옛 원본을 치운다 — 새 사진으로 바꿨을 때, 그리고 이모지로 돌아갔을 때
       if (oldPhoto != null && oldPhoto != newPhoto) Store.i.dropPhotos([oldPhoto]);
       if (!mounted) return;
-      toast(context, '저장했어요 ✨');
+      toast(
+          context,
+          photoFailed
+              ? '이름·생년월일은 저장했어요 — 사진은 올리지 못했어요, 다시 골라주세요'
+              : '저장했어요 ✨');
       _r();
     } catch (_) {
       /* 회원 칸에 못 적었으면 «방금 올린» 원본도 치운다 —
          안 그러면 아무도 못 보는 파일에 보관 요금만 매달 나간다.
          ⚠️ 「답이 없음」은 여기로 안 온다 — 그건 기기에 쌓였다가 연결되면 간다는 뜻이라 지우면 안 된다. */
-      if (picked != null && newPhoto != null) Store.i.dropPhotos([newPhoto]);
+      // ⚠️ 사진을 못 올려 «예전 사진»을 그대로 쓰는 중이면 지우면 안 된다 — 그건 방금 올린 것이 아니다
+      if (picked != null && !photoFailed && newPhoto != null) Store.i.dropPhotos([newPhoto]);
       if (!mounted) return;
       saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }

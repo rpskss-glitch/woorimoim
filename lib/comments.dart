@@ -1,3 +1,4 @@
+import 'moderation.dart';
 import 'state.dart';
 import 'store.dart';
 
@@ -37,7 +38,10 @@ class Comments {
   }
 
   /// 그 글의 댓글 수 — 목록에서 「💬 3」처럼 보여 준다
-  static int count(String postId) => of(postId).length;
+  /// ⚠️ 글 안(PostScreen)과 «같은 수»를 센다 — 차단한 사람 댓글은 뺀다. 예전에는 목록이
+  ///    「댓글 3」인데 들어가면 「💬 댓글 2」였다(2026-09-25 조사).
+  static int count(String postId) =>
+      of(postId).where((c) => !Moderation.isBlocked(c['by'] as String?)).length;
 
   /// 글자 수 한계 — 댓글은 «짧은 말»이다. 없으면 긴 글이 통째로 들어와 목록이 무너진다.
   static const maxLen = 500;

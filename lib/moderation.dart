@@ -24,8 +24,19 @@ class Moderation {
     '그 밖의 불쾌한 내용',
   ];
 
-  /// 운영자 연락처 — 신고가 들어오면 여기로도 알린다
+  /// 운영자 연락처 (설정·안내에 보여 준다)
   static const contactEmail = 'rpskss@gmail.com';
+
+  /// 🚩 아직 처리 안 한 신고 — 새것이 위.
+  /// ⚠️ 예전에는 신고를 적기만 하고 **아무 화면도 안 읽었다.** 회원에게는 「운영진이 확인합니다」라
+  ///    했지만 운영진이 볼 곳이 없었다(2026-09-25 조사 · 애플 1.2 는 신고가 «처리»되길 요구한다).
+  ///    이제 회원 화면의 「🚩 신고함」과 👥 숫자가 이것을 쓴다.
+  static List<Map<String, dynamic>> openReports() {
+    final out = AppState.i.by('report').where((r) => r['done'] != true).toList();
+    out.sort((a, b) =>
+        Logic.asInt(b['createdAt']).compareTo(Logic.asInt(a['createdAt'])));
+    return out;
+  }
 
   /* 🚫 거르는 말 — 심한 욕설만 최소로 둔다.
      ⚠️ 너무 넓게 잡으면 멀쩡한 말이 별표가 된다(「시발점」·「개나리」처럼).

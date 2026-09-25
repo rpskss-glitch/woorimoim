@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../logic.dart';
+import '../moderation.dart';
 import '../state.dart';
 import '../store.dart';
 import '../theme.dart';
@@ -59,6 +60,94 @@ class _MembersScreenState extends State<MembersScreen> {
       if (!mounted) return;
       toast(context, '승인하지 못했어요 — 다시 눌러주세요');
     }
+  }
+
+  /* 🚩 신고함 — 운영진만. 무엇이 왜 신고됐는지 보고, 그 글을 지우거나 «처리 끝»으로 닫는다.
+     ⚠️ 예전에는 신고가 적히기만 하고 아무도 못 봤다(Moderation.openReports 설명). */
+  List<Widget> _reports(BuildContext context) {
+    final st = AppState.i;
+    final open = Moderation.openReports();
+    if (open.isEmpty) return const [];
+    return [
+      SectionCard(
+        title: '🚩 신고 ${open.length}건',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final r in open)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${r['reason'] ?? '신고'} · ${st.nameOf(r['targetBy'] as String?)}님의 글',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    if (((r['text'] as String?) ?? '').isNotEmpty)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(Moderation.mask(r['text'] as String?),
+                            maxLines: 3, overflow: TextOverflow.ellipsis),
+                      ),
+                    Text('신고한 사람: ${st.nameOf(r['by'] as String?)}',
+                        style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (st.byId(r['targetId'] as String?) != null)
+                          TextButton(
+                            onPressed: () => _removeReported(r),
+                            child: Text('그 글 지우기', style: TextStyle(color: dangerText(context))),
+                          )
+                        else
+                          Text('이미 지워진 글',
+                              style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+                        const SizedBox(width: 4),
+                        TextButton(onPressed: () => _closeReport(r), child: const Text('처리 끝')),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+    ];
+  }
+
+  Future<void> _closeReport(Map<String, dynamic> r, {bool quiet = false}) async {
+    final code = AppState.i.code;
+    if (code == null) return;
+    try {
+      await Store.i.updateItem(code, r['id'] as String, 'report', {'done': true});
+    } catch (_) {
+      if (mounted) toast(context, '처리하지 못했어요 — 다시 눌러주세요');
+      return;
+    }
+    if (mounted && !quiet) toast(context, '신고를 처리했어요');
+  }
+
+  Future<void> _removeReported(Map<String, dynamic> r) async {
+    final st = AppState.i;
+    final code = st.code;
+    final target = st.byId(r['targetId'] as String?);
+    if (code == null || target == null) return;
+    final ok = await confirmSheet(context, '신고된 글을 지울까요?',
+        '${st.nameOf(target['by'] as String?)}님의 글이 모두에게서 사라져요. 되돌릴 수 없어요.',
+        okLabel: '지우기', danger: true);
+    if (!ok || !mounted) return;
+    final done = await Store.i.deleteItem(code, target['id'] as String, target['type'] as String?);
+    if (!mounted) return;
+    if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
+    Store.i.dropPhotos(Store.photoIdsOf(target));
+    await _closeReport(r, quiet: true);
+    if (mounted) toast(context, '신고된 글을 지우고 처리했어요');
   }
 
   Future<void> _reject(Map<String, dynamic> p) async {
@@ -417,6 +506,7 @@ class _MembersScreenState extends State<MembersScreen> {
             ),
             const SizedBox(height: 12),
           ],
+          if (st.isAdmin) ..._reports(context),
           if (st.isAdmin && pending.isNotEmpty) ...[
             SectionCard(
               title: '⏳ 승인 대기 ${pending.length}명',

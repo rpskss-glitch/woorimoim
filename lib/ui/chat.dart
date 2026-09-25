@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../logic.dart';
@@ -34,6 +35,13 @@ class ChatTab extends StatefulWidget {
       게다가 서버는 이미 「🎤 음성 메시지를 보냈어요」라고 알림을 보낸다 →
       **알림은 왔는데 열어 보면 아무것도 없는** 꼴이었다.
    모르는 갈래가 또 생겨도 «빈 자리»가 아니라 무엇인지는 보이게 한다. */
+/// 복사할 «글자» — 사진·투표·음성처럼 글자가 아닌 말은 빈 값(복사 메뉴를 안 띄운다).
+String msg0Text(Map<String, dynamic> m) {
+  final kind = (m['kind'] as String?) ?? '';
+  if (kind == 'img' || kind == 'poll' || kind == 'voice') return '';
+  return ((m['text'] as String?) ?? '').trim();
+}
+
 String msgLabel(Map<String, dynamic> m) {
   final kind = (m['kind'] as String?) ?? '';
   if (kind == 'img') return '📷 사진';
@@ -538,6 +546,14 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
               title: const Text('답장하기'),
               onTap: () => Navigator.pop(c, 'reply'),
             ),
+            /* 📋 글자 복사 — 총무가 올린 계좌번호·주소를 회원이 «다시 치지 않게».
+               ⚠️ 예전에는 복사할 길이 없어 받아 적어야 했다(2026-09-25 조사). 사진·투표에는 글자가 없다. */
+            if (msg0Text(m).isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text('글자 복사하기'),
+                onTap: () => Navigator.pop(c, 'copy'),
+              ),
             if (canDelete)
               ListTile(
                 leading: Icon(Icons.delete_outline, color: dangerText(context)),
@@ -563,6 +579,11 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       ),
     );
     if (pick == null) return;
+    if (pick == 'copy') {
+      await Clipboard.setData(ClipboardData(text: msg0Text(m)));
+      if (mounted) toast(context, '복사했어요 — 붙여넣기 하면 돼요');
+      return;
+    }
     final code = AppState.i.code;
     if (code == null) return; // 고르는 사이에 모임에서 빠졌을 수 있다
     if (pick == 'report') {
@@ -639,7 +660,12 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                  ⚠️ 예전에는 방 값만 바꿔, 운영진 방의 새 대화를 열어 봐도 배지·「안읽음」이
                     그대로였고 목록도 옛 자리에서 열렸다(2026-09-25 조사). */
               onSelectionChanged: (v) {
-                setState(() => _room = v.first);
+                /* 🔒 방을 바꾸면 «답장 중»도 풀어 준다. 안 풀면 운영진 방에서 누른 답장이
+                      모두의 방으로 따라가, 운영진 대화가 회원들 앞에 인용됐다(2026-09-25 조사). */
+                setState(() {
+                  _room = v.first;
+                  _replyTo = null;
+                });
                 _stick = true;
                 _scrollToBottom();
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -926,8 +952,12 @@ class _Bubble extends StatelessWidget {
                    그때 인용을 통째로 빼면 **그냥 보통 말처럼 보여** 무슨 얘기에 답한 건지 알 수 없다. */
                 replied == null
                     ? '↩ 지난 대화'
-                    : '${st.nameOf(replied['by'] as String?)}: '
-                        '${msgLabel(replied.cast<String, dynamic>())}',
+                    /* 🚫 차단한 사람의 말은 인용 띠에서도 가린다 — 남이 그 말에 답장하면
+                          내 화면에 인용으로 그대로 떴다(2026-09-25 조사). */
+                    : Moderation.isBlocked(replied['by'] as String?)
+                        ? '↩ 차단한 회원의 대화'
+                        : '${st.nameOf(replied['by'] as String?)}: '
+                            '${Moderation.mask(msgLabel(replied.cast<String, dynamic>()))}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -949,7 +979,7 @@ class _Bubble extends StatelessWidget {
             PollCard(msg: msg, mine: mine, myUid: Store.i.myUid)
           else
             Text(
-              msgLabel(msg),
+              Moderation.mask(msgLabel(msg)), // 심한 욕설은 별표로 (애플 1.2 — 거르기)
               style: TextStyle(fontSize: 15, height: 1.35, color: mine ? cs.onPrimary : null),
             ),
           if (reacts.isNotEmpty)

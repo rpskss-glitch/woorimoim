@@ -329,13 +329,13 @@ class _PostCard extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           if ((item['title'] as String?)?.isNotEmpty == true) ...[
-            Text(item['title'] as String,
+            Text(Moderation.mask(item['title'] as String),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
           ],
           /* 목록에서는 «앞부분만» 보인다 — 길면 글 하나가 화면을 통째로 먹어
              다음 글이 있는지조차 알 수 없다. 전문은 눌러 들어가서 읽는다. */
-          Text((item['text'] as String?) ?? '',
+          Text(Moderation.mask(item['text'] as String?),
               style: const TextStyle(height: 1.6),
               maxLines: 4,
               overflow: TextOverflow.ellipsis),

@@ -86,7 +86,8 @@ void main() {
       final shell = File('lib/ui/shell.dart').readAsStringSync();
       final at = shell.indexOf('int get _unreadChat');
       expect(at, greaterThan(0));
-      final body = shell.substring(at, at + 700);
+      // 함수 몸통 전체를 본다(글자 수를 박아 두면 앞에 설명 한 줄만 늘어도 헛짚는다)
+      final body = shell.substring(at, shell.indexOf('\n  }', at));
       expect(body.contains("m['room']"), isTrue,
           reason: '평회원 배지가 못 보는 글까지 센다 — 들어가면 아무것도 없다');
       expect(body.contains('isAdmin'), isTrue,

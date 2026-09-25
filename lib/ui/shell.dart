@@ -4,6 +4,7 @@ import '../config.dart';
 import '../demo.dart';
 import '../fee.dart';
 import '../logic.dart';
+import '../moderation.dart';
 import '../state.dart';
 import '../store.dart';
 import 'board.dart';
@@ -104,7 +105,8 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final st = AppState.i;
     final title = (st.couple?['title'] as String?) ?? Cfg.appName;
-    final pendingN = st.isAdmin ? st.pending.length : 0;
+    // 👥 숫자 = 승인 대기 + 처리 안 한 신고 (운영진에게만) — 신고도 «운영진이 할 일»이다
+    final pendingN = st.isAdmin ? st.pending.length + Moderation.openReports().length : 0;
 
     // ⚠️ 순서는 «웹과 같게» — 홈·채팅·일정·게시판·회비 (사장님 지시 2026-09-01).
     //    아래 destinations, home 의 _go(…), owner_guide 의 onGo(…)가 이 번호를 따른다.
@@ -205,8 +207,9 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
   int get _unreadChat {
     final st = AppState.i;
     final seen = st.lastSeenChat;
-    return st
-        .by('msg')
+    /* 🚫 차단한 사람의 말은 세지 않는다 — 대화방에서는 가려 보이는데 배지만 세면,
+          들어가도 새 말이 없고 배지「1」이 다음 사람이 말할 때까지 안 없어졌다(2026-09-25 조사). */
+    return Moderation.hide(st.by('msg'))
         /* 폰을 바꾸기 «전»에 내가 쓴 말은 «남의 말»이 아니다 —
            안 이으면 새 폰에서 **내가 쓴 말까지 안읽음으로 세어진다**
            (2026-08-23 실측: 남이 쓴 말 3개인데 배지가 8). */

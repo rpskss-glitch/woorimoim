@@ -135,13 +135,13 @@ class _PostScreenState extends State<PostScreen> {
                         const SizedBox(height: 10),
                       ],
                       if ((post['title'] as String?)?.isNotEmpty == true) ...[
-                        Text(post['title'] as String,
+                        Text(Moderation.mask(post['title'] as String),
                             style: const TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 8),
                       ],
                       // ⚠️ 여기서는 자르지 않는다 — 들어와서도 잘리면 읽을 길이 없다
-                      SelectableText((post['text'] as String?) ?? '',
+                      SelectableText(Moderation.mask(post['text'] as String?),
                           style: const TextStyle(height: 1.7)),
                     ],
                   ),
@@ -283,7 +283,7 @@ class _CommentRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text((comment['text'] as String?) ?? '',
+                Text(Moderation.mask(comment['text'] as String?),
                     style: const TextStyle(height: 1.5)),
               ],
             ),
@@ -295,7 +295,10 @@ class _CommentRow extends StatelessWidget {
             itemBuilder: (_) => [
               if (Comments.canDelete(comment))
                 const PopupMenuItem(value: 'del', child: Text('지우기')),
-              if (by != Store.i.myUid) ...[
+              /* ⚠️ «남인가»는 폰 바꾸기 전 번호까지 이어 본다(Moderation.canBlock).
+                    번호를 그대로 견주면 폰을 바꾼 회원의 «옛 내 댓글»에 차단이 떠서,
+                    누르면 **나를 차단**해 내 대화·글·사진이 내 폰에서 다 사라졌다(2026-09-25 조사). */
+              if (Moderation.canBlock(by, Store.i.myUid)) ...[
                 const PopupMenuItem(value: 'report', child: Text('신고하기')),
                 const PopupMenuItem(value: 'block', child: Text('이 사람 차단')),
               ],

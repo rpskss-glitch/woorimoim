@@ -224,8 +224,16 @@ void main() {
 
     test('내 것에는 신고·차단을 안 보여 준다', () {
       // 내 글을 신고하는 단추는 «뜻이 없는 단추»다
+      /* 2026-09-25: 번호를 그대로 견주던(by != Store.i.myUid) 것을 폰 바꾸기까지 잇는
+         Moderation.canBlock 으로 바꿨다 — 옛 번호로 쓴 «내 댓글»에 차단이 떠서 나를 차단할 수 있었다. */
       final ui = File('lib/ui/post_screen.dart').readAsStringSync();
-      expect(ui.contains('by != Store.i.myUid'), isTrue);
+      expect(ui.contains('Moderation.canBlock(by, Store.i.myUid)'), isTrue);
+      expect(ui.contains('if (by != Store.i.myUid)'), isFalse,
+          reason: '번호만 견주면 폰 바꾼 회원이 자기 옛 댓글에서 자기를 차단한다');
+      final common = File('lib/ui/common.dart').readAsStringSync();
+      final at = common.indexOf('Future<void> blockSheet(');
+      expect(common.substring(at, at + 500), contains('Moderation.canBlock(uid, Store.i.myUid)'),
+          reason: '차단 창 자체에 마지막 문지기가 없다');
     });
   });
 

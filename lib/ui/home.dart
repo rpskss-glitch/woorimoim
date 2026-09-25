@@ -605,14 +605,14 @@ class _HomeTabState extends State<HomeTab> {
                     TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
               ),
               const SizedBox(height: 4),
-              Text((d['title'] as String?) ?? '',
+              Text(Moderation.mask(d['title'] as String?),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w800)),
               if (((d['text'] as String?) ?? '').isNotEmpty) ...[
                 const SizedBox(height: 2),
-                Text(d['text'] as String,
+                Text(Moderation.mask(d['text'] as String?),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: Theme.of(context).hintColor)),

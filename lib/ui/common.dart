@@ -959,6 +959,10 @@ Future<void> reportSheet(BuildContext context, Map<String, dynamic> item,
 Future<void> blockSheet(BuildContext context, String? uid, VoidCallback onChanged) async {
   final code = AppState.i.code;
   if (code == null || uid == null) return;
+  // 마지막 문지기 — 어느 화면에서 불러도 «나(폰 바꾸기 전 번호 포함)»는 차단하지 않는다
+  if (!Moderation.canBlock(uid, Store.i.myUid)) {
+    return toast(context, '내 글이에요 — 나를 차단할 수는 없어요');
+  }
   final name = AppState.i.nameOf(uid);
   final ok = await confirmSheet(
     context,
