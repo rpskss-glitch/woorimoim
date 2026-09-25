@@ -91,9 +91,11 @@ class _FeeScreenState extends State<FeeScreen> {
                       child: Text(
                         Fee.exempt
                             ? '무료로 쓰는 모임이에요'
-                            : ok
-                                ? '이용권이 켜져 있어요'
-                                : '이용권이 꺼져 있어요',
+                            : Fee.inGrace
+                                ? '이용권이 끝났어요 — ${Fee.graceLeft}일 뒤 잠겨요'
+                                : ok
+                                    ? '이용권이 켜져 있어요'
+                                    : '이용권이 꺼져 있어요',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -105,7 +107,13 @@ class _FeeScreenState extends State<FeeScreen> {
                       ? '「$title」은 이용료를 받지 않는 모임으로 정해져 있어요.'
                       : until == null
                           ? '「$title」의 이용권을 켜면 회원 모두가 그대로 쓸 수 있어요.'
-                          : '${fmtDateFull(ymd(until))}까지 쓸 수 있어요.',
+                          /* ⏳ 유예 중에 「(지난 날)까지 쓸 수 있어요」라고 하면 괜찮은 줄 안다 (2026-09-25 조사) */
+                          : Fee.inGrace
+                              ? '${fmtDateFull(ymd(until))}에 끝났어요. ${Fee.graceLeft}일 안에 결제(또는 구매 복원)하지 않으면 '
+                                  '회원 모두 새로 쓰기가 멈춰요 (읽기는 그대로예요).'
+                              : ok
+                                  ? '${fmtDateFull(ymd(until))}까지 쓸 수 있어요.'
+                                  : '${fmtDateFull(ymd(until))}에 끝났어요.',
                   style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor, height: 1.5),
                 ),
               ],

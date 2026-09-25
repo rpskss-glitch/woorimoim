@@ -851,7 +851,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final u = Fee.until();
     if (u == null) return '아직 결제 전이에요';
     final day = '${u.year}.${u.month}.${u.day}';
-    return Fee.locked ? '$day에 끝났어요 — 눌러서 결제·복원' : '$day까지 · 눌러서 확인·복원';
+    if (Fee.locked) return '$day에 끝났어요 — 눌러서 결제·복원';
+    // 끝났지만 봐주는 중 — 「…까지」라고 하면 아직 쓸 수 있는 줄 안다
+    if (Fee.inGrace) return '$day에 끝났어요 — ${Fee.graceLeft}일 뒤 잠겨요 · 눌러서 결제·복원';
+    return '$day까지 · 눌러서 확인·복원';
   }
 
   /// 회비 보내는 곳 — 없으면 빈 글자

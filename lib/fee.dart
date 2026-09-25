@@ -68,6 +68,23 @@ class Fee {
   /// 잠겨 있는가 (쓰기를 막아야 하는가)
   static bool get locked => !ok();
 
+  /* ⏳ 이용권은 끝났는데 아직 봐주는 중(graceDays)인가.
+     ⚠️ 이때 「켜져 있어요 · (지난 날)까지」라고 하면 방장은 괜찮은 줄 알다가 며칠 뒤 모임이 잠긴다
+        (2026-09-25 조사). 이용권 화면·설정이 이걸 보고 «끝났다·며칠 뒤 잠긴다»고 말한다. */
+  static bool get inGrace {
+    if (Demo.on || exempt) return false;
+    final u = until();
+    return u != null && u.millisecondsSinceEpoch <= _now && !locked;
+  }
+
+  /// 유예가 며칠 남았나 (올림 — 「0일 뒤 잠겨요」가 되지 않게 최소 1)
+  static int get graceLeft {
+    final u = until();
+    if (u == null) return 0;
+    final left = u.millisecondsSinceEpoch + graceDays * 86400000 - _now;
+    return (left / 86400000).ceil().clamp(1, graceDays);
+  }
+
   /// 이용권이 끝나는 날 (없으면 null)
   static DateTime? until([Map<String, dynamic>? club]) {
     final c = club ?? AppState.i.couple;
