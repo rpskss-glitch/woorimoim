@@ -185,6 +185,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!ok || !mounted) return;
 
     setState(() => _busy = true);
+    // 올린 얼굴 사진과 «모임이 실제로 만들어졌는지» — 도중에 터지면 사진만 남지 않게 아래 catch 가 본다
+    String? facePhoto;
+    var clubMade = false;
     try {
       // 같은 이름이 이미 있는지 — 있으면 회원이 어느 방인지 못 고른다
       final dup = await Store.i.findClubByTitle(title);
@@ -199,6 +202,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       final uid = Store.i.myUid;
       final now = DateTime.now();
+      /* 📷 고른 얼굴 사진을 방장 칸에 함께 적는다 — 예전에는 만든 뒤 바로 들어가며 아예 안 올렸다(2026-09-26).
+         못 올려도 모임은 만든다. */
+      final face = _face;
+      if (face != null) {
+        try {
+          facePhoto = await Store.i.savePhoto(code, face);
+        } catch (_) {
+          facePhoto = null;
+        }
+      }
       final made = await Store.i.createClub(code, {
         'code': code,
         'title': title,
@@ -214,11 +227,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'birth': birth,
             'role': 'owner',
             'joinedAt': now.millisecondsSinceEpoch,
+            if (facePhoto != null) 'photo': facePhoto,
           }
         },
         'pending': <String, dynamic>{},
       });
+      clubMade = made;
       if (!made) {
+        if (facePhoto != null) Store.i.dropPhotos([facePhoto]); // 모임이 없으니 사진도 치운다
         if (mounted) toast(context, '모임을 만들지 못했어요 — 연결을 확인하고 다시 눌러주세요');
         return;
       }
@@ -228,6 +244,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       widget.onJoined();
       toast(context, '「$title」 모임을 만들었어요 — 이제 회원을 부르세요 🏸');
     } catch (e) {
+      // 모임이 안 만들어진 채 터졌으면 올린 사진도 치운다(만들어졌으면 방장 칸이 쓰고 있다 — 지우면 안 된다)
+      if (!clubMade && facePhoto != null) Store.i.dropPhotos([facePhoto]);
       if (mounted) toast(context, '서버에 연결하지 못했어요 — 잠시 후 다시 눌러주세요');
     } finally {
       if (mounted) setState(() => _busy = false);

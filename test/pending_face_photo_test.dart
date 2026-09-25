@@ -43,4 +43,12 @@ void main() {
     final m = File('lib/ui/members.dart').readAsStringSync();
     expect(m, contains("photoId: p['photo'] as String"));
   });
+  /* 새 모임 만들기도 같았다 — 만든 뒤 바로 들어가며 얼굴 사진을 아예 안 올렸다. */
+  test('새 모임을 만들 때도 고른 얼굴 사진을 방장 칸에 적는다', () {
+    final s = File('lib/ui/onboarding.dart').readAsStringSync();
+    final at = s.indexOf('Future<void> _newClub(');
+    final body = s.substring(at, s.indexOf('static bool _looksLikeAdminId', at));
+    expect(body, contains('savePhoto('));
+    expect(body, contains("if (facePhoto != null) 'photo': facePhoto"));
+  });
 }
