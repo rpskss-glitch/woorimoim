@@ -226,6 +226,16 @@ class _WalletTabState extends State<WalletTab> {
                   on ? _picked.add(uid) : _picked.remove(uid);
                 }),
               ),
+            /* 🚪 밀린 회비가 남은 채 나간 회원 — 나중에 돈을 주면 여기서 받아 적는다.
+               ⚠️ 예전에는 회비 표에만 보이고 받아 적을 곳이 없었다(2026-09-26 조사).
+               「여러 명 한 번에」에는 넣지 않는다 — 모임 날 받는 돈과 섞이면 헷갈린다. */
+            if (!_pickMode && Logic.formerDebtors().isNotEmpty) ...[
+              const Divider(height: 24),
+              Text('나간 회원 — 밀린 회비',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+              for (final m in Logic.formerDebtors())
+                _MemberFeeRow(member: m, onChanged: _r, left: true),
+            ],
             if (_pickMode) ...[
               const SizedBox(height: 12),
               SizedBox(
@@ -482,12 +492,16 @@ class _MemberFeeRow extends StatelessWidget {
   final bool picked;
   final void Function(bool on)? onPick;
 
+  /// 🚪 나간 회원(밀린 회비가 남은 사람) — 가입비 단추는 안 보이고 이름 옆에 표시한다
+  final bool left;
+
   const _MemberFeeRow({
     required this.member,
     required this.onChanged,
     this.pickMode = false,
     this.picked = false,
     this.onPick,
+    this.left = false,
   });
 
   @override
@@ -507,7 +521,7 @@ class _MemberFeeRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(member['name'] as String? ?? '회원',
+                Text('${member['name'] as String? ?? '회원'}${left ? ' (나간 회원)' : ''}',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text(
                   (unpaid.isEmpty
@@ -534,7 +548,7 @@ class _MemberFeeRow extends StatelessWidget {
              ⚠️ 가로로 나란히 두면 360px·글자 2배에서 54px 넘쳤다 — 이름을 0으로 줄여도
                 단추 둘이 안 들어간다(2026-08-30 fee_row_overflow_test 로 잡음).
                 가입비가 없을 때(흔한 경우)는 예전처럼 «회비 등록»만 줄 안에 둔다. */
-          else if (Fee.joinPending(uid))
+          else if (!left && Fee.joinPending(uid))
             Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,

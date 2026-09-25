@@ -1040,20 +1040,55 @@ class Logic {
   }
 
   /// 아직 안 낸 달들 (모임 시작 달부터 이번 달까지).
+  /// 회비 셈에 쓸 그 사람 기록 — 지금 회원이면 members, 나간 회원이면 former.
+  /// ⚠️ 폰만 바꾼 사람(movedTo)의 옛 자리는 «나간 회원»이 아니다 — 새 자리가 이어받았다.
+  static Map? feeRecord(String uid) {
+    final m = AppState.i.members[uid];
+    if (m is Map) return m;
+    final f = AppState.i.former[uid];
+    if (f is! Map) return null;
+    final to = f['movedTo'];
+    if (to is String && to.isNotEmpty && to != uid) return null;
+    return f;
+  }
+
+  /* 🚪 밀린 회비가 남은 채 나간 회원 — 회비 화면에서 «받아 적을» 수 있게 따로 모은다.
+     회비 표(FeeSheet.rowMembers)가 이 사람들을 남겨 보여 주는데, 받아 적을 길이 없었다(2026-09-26 조사). */
+  static List<Map<String, dynamic>> formerDebtors() {
+    final out = <Map<String, dynamic>>[];
+    AppState.i.former.forEach((key, v) {
+      if (v is! Map) return;
+      final uid = (v['uid'] is String && (v['uid'] as String).isNotEmpty) ? v['uid'] as String : key;
+      if (AppState.i.members.containsKey(uid)) return; // 다시 들어온 사람은 위 목록에 있다
+      if (feeRecord(uid) == null) return; // 폰만 바꾼 사람
+      if (unpaidMonths(uid).isEmpty) return;
+      out.add({...v.cast<String, dynamic>(), 'uid': uid, 'left': true});
+    });
+    out.sort((a, b) => asInt(a['leftAt']).compareTo(asInt(b['leftAt'])));
+    return out;
+  }
+
   static List<String> unpaidMonths(String uid, {int maxBack = unpaidMaxBack}) {
     final fee = asMap(AppState.i.couple?['fee']);
     final amount = (fee['amount'] as num?)?.toInt() ?? 0;
     if (amount <= 0) return const [];
     final nowYm = ymOf(DateTime.now());
-    final joinedAt = (AppState.i.members[uid] as Map?)?['joinedAt'] as num?;
+    /* 🚪 나간 회원도 센다 — 밀린 채 나간 사람이 나중에 돈을 주면 받아 적어야 한다(2026-09-26 조사).
+       ⚠️ 나간 «다음 달»부터는 낼 까닭이 없다 — 그 뒤까지 세면 「스무 달 밀림」이 영영 남는다. */
+    final rec = feeRecord(uid);
+    final joinedAt = rec?['joinedAt'] as num?;
     final joinedYm = joinedAt == null
         ? nowYm
         : ymOf(DateTime.fromMillisecondsSinceEpoch(joinedAt.toInt()));
+    final leftAt = AppState.i.members.containsKey(uid) ? null : rec?['leftAt'] as num?;
+    final lastYm = leftAt == null || leftAt <= 0
+        ? nowYm
+        : ymOf(DateTime.fromMillisecondsSinceEpoch(leftAt.toInt()));
     final free = feeFree(uid);
     final out = <String>[];
     for (var i = maxBack - 1; i >= 0; i--) {
       final ym = nowYm - i;
-      if (ym < joinedYm) continue;
+      if (ym < joinedYm || ym > lastYm) continue;
       final key = ymKey(ym);
       if (free.contains(key)) continue; // 면제해 준 달은 «밀린 것»이 아니다
       if (!paidIn(uid, key)) out.add(key);
@@ -1069,6 +1104,10 @@ class Logic {
   static List<String> feeMonthsToFill(String uid, int months) {
     if (months <= 0) return const [];
     final unpaid = unpaidMonths(uid);
+    // 🚪 나간 회원은 «밀린 달»만 메운다 — 앞으로 달을 채우면 있지도 않은 선납이 생긴다
+    if (!AppState.i.members.containsKey(uid) && feeRecord(uid) != null) {
+      return unpaid.take(months).toList();
+    }
     final free = feeFree(uid);
     int startYm;
     if (unpaid.isNotEmpty) {
