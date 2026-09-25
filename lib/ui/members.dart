@@ -287,6 +287,8 @@ class _MembersScreenState extends State<MembersScreen> {
       titleDone = true;
       if (!mounted) return;
       var nowStaff = m['role'] != 'member';
+      // 회장·총무라 권한을 «자동으로» 붙였는가 — 따로 알리면 바로 다음 알림에 덮여 방장이 모른다(아래 한 줄로 합친다)
+      var autoGave = false;
       /* 👑 **회장·총무는 묻지 않고 바로 운영진.**
          이 둘은 모임을 실제로 굴리는 자리라, 권한 없이 직책만 주면
          회원 승인도 일정 관리도 못 해 «이름뿐인 직책»이 된다.
@@ -297,7 +299,7 @@ class _MembersScreenState extends State<MembersScreen> {
         if (autoStaffTitles.contains(picked)) {
           await Store.i.patchCouple(code, {'members.$uid.role': 'admin'});
           nowStaff = true;
-          if (mounted) toast(context, '$picked${josa(picked, '이라', '라')} 운영진 권한도 함께 드렸어요');
+          autoGave = true;
         } else if (adminTitles.contains(picked)) {
           final give = await confirmSheet(
             context,
@@ -323,6 +325,8 @@ class _MembersScreenState extends State<MembersScreen> {
           context,
           picked.isEmpty
               ? '직책을 지웠어요'
+              : autoGave
+                  ? '$picked${josa(picked, '으로', '로', rieulAsNone: true)} 정했어요 — $picked${josa(picked, '이라', '라')} 운영진 권한도 함께 드렸어요'
               : opensMoney
                   ? '$picked${josa(picked, '으로', '로', rieulAsNone: true)} 정했어요 — 이 직책은 회비 장부를 쓰고 고칠 수 있어요'
                   : '$picked${josa(picked, '으로', '로', rieulAsNone: true)} 정했어요');
