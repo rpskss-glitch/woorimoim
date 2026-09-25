@@ -581,12 +581,12 @@ class _HomeTabState extends State<HomeTab> {
     final diaries = [...Moderation.hide(st.by('diary'))]..sort(Logic.byNotice);
     if (diaries.isEmpty) return const [];
     final d = diaries.first;
-    final photos = st.by('photo').length;
+    // 🚫 차단한 회원 것은 안 센다 — 사진첩·대화방이 가리는데 여기만 세면 숫자가 안 맞는다(2026-09-26)
+    final photos = Moderation.hide(st.by('photo')).length;
     /* 🔴 **못 보는 방의 대화는 안 센다.** 평회원 홈에 「대화 9개」라고 떠 있는데
        들어가면 6개뿐이면, 회원은 뭔가 사라진 줄 안다.
        (room 칸이 없는 옛 대화는 모두의 방이다) */
-    final msgs = st
-        .by('msg')
+    final msgs = Moderation.hide(st.by('msg'))
         .where((m) => ((m['room'] as String?) ?? '').isEmpty || st.isAdmin)
         .length;
     return [
