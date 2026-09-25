@@ -808,7 +808,11 @@ class _LedgerFormState extends State<_LedgerForm> {
       }
       // 웹은 «작은 그림» 칸으로만 그린다 — 안 넣으면 웹에서 깨져 보인다
       final thumb = await Store.makeThumb(bytes);
-      if (!mounted) return;
+      if (!mounted) {
+        // 올리는 사이 창이 닫혔다 — 아무 기록에도 안 붙으니 치운다(안 그러면 요금만 나간다)
+        Store.i.dropPhotos([id]);
+        return;
+      }
       // 바꿔 붙이는 것이면 앞서 올린 것은 지운다 (저장 전이라 아무 데도 안 걸려 있다)
       final old = _rcptId;
       setState(() {
@@ -837,6 +841,12 @@ class _LedgerFormState extends State<_LedgerForm> {
     final amount = int.tryParse(_amount.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (title.isEmpty) return toast(context, '어디에 썼는지 적어주세요');
     if (amount <= 0) return toast(context, '금액을 적어주세요');
+    // 다듬기(Store.money)가 버릴 값은 저장하지 않는다 — 1억을 넘으면 장부에 0원으로 들어온다(월 회비와 같은 까닭)
+    if (amount != Store.money(amount)) {
+      return toast(context, '금액이 너무 커요 — 자릿수를 다시 확인해주세요');
+    }
+    // 영수증이 아직 올라가는 중 — 지금 저장하면 영수증 없이 저장되고 올라간 것은 주인 없이 남는다
+    if (_rcptBusy) return toast(context, '영수증을 올리는 중이에요 — 잠시 뒤 다시 눌러주세요');
     final code = AppState.i.code;
     if (code == null) return;
     setState(() => _busy = true);
