@@ -353,7 +353,8 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
       Map<String, dynamic> member, String month, bool on) async {
     final uid = member['uid'] as String;
     final name = (member['name'] as String?) ?? '회원';
-    final label = FeeSheet.monthLabel(month);
+    // 해까지 적는다 — 해가 걸친 표에는 같은 「3월」 칸이 둘이라 어느 해인지 알 수 없었다(2026-09-26)
+    final label = '${month.substring(0, 4)}년 ' '${FeeSheet.monthLabel(month)}';
     /* ⚠️ 면제 표시는 그 회원 자리에 적는다 — 서버는 남의 자리를 운영진만 고치게 한다.
           직책만 있는 총무(회계·총무보)가 누르면 확인까지 해 놓고 늘 거절됐다(2026-09-25 조사). */
     if (!AppState.i.isAdmin) {
