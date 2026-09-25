@@ -1099,11 +1099,17 @@ class _PollCardState extends State<PollCard> {
     final id = widget.msg['id'] as String;
     setState(() => _busy = true);
     var ok = false;
+    // 보는 사이 마감됐는가 — 그러면 «다시 눌러주세요»가 아니라 «마감됐어요»다(2026-09-26 조사)
+    var closedNow = false;
     try {
       ok = await Store.i.mutateItem(code, id, 'msg', (cur) {
         // ⚠️ 트랜잭션 콜백은 **서버 날것**을 받는다 — 지금 화면의 값이 아니다
+        closedNow = false; // 다시 돌 때를 대비해 되돌린다
         final p = Logic.poll(cur);
-        if (p.closed) return null; // 그 사이 마감됐다면 아무것도 쓰지 않는다
+        if (p.closed) {
+          closedNow = true; // 그 사이 마감됐다면 아무것도 쓰지 않는다
+          return null;
+        }
         if (i < 0 || i >= p.opts.length) return null;
         final next = Logic.pollNext(Logic.pollMine(cur, Store.i.myUid), i, p.multi);
         return {
@@ -1121,6 +1127,7 @@ class _PollCardState extends State<PollCard> {
     await Store.i.syncOlder(id, 'msg');
     if (!mounted) return;
     setState(() => _busy = false);
+    if (closedNow) return toast(context, '투표가 마감됐어요 — 결과만 볼 수 있어요');
     if (!ok) saveFailToast(context, '투표하지 못했어요 — 다시 눌러주세요'); // 잠겼으면 잠긴 까닭을
   }
 

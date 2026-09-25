@@ -263,7 +263,10 @@ void main() {
       expect(body, contains('mutateItem'), reason: '트랜잭션 없이 고치면 남의 표를 덮는다');
       expect(body, contains('Store.i.myUid: next'));
       expect(body, contains('pollOldKeys'), reason: '폰 바꾸기 전 옛 표가 남아 두 번 세어진다');
-      expect(body, contains('if (p.closed) return null'),
+      // 2026-09-26: 마감이면 «마감됐어요»를 알리려고 표시(closedNow)를 켠 뒤 돌아간다 — 쓰지 않는 것은 같다
+      final c = body.indexOf('if (p.closed) {');
+      expect(c, greaterThan(0), reason: '마감된 뒤에 들어온 표를 받아 준다');
+      expect(body.substring(c, c + 160), contains('return null;'),
           reason: '마감된 뒤에 들어온 표를 받아 준다');
     });
 
