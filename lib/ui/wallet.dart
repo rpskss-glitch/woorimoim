@@ -148,7 +148,11 @@ class _WalletTabState extends State<WalletTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${unpaid.length}달 밀렸어요 (${fmtWon(amount * unpaid.length)})',
+                    // 12달 넘게 밀렸으면 «이상» — 총무 화면과 같은 말(12달까지만 세므로 그게 전부인 줄 안다)
+                    Text(
+                        Logic.unpaidTruncated(Store.i.myUid)
+                            ? '${unpaid.length}달 이상 밀렸어요 (${fmtWon(amount * unpaid.length)} 이상)'
+                            : '${unpaid.length}달 밀렸어요 (${fmtWon(amount * unpaid.length)})',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700, color: moneyOut(context))),
                     const SizedBox(height: 4),
