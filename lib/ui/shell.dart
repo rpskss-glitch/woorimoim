@@ -165,10 +165,10 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
           // 스토어 그림을 찍을 때는 감춘다 — 실제 회원은 이 띠를 볼 일이 없다
           if (Demo.on && !Cfg.shotMode) const _DemoBar(),
           // 💳 이용권이 꺼졌을 때 — 읽기는 그대로, 새로 쓰는 것만 멈춘다
-          if (!Demo.on && Fee.locked) const _LockBar(),
+          if (!Demo.on && Fee.locked) _LockBar(), // const 이면 남은 날·안내가 바뀌어도 안 다시 그린다(67회차)
           /* ⏳ 끝났지만 봐주는 3일 — 방장에게만 «곧 잠겨요». 예전에는 잠긴 «뒤»에야 띠가 떠서
              방장이 미리 알 길이 없었다(2026-09-25 조사). 회원은 낼 수 없으니 겁주지 않는다. */
-          if (!Demo.on && Fee.inGrace && Fee.iPay) const _LockBar(grace: true),
+          if (!Demo.on && Fee.inGrace && Fee.iPay) _LockBar(grace: true),
           /* 👉 **옆으로 밀어 화면 넘기기** — 손가락을 따라 페이지가 밀려온다.
              ⚠️ 자식이 가로로 스크롤하는 곳(표·사진)에서는 **자식이 이긴다** —
                 그 자리에서는 페이지가 안 넘어간다(그게 맞다). */
