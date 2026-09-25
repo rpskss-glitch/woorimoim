@@ -170,13 +170,15 @@ class FeeSheet {
     final want = months.toSet();
     final out = <String, Map<String, int>>{};
     for (final x in AppState.i.by('ledger')) {
-      if (x['kind'] != 'out') continue;
+      /* ⚠️ 잔액·통계와 «같은 규칙» — in 만 수입, 나머지는 지출.
+         예전 `kind != 'out'` 은 종류가 빠진 옛 기록을 표에서 빼 합계가 통장과 안 맞았다(2026-09-25 조사). */
+      if (x['kind'] == 'in') continue;
       final d = x['date'] as String?;
       if (d == null || d.length < 7) continue;
       final ym = d.substring(0, 7);
       if (!want.contains(ym)) continue;
       final cat = Logic.catLabel(x['cat']) ?? '기타';
-      final amt = (x['amount'] as num?)?.toInt() ?? 0;
+      final amt = Logic.asInt(x['amount']); // 글자로 적힌 금액(웹)도 센다 — 잔액과 같은 방식
       (out[cat] ??= {})[ym] = (out[cat]?[ym] ?? 0) + amt;
     }
     return out;
@@ -192,7 +194,7 @@ class FeeSheet {
       if (d == null || d.length < 7) continue;
       final ym = d.substring(0, 7);
       if (!want.contains(ym)) continue;
-      out[ym] = (out[ym] ?? 0) + ((x['amount'] as num?)?.toInt() ?? 0);
+      out[ym] = (out[ym] ?? 0) + Logic.asInt(x['amount']);
     }
     return out;
   }
