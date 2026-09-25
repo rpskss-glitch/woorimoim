@@ -52,6 +52,17 @@ Future<List<XFile>> pickManyPhotos(BuildContext context) async {
   }
 }
 
+/// 🔤 받침에 맞는 토씨 — 「회장이라/총무라」, 「회장으로/총무로」(ㄹ 받침은 «로» → rieulAsNone).
+/// 한글이 아니면(영문·숫자) 받침 있는 쪽을 쓴다.
+String josa(String word, String withFinal, String withoutFinal, {bool rieulAsNone = false}) {
+  if (word.isEmpty) return withFinal;
+  final c = word.runes.last;
+  if (c < 0xAC00 || c > 0xD7A3) return withFinal;
+  final f = (c - 0xAC00) % 28;
+  if (f == 0 || (rieulAsNone && f == 8)) return withoutFinal;
+  return withFinal;
+}
+
 void saveFailToast(BuildContext context, String fallback) =>
     toast(context, Fee.locked ? Fee.lockedLine : fallback);
 

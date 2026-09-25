@@ -297,7 +297,7 @@ class _MembersScreenState extends State<MembersScreen> {
         if (autoStaffTitles.contains(picked)) {
           await Store.i.patchCouple(code, {'members.$uid.role': 'admin'});
           nowStaff = true;
-          if (mounted) toast(context, '$picked 이라 운영진 권한도 함께 드렸어요');
+          if (mounted) toast(context, '$picked${josa(picked, '이라', '라')} 운영진 권한도 함께 드렸어요');
         } else if (adminTitles.contains(picked)) {
           final give = await confirmSheet(
             context,
@@ -324,8 +324,8 @@ class _MembersScreenState extends State<MembersScreen> {
           picked.isEmpty
               ? '직책을 지웠어요'
               : opensMoney
-                  ? '$picked(으)로 정했어요 — 이 직책은 회비 장부를 쓰고 고칠 수 있어요'
-                  : '$picked(으)로 정했어요');
+                  ? '$picked${josa(picked, '으로', '로', rieulAsNone: true)} 정했어요 — 이 직책은 회비 장부를 쓰고 고칠 수 있어요'
+                  : '$picked${josa(picked, '으로', '로', rieulAsNone: true)} 정했어요');
     } catch (_) {
       if (!mounted) return;
       toast(
