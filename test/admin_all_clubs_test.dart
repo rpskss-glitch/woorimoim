@@ -36,4 +36,13 @@ void main() {
     expect(s, contains('Store.i.allClubs()'));
     expect(s, contains('mergeClubs('));
   });
+  /* 2026-09-26 잡음: 「(앱에서 만든 방)」 표시를 이름에 붙여 카드에 넘겨서,
+     「👥 회원용 이름」 복사에 그 표시까지 들어갔다 — 회원이 그 이름으로는 못 찾는다. */
+  test('회원용 이름 복사에는 표시 없는 «진짜 이름»만 들어간다', () {
+    final s = File('lib/ui/admin.dart').readAsStringSync();
+    expect(s.contains(r"title: row['self'] == true ? '$name (앱에서 만든 방)' : name"), isFalse,
+        reason: '표시를 이름에 붙이면 복사에도 들어간다');
+    expect(s, contains("self: row['self'] == true"));
+    expect(s, contains('Clipboard.setData(ClipboardData(text: title))'));
+  });
 }

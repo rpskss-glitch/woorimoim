@@ -572,8 +572,10 @@ class _AdminConsoleState extends State<AdminConsole> {
                     final name = row['title'] as String? ?? '이름 없음';
                     return _ClubCard(
                       code: e.key,
-                      // 앱에서 방장이 직접 만든 방은 표시해 둔다 — 총괄이 만든 방과 갈라 볼 수 있게
-                      title: row['self'] == true ? '$name (앱에서 만든 방)' : name,
+                      title: name,
+                      /* 앱에서 방장이 직접 만든 방은 «따로» 표시한다.
+                         ⚠️ 이름에 붙여 넘기면 「👥 회원용 이름」 복사에 표시까지 들어간다(2026-09-26 잡음). */
+                      self: row['self'] == true,
                       members: row['members'] as int?,
                       gone: row['gone'] == true,
                       onRename: row['gone'] == true ? null : () => _rename(e.key, name),
@@ -591,6 +593,8 @@ class _AdminConsoleState extends State<AdminConsole> {
 
 class _ClubCard extends StatelessWidget {
   final String code, title;
+  /// 앱에서 방장이 직접 만든 방 (총괄 목록에 없던 것) — 제목 옆에 표시만 한다
+  final bool self;
   /// 그 방 회원 수 (못 읽었으면 null)
   final int? members;
   /// 목록에는 있는데 방 문서가 없어진 자리
@@ -606,6 +610,7 @@ class _ClubCard extends StatelessWidget {
     required this.onRelease,
     this.members,
     this.gone = false,
+    this.self = false,
   });
 
   @override
@@ -620,7 +625,7 @@ class _ClubCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(gone ? '$title (없어진 방)' : title,
+                    Text(gone ? '$title (없어진 방)' : self ? '$title (앱에서 만든 방)' : title,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
