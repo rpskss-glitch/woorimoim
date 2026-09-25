@@ -29,22 +29,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// 누른 사람이 결과를 알아야 하므로 **몇 개가 남았는지**까지 말해 준다.
   Future<void> _retryLost() async {
     setState(() => _retryBusy = true);
-    var n = 0;
+    var r = (tried: 0, left: 0);
+    var broke = false;
     try {
-      n = await Store.i.retryLost();
+      r = await Store.i.retryLost();
     } catch (e) {
       // 여기서 터져도 단추가 영영 잠기면 안 된다 — finally 에서 반드시 푼다
       debugPrint('다시 지워보기 실패: $e');
+      broke = true;
     } finally {
       if (mounted) setState(() => _retryBusy = false);
     }
     if (!mounted) return;
-    final left = Store.i.lostCount();
+    if (broke) return toast(context, '지우지 못했어요 — 잠시 후 다시 눌러주세요');
+    // 포기함 수(lostCount)로 말하면 안 된다 — 다시 실패한 것은 대기줄에 남아 0 으로 보인다
     toast(
         context,
-        left == 0
-            ? '$n개를 모두 지웠어요 ✨'
-            : '$n개를 다시 시도했는데 $left개는 아직 안 지워졌어요 — 나중에 다시 눌러주세요');
+        r.left == 0
+            ? '${r.tried}개를 모두 지웠어요 ✨'
+            : '${r.tried}개를 다시 시도했는데 ${r.left}개는 아직 안 지워졌어요 — 나중에 다시 눌러주세요');
   }
 
   @override

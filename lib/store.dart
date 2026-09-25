@@ -1716,11 +1716,15 @@ class Store {
   ///
   /// ⚠️ 저절로 부르면 안 된다. 그러면 포기한 뜻이 없어지고
   ///    앱을 켤 때마다 같은 실패를 되풀이하며 요금만 쓴다.
-  Future<int> retryLost() async {
+  ///
+  /// 돌려주는 값: 몇 개를 다시 시도했고(`tried`) 그중 몇 개가 아직 안 지워졌는지(`left`).
+  /// ⚠️ 다시 실패한 것은 포기함이 아니라 «대기줄»에 남는다 — 포기함 수만 보면
+  ///    하나도 못 지웠는데 「모두 지웠어요」라고 말하게 된다(74회차).
+  Future<({int tried, int left})> retryLost() async {
     final p = _prefs;
-    if (p == null) return 0;
+    if (p == null) return (tried: 0, left: 0);
     final lost = p.getStringList(_qLostKey) ?? const <String>[];
-    if (lost.isEmpty) return 0;
+    if (lost.isEmpty) return (tried: 0, left: 0);
     /* 포기함을 «먼저» 비운다 — 나중에 비우면 도중에 앱이 꺼졌을 때
        같은 번호가 대기줄과 포기함 양쪽에 남아 두 배로 헛돈다. */
     p.setStringList(_qLostKey, const []);
@@ -1743,7 +1747,9 @@ class Store {
     p.setStringList(_qKey, q.toList());
     p.setString(_qnKey, jsonEncode(n));
     await flushDeletes();
-    return lost.length;
+    // 지운 뒤에도 대기줄이나 포기함에 남아 있으면 «아직 안 지워진 것»이다
+    final still = {...?p.getStringList(_qKey), ...?p.getStringList(_qLostKey)};
+    return (tried: lost.length, left: lost.where(still.contains).length);
   }
 
   /// 되돌리기 시간이 끝나 원본을 지울 때 쓴다 — 그 순간은 보통 앱을 닫는 때라

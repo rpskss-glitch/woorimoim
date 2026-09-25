@@ -79,7 +79,7 @@ void main() {
         reason: '대기줄을 훑는 자리가 포기함을 읽으면 저절로 되풀이된다');
 
     // 되돌리는 길은 «있어야» 한다 — 없으면 영영 못 지운다
-    expect(s.contains('Future<int> retryLost()'), isTrue);
+    expect(s.contains('Future<({int tried, int left})> retryLost()'), isTrue);
     expect(File('lib/ui/settings.dart').readAsStringSync().contains('다시 지워보기'), isTrue,
         reason: '누를 수 있는 자리가 없으면 그 길은 없는 것과 같다');
   });
