@@ -160,7 +160,8 @@ class _HomeTabState extends State<HomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('새 대화·공지가 올라오면 알려드려요. 설정에서 「공지만 받기」로 줄일 수도 있어요.',
+                // ⚠️ 서버는 «대화방 메시지»만 알린다(게시판 공지는 알림 없음) — 없는 것을 약속하지 않는다(2026-09-26)
+                Text('새 대화가 올라오면 알려드려요. 설정에서 「공지만」(방장·운영진이 보낸 대화만)으로 줄일 수도 있어요.',
                     style: TextStyle(height: 1.5, color: Theme.of(context).hintColor)),
                 const SizedBox(height: 10),
                 FilledButton.tonal(
