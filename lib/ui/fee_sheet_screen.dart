@@ -291,7 +291,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
         for (var i = 0; i < members.length; i++)
           _box(
             Text(
-                '${i + 1}. ${members[i]['name'] ?? '회원'}'
+                '${i + 1}. ${AppState.i.listName(members[i]['uid'] as String?)}' // 같은 이름이면 아바타를 붙여 구별
                 // 나간 사람인 줄 모르면 총무가 「왜 안 나오지」 하며 찾는다
                 '${members[i]['left'] == true ? ' (탈퇴)' : ''}',
                 style: _cellStyle, overflow: TextOverflow.ellipsis),

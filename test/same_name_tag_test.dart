@@ -35,5 +35,6 @@ void main() {
   test('홈 미납 명단·출석 칸도 이 이름을 쓴다', () {
     expect(File('lib/ui/home.dart').readAsStringSync(), contains('st.listName('));
     expect(File('lib/ui/calendar.dart').readAsStringSync(), contains('listName('));
+    expect(File('lib/ui/fee_sheet_screen.dart').readAsStringSync(), contains('listName('), reason: '회비 표 이름 칸');
   });
 }
