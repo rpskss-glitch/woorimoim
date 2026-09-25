@@ -25,7 +25,9 @@ void main() {
   });
 
   test('사진을 그만 쓸 때도 «옛 원본»을 치운다', () {
-    expect(settings.contains("(picked != null || kind != 'photo')"), isTrue,
+    /* 2026-09-25: «고른 것»이 아니라 «실제로 올라간 것»으로 본다 — 올리기가 실패해
+       옛 사진을 계속 쓰는데 치우면 상징이 깨진다(emblem_save_test). */
+    expect(settings.contains("(uploaded || kind != 'photo')"), isTrue,
         reason: '새 사진으로 바꿀 때만 치우면, 이모지로 갈 때 원본이 남는다');
   });
 

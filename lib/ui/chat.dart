@@ -347,6 +347,9 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
        그러면 ① 이 사진이 안 올라가고 ② `savePhoto` 가 「보관함을 못 쓴다」고 보고
        **그 뒤로 앱을 끌 때까지 모든 사진이 7배 비싼 길(Firestore)로 간다.**
        (모임 상징 고르기는 처음부터 이렇게 하고 있었다 — 여기만 빠져 있었다) */
+    // 🔒 잠긴 모임이면 고르기 «전에» 말한다 — 올렸다 도로 지우고 연결 탓하지 않게 (board 의 _addPhotos 와 같다)
+    final locked = Store.lockReason();
+    if (locked != null) return toast(context, locked);
     var picked = await ImagePicker()
         .pickMultiImage(maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
     if (picked.isEmpty) return;

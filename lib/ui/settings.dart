@@ -932,11 +932,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _editFee() async {
     final st = AppState.i;
-    final cur = ((st.couple?['fee'] as Map?)?['amount'] as num?)?.toInt() ?? -77;
+    /* 🔴 예전에는 입력칸에 «지금 금액» 대신 글자 `$cur` 가 들어 있었다(따옴표 안의 \$ 가
+          글자로 박혔다). 모르고 「저장」을 누르면 숫자가 없어 **0원 = 회비를 안 걷는 모임**으로
+          저장됐다 — 밀린 회비가 전부 사라지고 홈의 회비 카드도 없어졌다. 회비가 없을 때의
+          -77 도 같이 치운다(고치면 «-77» 이 칸에 보이고 77원으로 저장될 뻔했다). (2026-09-25 조사) */
+    final cur = ((st.couple?['fee'] as Map?)?['amount'] as num?)?.toInt() ?? 0;
     final typed = await askText(
       context,
       title: '월 회비',
-      initial: cur == 0 ? '' : '\$cur',
+      initial: cur <= 0 ? '' : '$cur',
       suffix: '원',
       helper: '0으로 두면 회비를 쓰지 않아요',
       maxLength: 12,
@@ -1145,13 +1149,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // 새로 고른 사진은 «보관함에 올리고 번호만» 문서에 적는다
     final old = photo;
-    if (picked != null) {
+    /* ⚠️ 사진을 골랐다가 이모지로 바꿨으면 올리지 않는다 — 올려 봐야 아무 데도 안 쓰이고
+          보관 요금만 나간다. 사진만 못 올렸으면 크기·회전·이모지는 저장한다
+          (예전에는 그 자리에서 돌아가 고친 것이 다 버려졌다 — 2026-09-25 조사). */
+    var uploaded = false; // «방금 새로 올린» 원본이 있는가 — 치울 때 이것만 치운다
+    var photoFailed = false;
+    if (picked != null && kind == 'photo') {
       final id = await Store.i.savePhoto(code, picked!);
       if (id == null) {
-        if (mounted) toast(context, '사진을 올리지 못했어요 — 다시 눌러주세요');
-        return;
+        photoFailed = true;
+        // 예전 사진이 있으면 그대로, 없으면 이모지로 둔다(빈 사진 상징이 되지 않게)
+        if (old == null || old.isEmpty) kind = 'emoji';
+      } else {
+        photo = id;
+        uploaded = true;
       }
-      photo = id;
     }
 
     try {
@@ -1172,11 +1184,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
            · 새 사진으로 바꿨을 때  · 사진을 그만 쓰고 이모지로 갔을 때
          `data:` 값은 문서 안에 그림이 든 옛 방식이라 지울 원본이 없다 —
          `dropPhotos` 가 들어오는 문에서 걸러 준다(144회차). */
-      if (old != null && (picked != null || kind != 'photo')) {
+      // ⚠️ «새로 올린 것이 있을 때»만 옛 것을 치운다 — 사진을 못 올려 옛 사진을 계속 쓰는데 지우면 안 된다
+      if (old != null && (uploaded || kind != 'photo')) {
         Store.i.dropPhotos([old]);
       }
       if (!mounted) return;
-      toast(context, '모임 상징을 바꿨어요 🎨');
+      toast(
+          context,
+          photoFailed
+              ? '크기·회전은 저장했어요 — 사진은 올리지 못했어요, 다시 골라주세요'
+              : '모임 상징을 바꿨어요 🎨');
       _r();
     } catch (_) {
       /* 문서에 못 적었으면 «방금 올린» 원본도 치운다 —
@@ -1184,7 +1201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
          (게시판·채팅은 이미 이렇게 하는데 여기만 빠져 있었다)
          ⚠️ 「답이 없음」은 여기로 안 온다 — settleVoid 가 조용히 넘긴다.
             그건 «기기에 쌓였다가 연결되면 간다»는 뜻이라 지우면 안 된다. */
-      if (picked != null && photo != null) Store.i.dropPhotos([photo]);
+      if (uploaded && photo != null) Store.i.dropPhotos([photo]);
       if (!mounted) return;
       saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }

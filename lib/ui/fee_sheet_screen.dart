@@ -299,8 +299,9 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
       ],
       monthRows: [
         [
-          for (final m in months)
-            _box(Text(FeeSheet.monthLabel(m), style: _headStyle), bg: _headBg)
+          // 해가 걸친 기간이면 머리에 해를 붙인다(FeeSheet.headLabels)
+          for (final h in FeeSheet.headLabels(months))
+            _box(Text(h, style: _headStyle), bg: _headBg)
         ],
         for (var i = 0; i < members.length; i++)
           [
@@ -406,8 +407,8 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
       ],
       monthRows: [
         [
-          for (final m in months)
-            _box(Text(FeeSheet.monthLabel(m), style: _headStyle), w: 60, bg: _headBg)
+          for (final h in FeeSheet.headLabels(months))
+            _box(Text(h, style: _headStyle), w: 60, bg: _headBg)
         ],
         for (var i = 0; i < cats.length; i++)
           [
@@ -434,11 +435,15 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
     if (code == null) return;
     final ok = await confirmSheet(
       context,
-      '$_months개월 ${_tab == 0 ? "회비 현황" : "지출"} 표를 올릴까요?',
+      // 실제로 고른 달 수·기간을 말한다 — 「올해」·직접 고르기여도 늘 「6개월」이라 했다
+      '${months.length}개월(${FeeSheet.spanLabel(months)}) ${_tab == 0 ? "회비 현황" : "지출"} 표를 올릴까요?',
       '표를 그림으로 만들어 모임 대화방에 보냅니다. 회원 모두가 보게 돼요.',
       okLabel: '올리기',
     );
     if (!ok || !mounted) return;
+    // 🔒 잠긴 모임이면 그림을 만들어 올리기 «전에» 말한다 (올렸다 도로 지우지 않게)
+    final locked = Store.lockReason();
+    if (locked != null) return toast(context, locked);
 
     setState(() => _busy = true);
     try {
@@ -455,8 +460,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
         return;
       }
       final thumb = await Store.makeThumb(bytes);
-      final span =
-          '${FeeSheet.monthLabel(months.first)}~${FeeSheet.monthLabel(months.last)}';
+      final span = FeeSheet.spanLabel(months);
       final id = await Store.i.addItem(code, {
         'type': 'msg',
         'kind': 'img',

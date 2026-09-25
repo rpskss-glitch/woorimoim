@@ -197,9 +197,24 @@ class _AdminConsoleState extends State<AdminConsole> {
   }
 
   Future<void> _create() async {
+    if (_busyText != null) return; // 만드는 중에 또 누르면 같은 이름 방이 둘 생긴다
     final name = await _askText('새 모임 만들기', '모임 이름 (방장이 바꿀 수 있어요)');
     if (name == null || name.trim().isEmpty) return;
     final title = name.trim();
+    /* ⏳ 만드는 동안 «만드는 중»을 띄우고 다시 못 누르게 한다.
+       ⚠️ 예전에는 서버를 열 번 넘게 오가는 동안 아무 표시가 없어, 반응이 없는 줄 알고
+          한 번 더 누르면 겹침 검사가 첫 방이 다 적히기 «전에» 돌아 **같은 이름 방이 둘** 생겼다
+          — 회원은 이름으로 들어오므로 엉뚱한 방에 들어갈 수 있다(2026-09-25 조사). */
+    if (!mounted) return;
+    setState(() => _busyText = '「$title」 방을 만드는 중…');
+    try {
+      await _createRoom(title);
+    } finally {
+      if (mounted) setState(() => _busyText = null);
+    }
+  }
+
+  Future<void> _createRoom(String title) async {
 
     /* ⚠️ 겹침 검사와 빈 코드 찾기는 «서버에 물어보는» 일이라 인터넷이 없으면 던진다.
        감싸지 않으면 그 오류가 단추 밖으로 새어 나가 **눌러도 아무 일 없는 「새 모임」**이 된다. */

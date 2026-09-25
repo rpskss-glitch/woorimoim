@@ -194,4 +194,30 @@ class FeeSheet {
     final p = ym.split('-');
     return p.length == 2 ? '${int.parse(p[1])}월' : ym;
   }
+
+  /* 📅 해가 걸친 기간이면 «몇 년»도 붙인다. (2026-09-25 조사)
+     ⚠️ 달만 적으면 2025-03~2026-02 표의 머리가 「3월 … 2월」이고, 24개월이면 같은 달이
+        두 번씩 나와 어느 해 것인지 알 수 없었다. 대화방에 올린 그림도 「(3월~2월)」이었다. */
+  static bool _spansYears(List<String> months) =>
+      months.map((m) => m.split('-').first).toSet().length > 1;
+
+  /// 표 머리글 — 해가 걸치면 첫 칸과 1월 칸에만 「25.3월」처럼 해를 붙인다(좁은 칸에 들어가게).
+  static List<String> headLabels(List<String> months) {
+    final multi = _spansYears(months);
+    return [
+      for (var i = 0; i < months.length; i++)
+        multi && (i == 0 || months[i].endsWith('-01'))
+            ? '${months[i].substring(2, 4)}.${monthLabel(months[i])}'
+            : monthLabel(months[i]),
+    ];
+  }
+
+  /// 기간 한 줄 — 「3월~9월」, 해가 걸치면 「25년 3월~26년 2월」.
+  static String spanLabel(List<String> months) {
+    if (months.isEmpty) return '';
+    String one(String ym) => _spansYears(months)
+        ? '${ym.substring(2, 4)}년 ${monthLabel(ym)}'
+        : monthLabel(ym);
+    return months.length == 1 ? one(months.first) : '${one(months.first)}~${one(months.last)}';
+  }
 }

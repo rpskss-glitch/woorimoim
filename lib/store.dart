@@ -1393,7 +1393,14 @@ class Store {
       var guard = 0;
       while (guard++ < 500) {
         // 한 번에 300건씩 — 너무 크게 잡으면 묶음 쓰기 한도(500)에 걸린다
-        final s = await col(name).where('coupleId', isEqualTo: code).limit(300).get();
+        /* ⚠️ **서버에 직접 묻는다.** 그냥 get() 은 연결이 약하면 «이 폰에 남은 것»으로 답하는데,
+              총괄 폰에는 남의 모임 기록이 거의 없어 «0건»이 온다 → 기록은 하나도 안 지우고
+              「방과 기록 0건을 지웠어요」 → 방 문서만 지워져 **남은 기록에 아무도 손댈 수 없게** 됐다
+              (2026-09-25 조사). 서버에 못 닿으면 던져서 방 지우기 전체를 멈춘다. */
+        final s = await col(name)
+            .where('coupleId', isEqualTo: code)
+            .limit(300)
+            .get(const GetOptions(source: Source.server));
         if (s.docs.isEmpty) break;
 
         /* ⚠️ 사진 원본은 **기록을 지우기 전에** 번호를 모아 둬야 한다.

@@ -794,6 +794,9 @@ class _LedgerFormState extends State<_LedgerForm> {
     if (_rcptBusy) return;
     final code = AppState.i.code;
     if (code == null) return;
+    // 🔒 잠긴 모임이면 지출 기록 자체가 안 된다 — 영수증부터 올려 두지 않는다
+    final locked = Store.lockReason();
+    if (locked != null) return toast(context, locked);
     final x = await ImagePicker()
         .pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
     if (x == null || !mounted) return;

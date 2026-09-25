@@ -35,6 +35,27 @@ List<String> photoTags(String? caption) {
   return out;
 }
 
+/// 설명 끝에 #태그 하나 붙이기 — 40자(웹 입력칸)에 맞춘다. 못 붙이면 null.
+/// ⚠️ 넘치면 «설명 글»만 줄이고 옛 태그는 온전히 남긴다.
+///    예전처럼 앞에서부터 자르면 `#결승전연습` 이 `#결승` 이 되고 뒤 태그는 사라졌다.
+String? addTagToCaption(String caption, String tag) {
+  final cur = caption.trim();
+  final had = photoTags(cur);
+  if (had.contains(tag)) return cur;
+  if (had.length >= 6) return null; // 웹 규칙 최대 6개 — 붙여도 안 보인다
+  final plain = cur.isEmpty ? '#$tag' : '$cur #$tag';
+  if (plain.length <= 40) return plain;
+  final tags = [...had, tag].map((t) => '#$t').join(' ');
+  if (tags.length > 40) return null;
+  final text = cur
+      .replaceAll(RegExp(r'#[\w가-힣]{1,12}'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  final room = 40 - tags.length - 1;
+  final head = room <= 0 ? '' : text.substring(0, room.clamp(0, text.length)).trim();
+  return head.isEmpty ? tags : '$head $tags';
+}
+
 /// 사진에 남길 수 있는 반응 — 웹과 같은 다섯 가지
 const photoReactions = ['❤️', '😂', '😍', '🥺', '👍'];
 
@@ -471,24 +492,37 @@ class _AlbumViewState extends State<AlbumView> {
     final code = AppState.i.code;
     if (code == null) return;
     final ids = _pick!.toList();
-    var ok = 0;
+    var ok = 0, already = 0, full = 0, failed = 0;
     for (final id in ids) {
       final p = AppState.i.by('photo').firstWhere((x) => x['id'] == id,
           orElse: () => <String, dynamic>{});
       if (p.isEmpty) continue;
       final cur = ((p['caption'] as String?) ?? '').trim();
-      if (photoTags(cur).contains(tag)) continue; // 이미 있으면 두 번 붙이지 않는다
-      /* 웹 입력칸이 40자라 그 안에서 맞춘다 — 넘치면 설명 쪽을 줄인다(웹과 같은 규칙).
-         안 맞추면 웹에서 그 사진을 고칠 때 글자가 잘려 태그가 사라진다. */
-      final head = cur.length > 40 - tag.length - 2
-          ? cur.substring(0, (40 - tag.length - 2).clamp(0, cur.length)).trim()
-          : cur;
-      final next = head.isEmpty ? '#$tag' : '$head #$tag';
-      if (await _patchPhoto(code, id, {'caption': next})) ok++;
+      // 웹 입력칸이 40자라 그 안에서 맞춘다 — 넘치면 설명 글만 줄이고 옛 태그는 살린다
+      final next = addTagToCaption(cur, tag);
+      if (next == null) {
+        full++;
+        continue;
+      }
+      if (next == cur) {
+        already++; // 이미 있으면 두 번 붙이지 않는다
+        continue;
+      }
+      if (await _patchPhoto(code, id, {'caption': next})) {
+        ok++;
+      } else {
+        failed++;
+      }
     }
     if (!mounted) return;
     setState(() => _pick = null);
-    toast(context, '$ok장에 #$tag 를 붙였어요');
+    /* ⚠️ 예전에는 이미 있던 사진·실패가 셈에서 빠져, 다 붙어 있어도 「0장에 붙였어요」였다. */
+    toast(context, [
+      '$ok장에 #$tag 를 붙였어요',
+      if (already > 0) '$already장은 이미 있어요',
+      if (full > 0) '$full장은 태그가 가득해 못 붙였어요',
+      if (failed > 0) '$failed장은 저장하지 못했어요',
+    ].join(' — '));
     _r();
   }
 

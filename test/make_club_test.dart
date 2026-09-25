@@ -57,7 +57,7 @@ void main() {
 
   test('방 만들기는 두 걸음 모두 «확인»을 건다', () {
     final admin = stripComments(File('lib/ui/admin.dart').readAsStringSync());
-    final body = bodyOf(admin, 'Future<void> _create(');
+    final body = bodyOf(admin, 'Future<void> _createRoom(');
     expect(body, isNotEmpty);
     expect(RegExp(r'setClubTitle\([^;]*?,\s*true\s*\)', dotAll: true).hasMatch(body),
         isTrue, reason: '방을 못 만들었는데 코드를 방장에게 보내게 된다');
@@ -67,7 +67,7 @@ void main() {
 
   test('못 만들었으면 만든 것을 되돌리고 «못 만들었다»고 말한다', () {
     final admin = stripComments(File('lib/ui/admin.dart').readAsStringSync());
-    final body = bodyOf(admin, 'Future<void> _create(');
+    final body = bodyOf(admin, 'Future<void> _createRoom(');
     expect(body.contains('roomMade'), isTrue);
     expect(body.contains('deleteCouple('), isTrue, reason: '이름을 차지한 채로 남는다');
     expect(body.contains('방을 만들지 못했어요'), isTrue);
@@ -96,5 +96,16 @@ void main() {
       if (stripComments(f.readAsStringSync()).contains('sure: true')) where.add(rel);
     }
     expect(where, ['lib/ui/admin.dart']);
+  });
+  /* 2026-09-25: 만드는 동안 아무 표시가 없어 한 번 더 누르면 겹침 검사가 첫 방이 다 적히기 전에 돌아
+     «같은 이름 방이 둘» 생겼다. */
+  test('만드는 동안 «만드는 중»을 띄우고, 그 사이엔 또 못 누른다', () {
+    final admin = stripComments(File('lib/ui/admin.dart').readAsStringSync());
+    final body = bodyOf(admin, 'Future<void> _create(');
+    expect(body.indexOf('if (_busyText != null) return;'), greaterThanOrEqualTo(0),
+        reason: '두 번 누르면 같은 이름 방이 둘 생긴다');
+    expect(body, contains('_busyText = '), reason: '반응이 없는 줄 알고 또 누른다');
+    expect(body, contains('finally'), reason: '실패하면 «만드는 중»에 갇힌다');
+    expect(body, contains('await _createRoom('));
   });
 }

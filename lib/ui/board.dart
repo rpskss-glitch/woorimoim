@@ -148,6 +148,12 @@ class _BoardTabState extends State<BoardTab> {
     if (_upBusy) return; // 올리는 중에 또 누르면 같은 사진이 두 번 올라간다
     final code = AppState.i.code;
     if (code == null) return;
+    /* 🔒 잠긴 모임이면 고르기 «전에» 말한다.
+       ⚠️ 예전에는 20장을 고르면 20장을 다 올린 뒤 기록이 거절돼 하나씩 도로 지우고,
+          「0장 올렸어요 (20장 실패 — 다시 시도해주세요)」라고 했다 — 이용권 얘기는 없이
+          연결 탓처럼 들렸다(2026-09-25 조사). */
+    final locked = Store.lockReason();
+    if (locked != null) return toast(context, locked);
     /* ⚠️ 「세로」도 함께 줄여야 한다 — 가로만 줄이면 **세로로 긴 사진**(대화 스크린샷·
        파노라마)은 1600×6000 같은 크기로 남아 보관함 한도(2MB)를 넘는다.
        그러면 ① 이 사진이 안 올라가고 ② `savePhoto` 가 「보관함을 못 쓴다」고 보고
