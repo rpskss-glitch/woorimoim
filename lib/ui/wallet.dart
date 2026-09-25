@@ -390,6 +390,8 @@ class _WalletTabState extends State<WalletTab> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      // 끌어 내리기는 막는다 — 묻지 못하고 닫혀 적은 것이 사라진다(바깥·뒤로 가기는 폼이 묻는다)
+      enableDrag: false,
       builder: (c) => const _LedgerForm(),
     );
     if (ok == true) _r();
@@ -835,6 +837,22 @@ class _LedgerFormState extends State<_LedgerForm> {
   bool _saved = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 글자가 바뀌면 «닫아도 되는지»를 다시 따진다(PopScope.canPop)
+    _title.addListener(_r);
+    _amount.addListener(_r);
+  }
+
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
+  /// 적은 것이 있는가(내용·금액·영수증) — 있으면 닫기 전에 묻는다(2026-09-26, 게시판 글 쓰기와 같은 고침)
+  bool get _dirty =>
+      _title.text.trim().isNotEmpty || _amount.text.trim().isNotEmpty || _rcptId != null;
+
+  @override
   void dispose() {
     /* ⚠️ 영수증만 올려 두고 **창을 그냥 닫는** 길이 있다(뒤로가기·바깥 누르기).
        그러면 그 원본은 아무 기록도 안 붙들고 있는 채 보관함에 남아
@@ -945,7 +963,17 @@ class _LedgerFormState extends State<_LedgerForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    /* ✍️ 적은 것이 있으면 바깥·뒤로 가기에도 바로 닫지 않고 묻는다(저장은 이 문을 안 거친다). */
+    return PopScope(
+      canPop: !_dirty || _busy,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final drop = await confirmSheet(context, '쓰던 글을 버릴까요?', '지금 창을 닫으면 적은 내용이 사라져요.',
+            okLabel: '버리기', danger: true);
+        if (!drop || !context.mounted) return; // 「취소」면 적은 것 그대로 둔다
+        Navigator.pop(context);
+      },
+      child: Padding(
       /* ⚠️ 아래 여백은 «키보드»(viewInsets)뿐 아니라 «내비게이션바»(viewPadding.bottom)도
          비워야 한다 — 안 그러면 키보드 없을 때 저장 단추가 시스템 내비게이션바에 가린다
          (2026-09-01 사장님 실기기에서 잡음). */
@@ -1023,6 +1051,7 @@ class _LedgerFormState extends State<_LedgerForm> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
