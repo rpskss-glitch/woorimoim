@@ -41,4 +41,8 @@ void main() {
       markTestSkipped('규칙 파일이 없는 기기 — 앱 쪽만 확인했다');
     }
   });
+  test('새 모임 만들기 확인창도 «결제 전에 써 볼 수 있다»고 하지 않는다', () {
+    final o = File('lib/ui/onboarding.dart').readAsStringSync();
+    expect(o.contains("'먼저 만들어 보시고, 회원을 부르기 전에 결제하시면 돼요.'"), isFalse);
+  });
 }

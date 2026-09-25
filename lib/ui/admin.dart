@@ -21,6 +21,24 @@ import 'common.dart';
    ⚠️ 여러 번 틀리면 서버가 잠근다 — 아이디만 맞히고 나머지를 계속 넣어 보는 것을 막는다. */
 const _metaDoc = 'META';
 
+/* 🗂 콘솔 목록 = 총괄 목록(META) + «앱에서 방장이 직접 만든 방».
+   META 에 있는 방은 차례·내용 그대로 두고, 없는 방만 뒤에 붙이며 `self: true` 로 표시한다.
+   (가입 화면의 「새 모임 만들기」는 META 에 못 적어 콘솔에 안 보였다 — 2026-09-25 조사) */
+Map<String, dynamic> mergeClubs(
+    Map<String, dynamic> fromMeta, List<Map<String, dynamic>> all) {
+  final out = <String, dynamic>{...fromMeta};
+  for (final c in all) {
+    final code = c['code'] as String?;
+    if (code == null || c['isMeta'] == true || out.containsKey(code)) continue;
+    out[code] = {
+      'title': c['title'],
+      'members': (c['members'] as Map?)?.length ?? 0,
+      'self': true,
+    };
+  }
+  return out;
+}
+
 /* 🔑 이 기기가 «이미 허락받은 총괄 기기»인가.
 
    한 번 들어온 기기는 서버의 «허락받은 기기 목록»에 남아 있다.
@@ -175,9 +193,15 @@ class _AdminConsoleState extends State<AdminConsole> {
         'members': (c['members'] as Map?)?.length ?? 0,
       };
     }
+    // 앱에서 방장이 직접 만든 방도 합친다 — 못 읽으면 META 것만이라도 보여 준다
+    var merged = fresh;
+    try {
+      final all = await Store.i.allClubs(); // 못 읽으면 null — 그때는 META 것만
+      if (all != null) merged = mergeClubs(fresh, all);
+    } catch (_) {/* META 목록만으로 */}
     if (!mounted) return;
     setState(() {
-      _clubs = fresh;
+      _clubs = merged;
       _loading = false;
       _loadErr = null;
     });
@@ -548,7 +572,8 @@ class _AdminConsoleState extends State<AdminConsole> {
                     final name = row['title'] as String? ?? '이름 없음';
                     return _ClubCard(
                       code: e.key,
-                      title: name,
+                      // 앱에서 방장이 직접 만든 방은 표시해 둔다 — 총괄이 만든 방과 갈라 볼 수 있게
+                      title: row['self'] == true ? '$name (앱에서 만든 방)' : name,
                       members: row['members'] as int?,
                       gone: row['gone'] == true,
                       onRename: row['gone'] == true ? null : () => _rename(e.key, name),

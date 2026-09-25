@@ -27,7 +27,8 @@ void main() {
       expect(onb.contains('Future<void> _newClub()'), isTrue,
           reason: '새 모임을 만드는 길이 없으면 스토어에서 받은 사람은 쓸 수가 없다');
       final at = onb.indexOf('Future<void> _newClub()');
-      final body = onb.substring(at, at + 900);
+      // 함수 «전체»를 본다 — 앞 900자만 보면 설명 글이 늘 때마다 헛실패한다
+      final body = onb.substring(at, onb.indexOf('static bool _looksLikeAdminId', at));
       expect(body.contains('_codeC.text.trim()'), isTrue,
           reason: '만들 이름을 «위 칸»에서 가져와야 한다 (안내 문구와 맞아야 한다)');
       expect(body.contains('findClubByTitle'), isTrue,
