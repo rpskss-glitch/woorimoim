@@ -272,19 +272,32 @@ class _WalletTabState extends State<WalletTab> {
     if (!context.mounted) return;
 
     final ok = res.where((r) => r.done).toList();
-    final bad = res.where((r) => !r.done).toList();
+    /* ⚠️ «이미 앞으로까지 다 낸 사람»(skipped)은 실패가 아니다 — 예전에는 「N명 못 함」에 섞여
+          총무가 잘못된 줄 알고 그 사람을 다시 눌렀다(2026-09-25 조사). 따로 센다. */
+    final skipped = res.where((r) => r.skipped).toList();
+    final bad = res.where((r) => !r.done && !r.skipped).toList();
     setState(() {
       _pickMode = false;
       _picked.clear();
     });
+    final paidNote = skipped.isEmpty
+        ? ''
+        : ' — ${skipped.map((r) => r.name).join(', ')}님은 이미 다 냈어요';
     if (bad.isEmpty) {
-      toast(context, '${ok.length}명 회비 ${fmtWon(ok.fold<int>(0, (a, r) => a + r.won))}을 기록했어요 💵');
+      toast(
+          context,
+          ok.isEmpty
+              ? '고른 분들은 이미 다 냈어요 — 새로 적을 것이 없어요'
+              : '${ok.length}명 회비 ${fmtWon(ok.fold<int>(0, (a, r) => a + r.won))}을 기록했어요 💵$paidNote');
     } else {
       // 안 된 사람을 이름으로 정확히 알려 준다 — 「몇 명 실패」로는 누구를 다시 받을지 모른다
       await confirmSheet(
         context,
         '${ok.length}명 기록, ${bad.length}명 못 함',
-        bad.map((r) => '· ${r.name}: ${r.why ?? "안 됐어요"}').join('\n'),
+        [
+          ...bad.map((r) => '· ${r.name}: ${r.why ?? "안 됐어요"}'),
+          if (skipped.isNotEmpty) '(${skipped.map((r) => r.name).join(', ')}님은 이미 다 냈어요)',
+        ].join('\n'),
         okLabel: '알겠어요',
       );
     }
