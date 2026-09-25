@@ -352,7 +352,13 @@ class AppState extends ChangeNotifier {
   /// 아직 안 적힌 폰(업데이트 직후)은 모두의 방 값에서 시작한다 — 배지가 갑자기 쌓이지 않게.
   int get lastSeenStaff {
     final v = Store.i.getInt('club_seenchat_staff');
-    return v == 0 ? lastSeenChat : v;
+    if (v != 0) return v;
+    /* ⚠️ «한 번만» 옮겨 적는다 — 매번 빌려 오면 모두의 방을 읽는 족족 운영진 방도 따라가,
+          운영진 방을 안 연 운영진에게는 고치기 전과 똑같이 말이 묻혔다(2026-09-26 다시 잡음).
+          모두의 방 값도 0이면(처음 깐 폰) 1로 적어 «모두 안 읽음»에서 시작한다. */
+    final start = lastSeenChat == 0 ? 1 : lastSeenChat;
+    Store.i.setInt('club_seenchat_staff', start);
+    return start;
   }
 
   set lastSeenStaff(int v) => Store.i.setInt('club_seenchat_staff', v);

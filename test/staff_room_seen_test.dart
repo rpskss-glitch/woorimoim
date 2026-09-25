@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:woorimoim/logic.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/store.dart';
@@ -46,5 +47,16 @@ void main() {
     expect(c, contains("Logic.unreadChat(room: 'staff'"));
     final sh = File('lib/ui/shell.dart').readAsStringSync();
     expect(sh, contains('Logic.unreadChat('));
+  });
+  /* ⚠️ 39회차 내 실수(2026-09-26 다시 잡음): 운영진 방 값이 비었을 때 모두의 방 값을 «매번» 빌려 와,
+     운영진 방을 한 번도 안 연 운영진은 모두의 방을 읽는 족족 운영진 방 말까지 읽음이 됐다(고치기 전과 똑같이).
+     → 한 번만 옮겨 적고, 그 뒤로는 따로 간다. */
+  test('운영진 방 값은 «한 번만» 모두의 방 값에서 시작하고, 그 뒤로 따라가지 않는다', () async {
+    SharedPreferences.setMockInitialValues({'club_seenchat': t0 + 50});
+    await Store.i.loadPrefsForTest();
+    expect(st.lastSeenStaff, t0 + 50, reason: '업데이트 직후엔 모두의 방 값에서 시작');
+    st.lastSeenChat = t0 + 999; // 모두의 방을 더 읽었다
+    expect(st.lastSeenStaff, t0 + 50, reason: '모두의 방을 읽었다고 운영진 방까지 따라가면 안 된다');
+    expect(Logic.unreadChat(room: 'staff', seen: st.lastSeenStaff, myUid: 'me'), 1);
   });
 }
