@@ -16,8 +16,10 @@ void main() {
   test('못 선 까닭을 «인터넷 없음»으로 단정하지 않는다', () {
     expect(main.contains('인터넷 연결이 필요해요'), isFalse,
         reason: '인터넷이 되는데도 없다고 말한다 — 회원이 엉뚱한 곳을 고치려 든다');
-    expect(main.contains('모임 정보를 받지 못했어요'), isTrue,
+    expect(main.contains('서버에 연결하지 못했어요'), isTrue,
         reason: '무엇이 안 됐는지는 말해야 한다');
+    // 2026-09-25: 이 화면은 «어느 모임인지 알기 전»에도 뜬다(처음 깐 폰·심사관) — 「모임」이라 하면 안 맞는다
+    expect(main.contains('모임 정보를 받지 못했어요'), isFalse);
   });
 
   test('무엇을 해보라고 «알려준다»', () {

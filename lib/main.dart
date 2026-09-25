@@ -249,7 +249,7 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
               children: [
                 const Text('📶', style: TextStyle(fontSize: 52)),
                 const SizedBox(height: 16),
-                const Text('모임 정보를 받지 못했어요',
+                const Text('서버에 연결하지 못했어요',
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 Text(

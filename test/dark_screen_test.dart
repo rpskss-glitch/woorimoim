@@ -14,7 +14,7 @@ void main() {
     addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await t.pumpWidget(const NeedNetworkApp());
-    final ctx = t.element(find.text('모임 정보를 받지 못했어요'));
+    final ctx = t.element(find.text('서버에 연결하지 못했어요'));
     expect(Theme.of(ctx).brightness, Brightness.dark,
         reason: '폰은 어두운 화면인데 이 화면만 밝은 테마로 나온다 — '
             'MaterialApp 에 darkTheme 이 빠졌다');
@@ -25,7 +25,7 @@ void main() {
     addTearDown(t.platformDispatcher.clearPlatformBrightnessTestValue);
 
     await t.pumpWidget(const NeedNetworkApp());
-    final ctx = t.element(find.text('모임 정보를 받지 못했어요'));
+    final ctx = t.element(find.text('서버에 연결하지 못했어요'));
     expect(Theme.of(ctx).brightness, Brightness.light);
   });
 
