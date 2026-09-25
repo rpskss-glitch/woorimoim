@@ -764,7 +764,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                           msg: m,
                           prev: showDay ? null : prev,
                           isLastMine: _isLastMine(m, msgs),
-                          readCount: _readCount(((m['createdAt'] as num?) ?? 0).toInt()),
+                          readCount: _readCount(m),
                           othersCount: st.memberList.length - 1,
                           onLongPress: () => _menu(m),
                           onPhotoShown: _followGrowth,
@@ -869,17 +869,11 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     return false;
   }
 
-  /// 나를 뺀 회원 중 이 메시지 시각 이후를 읽은 사람 수.
-  int _readCount(int at) {
+  /// 나를 뺀 회원 중 이 말을 «볼 수 있고» 읽은 사람 수 — 규칙은 Logic.readCount 한 곳에
+  int _readCount(Map<String, dynamic> m) {
     final st = AppState.i;
     final reads = (st.couple?['lastRead'] as Map?)?.cast<String, dynamic>() ?? {};
-    var n = 0;
-    reads.forEach((uid, v) {
-      if (uid == Store.i.myUid) return;
-      if (!st.members.containsKey(uid)) return;
-      if ((((v as num?) ?? 0).toInt()) >= at) n++;
-    });
-    return n;
+    return Logic.readCount(m, st.members, reads, Store.i.myUid);
   }
 
   String _preview(Map<String, dynamic> m) => msgLabel(m);

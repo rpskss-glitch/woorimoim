@@ -967,6 +967,28 @@ class Logic {
   /// **이미 승인했다(벌써 회원)**. 예전에는 화면에 남은 옛 목록만 보고 통째로 덮어써서
   ///   · 거절된 사람이 회원이 되거나
   ///   · 방장이 이미 준 직책·권한이 평회원으로, 가입일이 지금으로 덮였다(2026-09-25 조사).
+  /* 👀 「읽음 N」 — 나를 뺀 회원 중 이 말을 «볼 수 있고» 그 뒤까지 읽은 사람 수.
+     ⚠️ 볼 수 없는 사람은 뺀다(2026-09-25 조사):
+        · 가입하기 전 말 — 대화는 가입 5분 전부터 보인다(Store.chatFloor 와 같은 여유)
+        · 운영진 방 말 — 평회원에게는 안 보인다
+        안 빼면 읽은 시각이 더 뒤라는 이유만으로 «읽음»에 세어져, 보낸 사람이 모두 본 줄 안다. */
+  static int readCount(Map<String, dynamic> msg, Map<String, dynamic> members,
+      Map<String, dynamic> lastRead, String me) {
+    final at = asInt(msg['createdAt']);
+    final staffOnly = (msg['room'] as String?) == 'staff';
+    var n = 0;
+    lastRead.forEach((uid, v) {
+      if (uid == me) return;
+      final m = members[uid];
+      if (m is! Map) return; // 나간 사람
+      if (staffOnly && m['role'] != 'owner' && m['role'] != 'admin') return;
+      final floor = Store.chatFloor(m['joinedAt'] is num ? (m['joinedAt'] as num).toInt() : null);
+      if (floor != null && floor > at) return; // 들어오기 전 말 — 볼 수 없다
+      if (asInt(v) >= at) n++;
+    });
+    return n;
+  }
+
   static Map<String, dynamic>? approvePatch(
       Map<String, dynamic> cur, Map<String, dynamic> p, int now) {
     final uid = p['uid'];
