@@ -162,6 +162,8 @@ class _MembersScreenState extends State<MembersScreen> {
     if (code == null) return; // 묻는 사이에 모임에서 빠졌을 수 있다
     try {
       await Store.i.patchCouple(code, {'pending.${p['uid']}': null});
+      // 신청에 실린 얼굴 사진도 치운다 — 아무도 못 보는 파일에 요금만 나간다
+      Store.i.dropPhotos([p['photo'] as String?]);
       if (!mounted) return;
       toast(context, '신청을 거절했어요');
     } catch (_) {

@@ -83,8 +83,11 @@ class WaitScreen extends StatelessWidget {
          회원은 취소된 줄 안다. 안 됐으면 안 됐다고 말하고 이 화면에 머문다. */
       // 내가 스스로 떠나는 중 — «거절됐어요» 알림이 끼어들지 않게 (state 의 leavingOnPurpose)
       st.leavingOnPurpose = true;
+      // 신청에 실어 보낸 얼굴 사진 — 취소하면 아무도 못 보는 파일이 된다(아래에서 치운다)
+      final myPhoto = ((st.couple?['pending'] as Map?)?[Store.i.myUid] as Map?)?['photo'];
       try {
         await Store.i.patchCouple(code, {'pending.${Store.i.myUid}': null});
+        Store.i.dropPhotos([myPhoto is String ? myPhoto : null]);
       } catch (_) {
         st.leavingOnPurpose = false;
         if (!context.mounted) return;

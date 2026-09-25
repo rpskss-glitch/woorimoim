@@ -584,6 +584,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
 
+    /* 📷 고른 얼굴 사진은 «신청에» 함께 적는다 — 승인할 때 회원 칸으로 옮겨진다(Logic.approvePatch).
+       ⚠️ 예전에는 신청 «뒤»에 회원 칸(members.<나>.photo)에 적으려 했는데, 신청 대기 중인 사람은
+          아직 회원이 아니라 서버가 거절해 사진이 조용히 사라졌다(2026-09-26 조사).
+          못 올려도 신청은 그대로 보낸다 — 사진 하나 때문에 가입을 막으면 더 나쁘다. */
+    String? facePhoto;
+    final face = _face;
+    if (face != null) {
+      try {
+        facePhoto = await Store.i.savePhoto(code, face);
+      } catch (_) {
+        facePhoto = null;
+      }
+    }
     // 가입 신청 — 내 신청만 보낸다 (통째로 보내면 그 사이 승인·거절된 남의 신청이 되살아난다)
     try {
       await Store.i.setCouple(code, {
@@ -594,14 +607,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'uid': uid,
             'birth': birth,
             'requestedAt': DateTime.now().millisecondsSinceEpoch,
+            if (facePhoto != null) 'photo': facePhoto,
           }
         }
       });
     } catch (_) {
+      // 신청이 안 갔으면 올린 사진도 치운다 — 아무도 못 보는 파일에 요금만 나간다
+      if (facePhoto != null) Store.i.dropPhotos([facePhoto]);
       // 신청이 안 갔는데 「신청했어요」라고 하면 회원은 오지 않을 승인을 계속 기다린다
       if (mounted) toast(context, '가입 신청을 보내지 못했어요 — 다시 눌러주세요');
       return;
     }
+    _face = null; // 사진은 신청에 실렸다 — 들어가면서 회원 칸에 또 올리지 않게(아직 회원이 아니라 거절된다)
     await enter(); // 대기 화면으로 넘어간다
   }
 

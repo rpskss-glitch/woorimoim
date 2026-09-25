@@ -1021,6 +1021,8 @@ class Logic {
           'emoji': p['emoji'] ?? defaultAvatar,
           'uid': uid,
           'birth': p['birth'] ?? '', // 생년월일도 옮겨야 폰 바꿀 때 자동 이어받기가 된다
+          // 📷 가입 화면에서 고른 얼굴 사진 — 신청에 실려 온다(2026-09-26, 예전에는 사라졌다)
+          if (p['photo'] is String && (p['photo'] as String).isNotEmpty) 'photo': p['photo'],
           'role': 'member',
           'joinedAt': now,
         }
