@@ -654,17 +654,10 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ── 여닫이들 ────────────────────────────────────────────────────
-  void _openAlbum(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('모임 사진첩')),
-          body: AlbumView(onChanged: _r),
-        ),
-      ),
-    ).then((_) => _r());
-  }
+  /* 📸 사진첩은 게시판 탭의 «사진» 칸으로 연다 — 거기에 「사진 올리기」가 있다.
+     ⚠️ 예전에는 사진첩만 따로 띄워 올리기 단추가 없었다 — 올리러 온 회원이 길을 못 찾았다(2026-09-26 에뮬). */
+  // ignore: avoid_unused_parameters
+  void _openAlbum(BuildContext context) => _go(3, action: 'album');
 
   /// 🏅 내 배지 + 전체 출석 순위 — 예전 홈 카드 두 장을 여기로 모았다
   void _openBadges(BuildContext context) {

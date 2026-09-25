@@ -41,7 +41,15 @@ class _BoardTabState extends State<BoardTab> {
      ⚠️ 예전에는 탭만 옮겼다. 게시판을 마지막에 「사진」 칸으로 두었으면
         「사진 올리기」 화면이 떠서, 글을 쓰러 왔는데 사진 화면이 나왔다(2026-09-25 조사). */
   void _onAction() {
-    if (!mounted || AppState.i.openAction.value != 'write') return;
+    if (!mounted) return;
+    /* 📸 홈 「사진첩」 — «사진» 칸으로 연다. 여기에 「사진 올리기」 단추가 있다.
+       ⚠️ 예전에는 홈이 사진첩만 따로 띄워 올리기 단추가 없었다(2026-09-26 에뮬). */
+    if (AppState.i.openAction.value == 'album') {
+      AppState.i.openAction.value = null;
+      setState(() => _tab = 1);
+      return;
+    }
+    if (AppState.i.openAction.value != 'write') return;
     AppState.i.openAction.value = null; // 한 번만 — 안 비우면 탭을 옮길 때마다 창이 또 뜬다
     setState(() => _tab = 0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
