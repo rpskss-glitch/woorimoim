@@ -262,6 +262,9 @@ class Demo {
     final today = _dayFromNow(0);
     final next = _dayFromNow(4);
     final last = _dayFromNow(-3);
+    /* 지난 대회 글에 적는 달 — 글의 날짜(last)에서 뽑는다.
+       ⚠️ 「3월」로 박아 두면 9월에 둘러볼 때 9월 22일 글이 «3월 대회 후기»가 된다(75회차). */
+    final lastMonth = int.parse(last.substring(5, 7));
     final month = today.substring(0, 7);
     String rk(String d, String u) => '${d}_$u';
 
@@ -405,7 +408,7 @@ class Demo {
       }, 'u_sh', 86400000 + 3600000),
       item({
         'type': 'diary',
-        'title': '3월 정기 대회 후기',
+        'title': '$lastMonth월 정기 대회 후기',
         'text': '우리 클럽 복식 2팀이 8강까지 올라갔습니다! 다음엔 더 잘해봐요 💪',
         'date': last,
         'tags': ['공지'],
@@ -428,7 +431,7 @@ class Demo {
         'type': 'photo',
         'photoId': demoPhotoTeam,
         'thumb': demoPhotoTeamThumb,
-        'caption': '3월 정기 대회 8강! 🏆',
+        'caption': '$lastMonth월 정기 대회 8강! 🏆',
         'date': last,
       }, 'u_sh', 2 * 86400000),
       item({
