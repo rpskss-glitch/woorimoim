@@ -476,7 +476,13 @@ class _AlbumViewState extends State<AlbumView> {
     }
     if (!mounted) return;
     setState(() => _pick = null);
-    toast(context, ok == ids.length ? '$ok장 즐겨찾기에 넣었어요' : '$ok장만 됐어요');
+    // 하나도 안 됐으면 「0장만 됐어요」가 아니라 실패 안내 — 잠긴 모임이면 잠긴 까닭을 (2026-09-26 조사)
+    if (ok == 0) {
+      saveFailToast(context, '즐겨찾기에 넣지 못했어요 — 다시 해주세요');
+    } else {
+      toast(context,
+          ok == ids.length ? '$ok장 즐겨찾기에 넣었어요' : '$ok장만 넣었어요 — ${ids.length - ok}장은 못 넣었어요');
+    }
     _r();
   }
 
