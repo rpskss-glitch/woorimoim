@@ -621,6 +621,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 /* 숫자 6자리(800125)로 바로 친다 — 가입 화면과 같은 칸.
                    폰을 바꿀 때 이 값으로 본인 확인을 하므로 여기서도 고칠 수 있어야 한다. */
                 BirthInput(
+                  label: '생년월일', // 칸 이름이 없으면 비어 있을 때 무엇을 적는 칸인지 모른다(2026-09-26)
                   initial: birth,
                   onChanged: (d) => setS(() => birth = d),
                 ),

@@ -1134,7 +1134,9 @@ class _AskTextDialogState extends State<_AskTextDialog> {
 class BirthInput extends StatefulWidget {
   final DateTime? initial;
   final ValueChanged<DateTime?> onChanged;
-  const BirthInput({super.key, this.initial, required this.onChanged});
+  /// 칸 이름 — 위에 제목이 없는 자리(내 정보 창)에서 쓴다. 가입 화면은 칸 위에 제목이 따로 있다.
+  final String? label;
+  const BirthInput({super.key, this.initial, required this.onChanged, this.label});
 
   @override
   State<BirthInput> createState() => _BirthInputState();
@@ -1201,6 +1203,7 @@ class _BirthInputState extends State<BirthInput> {
       maxLength: 8,
       onChanged: _typed,
       decoration: InputDecoration(
+        labelText: widget.label,
         hintText: '예) 800125',
         counterText: '',
         /* ⚠️ 읽어낸 날짜를 **반드시 보여 준다.** 6자리의 연도는 추정이라
