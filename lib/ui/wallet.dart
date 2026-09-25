@@ -735,16 +735,42 @@ class _LedgerRow extends StatelessWidget {
             PopupMenuButton<String>(
               onSelected: (v) async {
                 if (v != 'del') return;
-                final ok = await confirmSheet(context, '이 기록을 지울까요?', '되돌릴 수 없어요',
-                    okLabel: '지우기', danger: true);
+                final id = item['id'] as String;
+                final payer = item['payer'] as String?;
+                final isJoinFee = id.startsWith('joinfee_');
+                /* 무엇이 함께 바뀌는지 먼저 말한다 — 회비 기록이면 그 달들이 다시 «안 낸 달»이 된다 */
+                final ok = await confirmSheet(
+                    context,
+                    '이 기록을 지울까요?',
+                    span != null
+                        ? '$span 회비가 다시 «안 낸 달»로 돌아가요. 되돌릴 수 없어요'
+                        : isJoinFee
+                            ? '가입비가 다시 «안 받은 것»으로 돌아가요. 되돌릴 수 없어요'
+                            : '되돌릴 수 없어요',
+                    okLabel: '지우기',
+                    danger: true);
                 if (!ok) return;
                 final code = AppState.i.code;
                 if (code == null) return;
-                final done =
-                    await Store.i.deleteItem(code, item['id'] as String, 'ledger');
+                final done = await Store.i.deleteItem(code, id, 'ledger');
                 if (!context.mounted) return;
                 if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
                 Store.i.dropPhotos(Store.photoIdsOf(item));
+                /* 💵 가입비 기록이면 회원 자리의 «받음» 표시도 푼다.
+                   ⚠️ 예전에는 돈만 장부에서 빠지고 `joinFee: 'paid'` 가 남아, 가입비 단추가 다시 안 떠
+                      다시 적을 길이 없었다(2026-09-25 조사). 이미 나간 회원이면 자리가 없으니 건너뛴다. */
+                if (isJoinFee && payer != null && AppState.i.members.containsKey(payer)) {
+                  try {
+                    await Store.i.patchCouple(code, {'members.$payer.joinFee': null});
+                  } catch (_) {
+                    if (context.mounted) {
+                      toast(context, '기록은 지웠는데 가입비 표시를 못 풀었어요 — 운영진이 다시 눌러주세요');
+                    }
+                    onChanged();
+                    return;
+                  }
+                  if (!context.mounted) return;
+                }
                 toast(context, '기록을 지웠어요');
                 onChanged();
               },
