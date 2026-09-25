@@ -24,12 +24,28 @@ class _BoardTabState extends State<BoardTab> {
   void initState() {
     super.initState();
     AppState.i.addListener(_r);
+    AppState.i.openAction.addListener(_onAction);
+    // 이 탭이 «방금 처음» 떴다면, 홈이 남겨 둔 할 일이 이미 기다리고 있을 수 있다
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onAction());
   }
 
   @override
   void dispose() {
     AppState.i.removeListener(_r);
+    AppState.i.openAction.removeListener(_onAction);
     super.dispose();
+  }
+
+  /* ✏️ 홈의 「글 쓰기」 — 게시판으로 옮기는 데서 그치지 않고 **글쓰기 창까지** 연다.
+     ⚠️ 예전에는 탭만 옮겼다. 게시판을 마지막에 「사진」 칸으로 두었으면
+        「사진 올리기」 화면이 떠서, 글을 쓰러 왔는데 사진 화면이 나왔다(2026-09-25 조사). */
+  void _onAction() {
+    if (!mounted || AppState.i.openAction.value != 'write') return;
+    AppState.i.openAction.value = null; // 한 번만 — 안 비우면 탭을 옮길 때마다 창이 또 뜬다
+    setState(() => _tab = 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _writePost(context);
+    });
   }
 
   /* 📸 사진 여러 장 올리기는 «오래 걸리는 일»이다 — 한 장마다 작은 그림을 만들고 올린다.
@@ -243,8 +259,18 @@ class _PostCard extends StatelessWidget {
                       final code = st.code;
                       final id = item['id'] as String?;
                       if (code == null || id == null) return;
-                      await Store.i
-                          .updateItem(code, id, 'diary', {'pinned': !pinned});
+                      /* ⚠️ 서버가 거절하면(이용권 만료·권한) 던진다 — 안 받으면
+                            «눌렀는데 아무 일도 없는 단추»가 된다. 실패를 말로 알린다. */
+                      try {
+                        await Store.i.updateItem(code, id, 'diary', {'pinned': !pinned});
+                      } catch (_) {
+                        if (context.mounted) {
+                          toast(context, pinned
+                              ? '고정을 풀지 못했어요 — 다시 시도해주세요'
+                              : '고정하지 못했어요 — 다시 시도해주세요');
+                        }
+                        return;
+                      }
                       if (!context.mounted) return;
                       toast(context, pinned ? '고정을 풀었어요' : '맨 위에 고정했어요 📌');
                       onChanged();

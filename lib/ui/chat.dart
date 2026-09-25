@@ -73,8 +73,13 @@ const typingWindow = 4000;
   return (uids: uids, expiresInMs: uids.isEmpty ? 0 : soonest);
 }
 
-bool countsAsRead(bool tabActive, AppLifecycleState? life) =>
-    tabActive && (life == null || life == AppLifecycleState.resumed);
+/// 지금 대화를 «읽은 것»으로 쳐도 되는가.
+/// [onTop] — 대화 화면 위에 다른 화면(회원·설정)이 덮여 있지 않은가.
+/// ⚠️ 예전에는 탭과 앱 상태만 봤다. 대화 탭에서 ⚙️ 설정을 열어 둔 동안 새 대화가 오면
+///    보낸 사람에게 「읽음」이 찍히고 내 안읽음 배지도 사라져, 돌아와서도 모르고 지나갔다
+///    (2026-09-25 조사).
+bool countsAsRead(bool tabActive, AppLifecycleState? life, {bool onTop = true}) =>
+    tabActive && onTop && (life == null || life == AppLifecycleState.resumed);
 
 class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   final _textC = TextEditingController();
@@ -122,6 +127,25 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
       });
       _scrollToBottom(); // 다른 탭 갔다 돌아오면 다시 최신 대화가 보이게 (이미 다음 프레임에 돈다)
     }
+  }
+
+  /* 🪟 대화 위에 다른 화면(회원·설정)이 덮였다가 «걷혔는지» 본다.
+     `ModalRoute.of` 를 여기서 부르면, 덮이거나 걷힐 때마다 Flutter 가 이 함수를 다시 불러 준다.
+     걷혔을 때 읽음을 찍는다 — 안 그러면 덮인 동안 온 대화가 다음 대화가 올 때까지 «안읽음»으로 남는다. */
+  bool _onTop = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final top = ModalRoute.of(context)?.isCurrent ?? true;
+    AppState.i.chatCovered = !top;
+    if (top && !_onTop) {
+      // 그리는 도중이라 바로 못 부른다 (didUpdateWidget 설명과 같다)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _markSeen();
+      });
+    }
+    _onTop = top;
   }
 
   @override
@@ -203,8 +227,12 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
   /// 내 것까지 세면 보낼 때마다 쓰기가 한 번 더 나가고, 단체방에선 그 쓰기가
   /// 구독 중인 회원 수만큼 읽기 요금으로 곱해진다.
   Future<void> _markSeen() async {
-    // 보고 있지 않으면(딴 탭이거나 앱이 뒤에 있으면) 읽은 것이 아니다
-    if (!countsAsRead(widget.active, WidgetsBinding.instance.lifecycleState)) return;
+    // 보고 있지 않으면(딴 탭이거나 앱이 뒤에 있거나 다른 화면이 덮고 있으면) 읽은 것이 아니다
+    if (!mounted) return;
+    if (!countsAsRead(widget.active, WidgetsBinding.instance.lifecycleState,
+        onTop: ModalRoute.of(context)?.isCurrent ?? true)) {
+      return;
+    }
     final st = AppState.i;
     final code = st.code;
     if (code == null) return;
@@ -607,7 +635,17 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
                 ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
               ],
               selected: {_room},
-              onSelectionChanged: (v) => setState(() => _room = v.first),
+              /* 방을 바꾸면 그 방의 최신 대화로 내리고 읽음을 찍는다.
+                 ⚠️ 예전에는 방 값만 바꿔, 운영진 방의 새 대화를 열어 봐도 배지·「안읽음」이
+                    그대로였고 목록도 옛 자리에서 열렸다(2026-09-25 조사). */
+              onSelectionChanged: (v) {
+                setState(() => _room = v.first);
+                _stick = true;
+                _scrollToBottom();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _markSeen();
+                });
+              },
               showSelectedIcon: false,
             ),
           ),
@@ -1039,9 +1077,9 @@ class _PollCardState extends State<PollCard> {
     final id = widget.msg['id'] as String;
     var ok = false;
     try {
-      ok = await Store.i.mutateItem(code, id, 'msg', (cur) => {
-            'poll': {'closed': closed}
-          });
+      // 지난 마감 시각까지 함께 풀어야 «다시 열기»가 실제로 열린다 (pollClosePatch 설명)
+      ok = await Store.i.mutateItem(
+          code, id, 'msg', (cur) => Logic.pollClosePatch(cur, closed));
     } catch (_) {
       ok = false;
     }

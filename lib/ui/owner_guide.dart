@@ -4,6 +4,7 @@ import '../fee.dart';
 import '../state.dart';
 import '../store.dart';
 import 'common.dart';
+import 'members.dart';
 
 /* 📖 **방장 안내서** — 모임을 새로 만든 방장에게만, 홈 맨 위에 한 번 뜬다.
 
@@ -148,11 +149,17 @@ class _OwnerGuideCardState extends State<OwnerGuideCard> {
 
               step('2', '가입 신청을 승인하세요',
                   members <= 1
-                      ? '아직 회원이 방장님 한 분입니다. 신청이 오면 홈 맨 위에 뜹니다.'
-                      : '지금 회원 $members명입니다. 신청은 홈 맨 위 「가입 승인 대기」에서 처리합니다.',
+                      ? '아직 회원이 방장님 한 분입니다. 신청이 오면 홈에 「가입 승인 대기」가 뜨고 '
+                          '위쪽 👥 에 숫자가 붙습니다.'
+                      : '지금 회원 $members명입니다. 신청은 홈의 「가입 승인 대기」나 '
+                          '위쪽 👥 회원 화면에서 처리합니다.',
+                  /* ⚠️ 예전에는 「홈에서 확인」 → 홈 탭으로 옮기기였다. 이 안내는 «홈에» 있어서
+                        이미 홈인데 홈으로 가라니 **눌러도 아무 일이 없었다**(2026-09-25 조사).
+                        승인을 실제로 하는 회원 화면을 바로 연다 — 홈 카드의 「승인하러 가기」와 같다. */
                   action: OutlinedButton(
-                    onPressed: () => widget.onGo(0),
-                    child: const Text('홈에서 확인'),
+                    onPressed: () => Navigator.push(context,
+                        MaterialPageRoute<void>(builder: (_) => const MembersScreen())),
+                    child: const Text('승인하러 가기'),
                   )),
 
               step('3', '직책을 정하세요',

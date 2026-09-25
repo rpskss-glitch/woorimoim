@@ -562,6 +562,23 @@ class Logic {
     );
   }
 
+  /// 투표 «마감하기 / 다시 열기»에 적을 값.
+  ///
+  /// ⚠️ 다시 열 때 **이미 지난 마감 시각은 지운다.** 안 지우면 closed 를 풀어도
+  ///    시각 때문에 계속 닫힌 것으로 센다 — 「투표를 다시 열었어요」라고 해 놓고
+  ///    그대로 닫혀 있었다(2026-09-25 조사). 아직 안 지난 마감 시각은 둔다 — 그때 다시 닫혀야 한다.
+  static Map<String, dynamic> pollClosePatch(Map<String, dynamic> m, bool closed,
+      {int? now}) {
+    final until = poll(m, now: now).until;
+    final t = now ?? DateTime.now().millisecondsSinceEpoch;
+    return {
+      'poll': {
+        'closed': closed,
+        if (!closed && until != null && t >= until) 'until': Store.del,
+      }
+    };
+  }
+
   /* ⏳ 기한까지 남은 밀리초 — 지났거나 기한이 없으면 null.
      화면이 «그때» 스스로 다시 그리도록 쓰는 값이다. */
   static int? pollLeftMs(Map<String, dynamic> m, {int? now}) {

@@ -395,7 +395,12 @@ void main() {
     final shell = readSource('lib/ui/shell.dart');
 
     test('채팅을 보고 있으면 알림을 띄우지 않는다', () {
-      expect(push.contains('AppState.i.currentTab == 1'), isTrue);
+      /* 2026-09-25: 「채팅 탭인가」만 보던 것을 «눈앞에 보이는가»(chatOnScreen)로 바꿨다.
+         대화 탭 위에 설정을 띄워 둔 동안에도 알림을 삼켰기 때문이다. 판단은 state 에 모았다. */
+      expect(push.contains('AppState.i.chatOnScreen'), isTrue);
+      final state = readSource('lib/state.dart');
+      expect(state.contains('currentTab == 1 && !chatCovered'), isTrue,
+          reason: '«채팅 탭 + 덮이지 않음» 둘 다 봐야 한다');
       expect(shell.contains('AppState.i.currentTab'), isTrue,
           reason: '탭이 바뀔 때 알려주지 않으면 위 검사가 늘 옛 값을 본다');
     });

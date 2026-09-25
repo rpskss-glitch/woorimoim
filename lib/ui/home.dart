@@ -51,7 +51,12 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   /// 아래쪽 탭으로 옮긴다 (0홈 1채팅 2일정 3게시판 4회비 — 웹과 같은 순서) — 꺼풀(shell)이 듣고 있다
-  void _go(int tab) => AppState.i.openTab.value = tab;
+  /// [action] 은 옮긴 «뒤에» 그 탭에서 할 일 (state 의 openAction 설명).
+  /// ⚠️ 할 일을 «먼저» 남긴다 — 탭이 처음 뜨면서 바로 집어가야 하기 때문이다.
+  void _go(int tab, {String? action}) {
+    if (action != null) AppState.i.openAction.value = action;
+    AppState.i.openTab.value = tab;
+  }
 
   /* 🤫 숨은 입구 — 모임 «상징»을 다섯 번 두드리면 총괄 콘솔.
      설정 맨 아래 버전 글씨에도 같은 길이 있는데, 모임 안에 들어와 있으면
@@ -263,7 +268,8 @@ class _HomeTabState extends State<HomeTab> {
       children: [
         tile('📅', '일정', () => _go(2)),
         const SizedBox(width: 8),
-        tile('✏️', '글 쓰기', () => _go(3)),
+        // 탭만 옮기면 «글쓰기»가 아니다 — 글쓰기 창까지 연다 (board 의 _onAction)
+        tile('✏️', '글 쓰기', () => _go(3, action: 'write')),
         const SizedBox(width: 8),
         tile('💰', '회비 장부', () => _go(4)),
         const SizedBox(width: 8),
@@ -446,7 +452,8 @@ class _HomeTabState extends State<HomeTab> {
                         style: TextStyle(
                             fontSize: 12, color: Theme.of(context).hintColor)),
                   ),
-                  TextButton(onPressed: () => _go(4), child: const Text('회비 받기')),
+                  TextButton(
+                      onPressed: () => _go(4, action: 'dues'), child: const Text('회비 받기')),
                 ],
               ),
             ] else if (!st.isTreasurer && !iPaid) ...[

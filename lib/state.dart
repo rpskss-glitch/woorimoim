@@ -165,9 +165,22 @@ class AppState extends ChangeNotifier {
   /// 지금 보고 있는 탭 (0=홈 1=채팅 …). 채팅을 보는 중에는 알림을 띄우지 않으려고 쓴다.
   int currentTab = 0;
 
+  /// 대화 탭 «위에» 다른 화면(회원·설정 등)이 덮여 있는가.
+  /// ⚠️ 탭 번호만 보면 설정을 열어 둔 동안에도 «대화를 보는 중»으로 쳐서
+  ///    새 대화를 읽음으로 찍고 알림까지 삼켰다(2026-09-25 조사). 대화 탭이 적는다.
+  bool chatCovered = false;
+
+  /// 지금 정말로 대화를 «눈앞에» 보고 있는가 — 알림을 삼킬지 가르는 데 쓴다.
+  bool get chatOnScreen => currentTab == 1 && !chatCovered;
+
   /// 알림을 눌러 들어왔을 때 열어야 할 탭 (0=홈 1=채팅 …).
   /// 화면이 아직 안 떴을 수도 있어 값으로 남겨두고, 탭 화면이 뜨면 집어간다.
   final openTab = ValueNotifier<int?>(null);
+
+  /// 탭을 옮긴 «뒤에» 그 탭 안에서 할 일 — 홈의 빠른 단추가 보낸다.
+  /// `'write'` = 게시판 글쓰기 창 열기, `'dues'` = 회비 탭 「현황」(회원별 납부)으로.
+  /// ⚠️ 받는 탭이 아직 한 번도 안 떠서 없을 수 있다 — 값으로 남겨 두고, 탭이 뜨면 집어간다.
+  final openAction = ValueNotifier<String?>(null);
 
   void setCoupleLive(Map<String, dynamic>? c) {
     couple = c;
@@ -271,6 +284,7 @@ class AppState extends ChangeNotifier {
           **나중에 «다른 모임»에 들어가는 순간 뜬금없이 채팅 탭이 열린다.**
        (나간 모임의 알림 자체는 134회차에 그치게 했지만, 이미 온 알림은 트레이에 남아 있다) */
     openTab.value = null;
+    openAction.value = null; // 같은 까닭 — 옛 방에서 누른 「글 쓰기」가 새 방에서 열리면 안 된다
   }
 
   Future<void> clearProfile() async {

@@ -252,7 +252,7 @@ class _NeedNetworkAppState extends State<NeedNetworkApp> {
                     style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 8),
                 Text(
-                  '인터넷이 느리거나 잠깐 끉겼을 수 있어요.\n'
+                  '인터넷이 느리거나 잠깐 끊겼을 수 있어요.\n'
                   '연결을 확인한 뒤 아래를 눌러주세요.',
                   textAlign: TextAlign.center,
                   style: TextStyle(height: 1.6, color: Theme.of(context).hintColor),

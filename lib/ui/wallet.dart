@@ -34,12 +34,25 @@ class _WalletTabState extends State<WalletTab> {
   void initState() {
     super.initState();
     AppState.i.addListener(_r);
+    AppState.i.openAction.addListener(_onAction);
+    // 이 탭이 «방금 처음» 떴다면, 홈이 남겨 둔 할 일이 이미 기다리고 있을 수 있다
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onAction());
   }
 
   @override
   void dispose() {
     AppState.i.removeListener(_r);
+    AppState.i.openAction.removeListener(_onAction);
     super.dispose();
+  }
+
+  /* 💵 홈의 「회비 받기」 — 회원별 납부 «현황»을 바로 보여 준다.
+     ⚠️ 예전에는 탭만 옮겼다. 회비 탭을 마지막에 「내역」·「통계」로 두었으면
+        회원 목록이 안 보여 «받으러 왔는데 받을 곳이 없었다»(2026-09-25 조사). */
+  void _onAction() {
+    if (!mounted || AppState.i.openAction.value != 'dues') return;
+    AppState.i.openAction.value = null;
+    setState(() => _tab = 0);
   }
 
   /* 화면을 다시 그린다. ⚠️ **아직 그 화면이 있는지 보고** 그린다 —

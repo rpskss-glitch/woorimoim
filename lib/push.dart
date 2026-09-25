@@ -391,7 +391,8 @@ class Push {
     // 앱이 열려 있을 때 온 푸시 — 안드로이드·아이폰 모두 여기서 직접 띄운다(규칙을 하나로 두려고)
     FirebaseMessaging.onMessage.listen((m) {
       // 채팅을 보고 있는데 알림까지 뜨면 성가시다 — 그 대화는 이미 화면에 나와 있다
-      if (AppState.i.currentTab == 1) return;
+      // ⚠️ 대화 탭이어도 그 위에 설정·회원 화면이 덮여 있으면 대화는 안 보인다 — 그때는 띄운다
+      if (AppState.i.chatOnScreen) return;
       final d = m.data;
       final title = (d['title'] as String?) ?? m.notification?.title ?? '새 소식';
       final body = (d['body'] as String?) ?? m.notification?.body ?? '';

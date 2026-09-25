@@ -96,8 +96,13 @@ void main() {
 
       for (var i = 0; i < lines.length; i++) {
         final l = lines[i];
-        final risky = [..._throwing, ..._throwingReads]
-            .any((w) => l.contains('Store.i.$w('));
+        /* ⚠️ 줄이 나뉜 것도 본다 — 포매터가 `Store.i` 와 `.updateItem(` 을 두 줄로 쪼갠다.
+           한 줄만 보던 때 게시판 「📌 맨 위에 고정」이 그렇게 빠져나가 «실패해도 말이 없는
+           단추»가 됐다 (2026-09-25 조사에서 잡았다). */
+        final prev = i > 0 ? lines[i - 1].trimRight() : '';
+        final risky = [..._throwing, ..._throwingReads].any((w) =>
+            l.contains('Store.i.$w(') ||
+            (l.trimLeft().startsWith('.$w(') && prev.endsWith('Store.i')));
         if (!risky) continue;
         if (_insideTry(lines, depth, i)) continue;
         // 부르는 쪽이 받아 준다고 적어 둔 자리
