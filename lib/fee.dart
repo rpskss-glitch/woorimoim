@@ -84,7 +84,17 @@ class Fee {
       AppState.i.couple?['free'] == true || Demo.on;
 
   /// 잠겼을 때 회원에게 보여줄 한 줄
-  static String get lockedLine => iPay
-      ? '이용권이 끝났어요 — 결제하면 바로 다시 쓸 수 있어요'
-      : '방장이 이용권을 결제하면 다시 쓸 수 있어요 (읽기는 그대로 돼요)';
+  /// ⚠️ 한 번도 결제한 적 없는 방장에게 「끝났어요」라고 하면 안 된다 — 산 적도 없는 것이
+  ///    끝났다는 말이 된다(2026-09-25 조사: 새로 만든 모임의 방장이 그렇게 봤다).
+  static String get lockedLine {
+    final never = until() == null;
+    if (iPay) {
+      return never
+          ? '이용권을 결제하면 모임을 쓸 수 있어요'
+          : '이용권이 끝났어요 — 결제하면 바로 다시 쓸 수 있어요';
+    }
+    return never
+        ? '방장이 이용권을 결제하면 쓸 수 있어요 (읽기는 그대로 돼요)'
+        : '방장이 이용권을 결제하면 다시 쓸 수 있어요 (읽기는 그대로 돼요)';
+  }
 }

@@ -164,7 +164,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       context,
       '「$title」 모임을 만들까요?',
       '만든 사람이 방장이 되고, 회원은 이 이름으로 가입 신청을 해요.\n\n'
-          '모임 이용권은 월 ${Fee.wonText}이고 **방장만** 냅니다 (회원은 무료).\n'
+          '모임 이용권은 월 ${Fee.wonText}이고 방장만 냅니다 (회원은 무료).\n'
           '먼저 만들어 보시고, 회원을 부르기 전에 결제하시면 돼요.',
       okLabel: '모임 만들기',
     );

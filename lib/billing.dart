@@ -64,7 +64,20 @@ class Billing {
 
   bool _started = false;
 
-  /// 앱 시작 때 한 번. 스토어 연결 + 밀린 거래 처리.
+  /// 이 모임에서 스토어 소식(결제·자동 갱신)을 들어야 하는가 — 방장이고, 면제 모임이 아닐 때.
+  /// ⚠️ 회원에게는 스토어를 안 붙인다 — 살 것도 없고, 애플이 «회원에게 결제 창»을 싫어한다.
+  static bool shouldListen(Map<String, dynamic>? club, String myUid) {
+    if (club == null || club['free'] == true || myUid.isEmpty) return false;
+    final me = (club['members'] as Map?)?[myUid];
+    return me is Map && me['role'] == 'owner';
+  }
+
+  /// 스토어 연결 + 밀린 거래 처리. 여러 번 불러도 한 번만 붙는다.
+  ///
+  /// 🔴 설명은 예전부터 «앱 시작 때 한 번»이었는데, 실제로는 **결제 화면에서만** 불렀다.
+  ///    그 화면은 모임이 잠긴 뒤에야 열리므로, 아이폰이 매달 자동 갱신한 영수증이
+  ///    서버에 안 넘어가 **돈을 내고 있는 모임도 매달 잠겼다**(2026-09-25 조사).
+  ///    이제 방장이 모임에 들어오면 곧바로 부른다(main 의 [startBillingIfOwner]).
   Future<void> start() async {
     if (_started || Demo.on) return; // 체험 모드에서는 스토어를 부르지 않는다
     _started = true;
@@ -100,9 +113,18 @@ class Billing {
   /// 스토어가 준 가격 글자. 못 받았으면 우리가 아는 값으로 (현지 통화로 적는다)
   String get priceText => product?.price ?? '월 ${Fee.wonText}';
 
+  /* ⏳ 아직 스토어에 붙는 중이면 끝날 때까지 기다린다.
+     ⚠️ 결제 화면은 연결을 «기다리지 않고» 띄운다. 그래서 화면이 뜨자마자 누르면
+        아직 연결 전이라 `available` 이 거짓 — 멀쩡한 아이폰에서도
+        「이 기기에서는 스토어 결제를 쓸 수 없어요」가 떠서 방장이 결제를 포기했다(2026-09-25 조사). */
+  Future<void> _ensureStarted() async {
+    if (!available) await start();
+  }
+
   /// 이용권 사기 — **방장만.**
   Future<void> buy() async {
     if (busy.value) return;
+    await _ensureStarted();
     if (!available) {
       lastMessage.value = '이 기기에서는 스토어 결제를 쓸 수 없어요';
       return;
@@ -135,6 +157,7 @@ class Billing {
       lastMessage.value = '결제를 처리하는 중이에요 — 잠시만 기다려주세요';
       return;
     }
+    await _ensureStarted(); // 위 _ensureStarted 설명 — 복원도 같다
     if (!available) {
       lastMessage.value = '이 기기에서는 스토어 결제를 쓸 수 없어요';
       return;

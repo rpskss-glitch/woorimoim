@@ -257,6 +257,32 @@ void main() {
           reason: '회원 화면에 별표가 그대로 찍힌다 — 굵게 안 되고 지저분해진다');
     });
 
+    test('앱 «전체»에서 화면 글자에 별표가 없다', () {
+      /* 2026-09-25: 위 시험은 안내서 파일 하나만 봤다. 그래서 모임 만들기 확인창의
+         「월 48,000원이고 **방장만** 냅니다」가 별표째로 방장 눈에 찍혔다.
+         이제 lib 전체의 글자('…')를 본다. 바로 뒤에서 replaceAll('**', '') 로 걷어내는 곳만 봐준다. */
+      final lit = RegExp(r"'((?:[^'\\]|\\.)*)'");
+      final bad = <String>[];
+      for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
+        if (!f.path.endsWith('.dart')) continue;
+        final src = f.readAsStringSync().replaceAllMapped(
+            RegExp(r'/\*.*?\*/', dotAll: true),
+            (m) => '\n' * '\n'.allMatches(m[0]!).length);
+        final lines = src.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          final code = lines[i].replaceAll(RegExp(r'//.*'), '');
+          for (final m in lit.allMatches(code)) {
+            final s = m[1]!;
+            if (!s.contains('**') || s == '**') continue;
+            final near = lines.sublist(i, (i + 3).clamp(0, lines.length)).join('\n');
+            if (near.contains("replaceAll('**'")) continue;
+            bad.add('${f.path}:${i + 1}  $s');
+          }
+        }
+      }
+      expect(bad, isEmpty, reason: '화면에 별표가 그대로 찍힌다:\n${bad.join('\n')}');
+    });
+
     test('안내서가 실제 할 일을 «빠짐없이» 짚는다', () {
       final s = File('lib/ui/owner_guide.dart').readAsStringSync();
       for (final must in ['회원을 부르세요', '승인', '직책', '회비', '일정', '이용권']) {

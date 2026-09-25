@@ -62,8 +62,11 @@ void main() {
         final rest = s.substring(m.end);
         final stop = rest.indexOf('Picker(');
         final win = stop < 0 ? rest : rest.substring(0, stop);
-        final guarded = RegExp('if [(]$name != null[)]').hasMatch(win) ||
-            RegExp('if [(]$name == null[)] return').hasMatch(win);
+        /* «화면이 아직 있나(mounted)»를 함께 보는 꼴도 받아 준다 —
+           고르는 창이 떠 있는 동안 밑의 창이 닫힐 수 있어서 둘을 같이 본다(picker_mounted_test). */
+        final guarded =
+            RegExp('if [(]$name != null( && mounted)?[)]').hasMatch(win) ||
+                RegExp('if [(]$name == null( [|][|] !mounted)?[)] return').hasMatch(win);
         if (!guarded) bad.add('$f: $name');
       }
     }

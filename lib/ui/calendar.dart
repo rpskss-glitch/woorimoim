@@ -662,7 +662,8 @@ class _EventFormState extends State<_EventForm> {
                     onPressed: () async {
                       final t = await showTimePicker(
                           context: context, initialTime: _time ?? const TimeOfDay(hour: 19, minute: 0));
-                      if (t != null) setState(() => _time = t);
+                      // 시간창이 떠 있는 동안 이 창이 닫혔을 수 있다 (위 날짜창과 같다)
+                      if (t != null && mounted) setState(() => _time = t);
                     },
                     icon: const Icon(Icons.schedule, size: 18),
                     label: Text(_time == null
@@ -720,7 +721,7 @@ class _EventFormState extends State<_EventForm> {
                           lastDate: DateTime(2100),
                           helpText: '언제까지 반복할까요?',
                         );
-                        if (d != null) setState(() => _until = d);
+                        if (d != null && mounted) setState(() => _until = d);
                       },
                       icon: const Icon(Icons.event_repeat, size: 18),
                       label: Text(_until == null ? '끝나는 날 (안 정하면 계속)' : '${ymd(_until!)}까지'),

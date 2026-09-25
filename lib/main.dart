@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'billing.dart';
 import 'config.dart';
 import 'demo.dart';
 import 'logic.dart';
@@ -427,6 +428,11 @@ class _WooriAppState extends State<WooriApp> {
       final mine = (c['members'] as Map?)?[Store.i.myUid];
       final joinedAt = (mine is Map ? mine['joinedAt'] : null) as num?;
       Store.i.setChatSince(Store.chatFloor(joinedAt?.toInt()));
+
+      /* 💳 방장이면 스토어 소식을 «지금부터» 듣는다 — 아이폰이 매달 자동 갱신한 영수증이
+         여기로 들어와야 서버가 이용권을 늘린다. 결제 화면에서만 들으면 돈을 내는 모임도
+         매달 잠겼다(billing 의 start 설명). 여러 번 불러도 한 번만 붙는다. */
+      if (Billing.shouldListen(c, Store.i.myUid)) unawaited(Billing.i.start());
 
       // 입력중·읽음·접속시각·푸시토큰만 바뀌는 일이 대부분이다. 그때마다 홈·회비·일정까지
       // 다시 계산하면 회원 수에 비례해 무거워지므로, 그 값들만 바뀌었으면 채팅만 가볍게 갱신한다.

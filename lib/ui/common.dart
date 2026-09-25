@@ -1127,7 +1127,8 @@ class _BirthInputState extends State<BirthInput> {
       lastDate: DateTime(2020, 12, 31),
       helpText: '생년월일을 골라주세요',
     );
-    if (d == null) return;
+    // 날짜창이 떠 있는 동안 이 칸이 사라졌을 수 있다 — 그때 setState 를 부르면 터진다
+    if (d == null || !mounted) return;
     setState(() {
       _picked = d;
       _c.text = '${d.year}'

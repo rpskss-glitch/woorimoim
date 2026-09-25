@@ -90,6 +90,19 @@ void main() {
     });
   });
 
+  test('한 번도 결제한 적 없으면 «끝났다»고 하지 않는다', () {
+    /* 2026-09-25 조사: 새로 만든 모임의 방장이 「이용권이 끝났어요」를 봤다 —
+       산 적도 없는 것이 끝났다는 말이다. 끝난 적이 있을 때만 그렇게 말한다. */
+    seed({});
+    expect(Fee.locked, isTrue, reason: '전제: 결제 전이라 잠겨 있다');
+    expect(Fee.lockedLine.contains('끝났'), isFalse, reason: '산 적 없는데 끝났다고 한다');
+    expect(Fee.lockedLine.contains('결제하면'), isTrue);
+
+    final monthAgo = DateTime.now().millisecondsSinceEpoch - 30 * 86400000;
+    seed({'paidUntil': monthAgo});
+    expect(Fee.lockedLine.contains('끝났'), isTrue, reason: '정말 끝났으면 끝났다고 해야 한다');
+  });
+
   test('값이 망가져 있어도 안 터진다', () {
     seed({'paidUntil': '어제', 'free': 'yes'});
     expect(Fee.locked, isTrue, reason: '글자 free 를 참으로 읽으면 공짜로 뚫린다');

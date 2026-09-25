@@ -920,7 +920,8 @@ class _LedgerFormState extends State<_LedgerForm> {
                   firstDate: DateTime(2020),
                   lastDate: DateTime(2100),
                 );
-                if (d != null) setState(() => _date = d);
+                // 날짜창이 떠 있는 동안 이 창이 닫혔을 수 있다 — 그때 setState 를 부르면 터진다
+                if (d != null && mounted) setState(() => _date = d);
               },
               icon: const Icon(Icons.calendar_today, size: 18),
               label: Text(ymd(_date)),

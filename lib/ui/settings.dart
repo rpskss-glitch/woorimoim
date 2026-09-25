@@ -12,6 +12,7 @@ import '../store.dart';
 import '../theme.dart';
 import 'admin.dart';
 import 'common.dart';
+import 'fee_screen.dart';
 import 'member_guide.dart';
 
 /// ⚙️ 설정 — 내 정보, 모임 설정(방장), 알림, 꾸미기.
@@ -219,6 +220,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: const Text('상징 이모지·사진, 크기와 회전'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _editEmblem,
+                    ),
+                  /* 💳 모임 이용권 — 방장이 «잠기기 전에도» 들어갈 수 있는 길.
+                     ⚠️ 예전에는 모임이 잠겨 뜨는 빨간 막대가 유일한 입구였다. 그래서
+                        돈을 내는 방장이 만료일을 보거나, 폰을 바꾼 뒤 복원하거나,
+                        해지하는 법을 찾을 길이 없었다(2026-09-25 조사).
+                     면제 모임(총괄이 만든 방)에는 낼 것이 없으니 안 보인다. */
+                  if (Fee.iPay && !Fee.exempt)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('💳 모임 이용권'),
+                      subtitle: Text(_passLine()),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute<void>(builder: (_) => const FeeScreen())),
                     ),
                 ],
               ),
@@ -806,6 +821,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       saveFailToast(context, '저장하지 못했어요 — 다시 눌러주세요');
     }
+  }
+
+  /// 💳 이용권 한 줄 — 언제까지인지, 아직 안 냈는지, 끝났는지.
+  static String _passLine() {
+    final u = Fee.until();
+    if (u == null) return '아직 결제 전이에요';
+    final day = '${u.year}.${u.month}.${u.day}';
+    return Fee.locked ? '$day에 끝났어요 — 눌러서 결제·복원' : '$day까지 · 눌러서 확인·복원';
   }
 
   /// 회비 보내는 곳 — 없으면 빈 글자
