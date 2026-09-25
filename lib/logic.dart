@@ -18,6 +18,7 @@ class Logic {
         회비 기록 수정에 **돈 권한**을 요구해서 **평회원이 바꾸면 통째로 거절된다**(조용히).
         그래서 옮기는 대신 **읽을 때 이어 본다** — 쓰기도 권한도 필요 없고, 이미 바꾼 사람도 되살아난다. */
   static Map? _movedSrc;
+  static Map? _movedMembersSrc; // 회원 명단도 표에 들어간다 (아래 «지금 회원이면 안 옮김»)
   static Map<String, String>? _movedIdx;
 
   /// 「옛 번호 → 지금 번호」 (여러 번 바꿨으면 사슬 끝까지)
@@ -28,11 +29,20 @@ class Logic {
        (2026-08-23: 「출석 셈은 기록이 그대로면 다시 세지 않는다」 시험이 잡아 줬다)
        그래서 «원본 묶음»을 그대로 견준다. */
     final raw = AppState.i.couple?['former'];
+    final rawMembers = AppState.i.couple?['members'];
     final cached = _movedIdx;
-    if (cached != null && identical(_movedSrc, raw)) return cached;
+    if (cached != null && identical(_movedSrc, raw) && identical(_movedMembersSrc, rawMembers)) {
+      return cached;
+    }
     final former = raw is Map ? raw : const {};
+    final members = rawMembers is Map ? rawMembers : const {};
     final one = <String, String>{};
     former.forEach((old, v) {
+      /* 🔁 **지금 회원인 번호는 «옮겨 간» 것이 아니다.**
+         A폰 → B폰으로 옮긴 뒤 다시 A폰으로 돌아오면 「A→B」와 「B→A」가 둘 다 남아 고리가 된다.
+         그러면 A 의 옛 기록 주인이 «이미 없는 B»로 셈해져, A 에서 낸 회비가 미납으로,
+         출석·배지·참석 표시가 통째로 빠졌다(2026-09-25 조사). A 가 지금 회원이면 A 는 A 다. */
+      if (members.containsKey(old)) return;
       final to = (v is Map) ? v['movedTo'] : null;
       if (to is String && to.isNotEmpty && to != old) one['$old'] = to;
     });
@@ -48,6 +58,7 @@ class Logic {
       out[k] = cur;
     }
     _movedSrc = raw is Map ? raw : null;
+    _movedMembersSrc = rawMembers is Map ? rawMembers : null;
     _movedIdx = out;
     return out;
   }
@@ -294,6 +305,21 @@ class Logic {
     return occurrences(e, from: d, to: d).isNotEmpty;
   }
 
+  /// 🛑 반복 모임을 «이 회차부터» 멈출 때 적을 끝나는 날 — 그 회차 바로 전날.
+  /// null 이면 멈출 수 없다: 첫 회차부터 멈추면 회차가 하나도 안 남아 **어느 목록에도 안 나와
+  /// 고칠 수도 지울 수도 없는 유령 일정**이 된다 — 그때는 통째로 지워야 한다.
+  static String? stopBefore(Map<String, dynamic> e, String date) {
+    final start = e['date'] as String?;
+    if (start == null || date.compareTo(start) <= 0) return null;
+    final d = DateTime.tryParse(date);
+    if (d == null) return null;
+    return ymd(d.subtract(const Duration(days: 1)));
+  }
+
+  /// 이 일정에 적힌 출석·참석 기록 수 — 통째로 지울 때 «무엇이 같이 사라지는지» 알려 주려고.
+  static int recordsIn(Map<String, dynamic> e) =>
+      asMap(e['attend']).length + asMap(e['rsvp']).length;
+
   /// 일정을 고쳤을 때 «세어지지 않게 되는» 출석·참석 기록 수.
   ///
   /// ⚠️ 출석·투표는 「날짜_uid」로 적히고, 목록·배지·순위는 **지금 회차 목록에 있는 날짜만** 센다.
@@ -470,7 +496,13 @@ class Logic {
   ///   · 폰을 바꾼 회원의 **옛 번호** 표 (새 번호로 또 찍으므로 **한 사람이 두 번**)
   /// 2026-08-23 실측: 실제 2명인데 「참석 4」로 보였다.
   /// 방장은 그 숫자로 코트를 잡는다 — 출석 수(`memberList` 로 세는 곳)와 규칙이 달랐던 것이다.
-  static int rsvpCount(Map<String, dynamic> e, String date, String want) {
+  static int rsvpCount(Map<String, dynamic> e, String date, String want) =>
+      rsvpUids(e, date, want).length;
+
+  /// 그 회차에 그 표(yes·maybe·no)를 남긴 «지금 회원»의 번호 — 셈·이름·얼굴이 모두 이것을 쓴다.
+  /// ⚠️ 세는 규칙을 한 곳에 둔다: 예전에는 홈의 얼굴 줄만 원자료를 그대로 세어,
+  ///    단추는 「참석 2」인데 바로 아래 줄은 「참석 4명」이었다(탈퇴자·폰 바꾼 옛 번호까지 셈, 2026-09-25 조사).
+  static List<String> rsvpUids(Map<String, dynamic> e, String date, String want) {
     final map = asMap(e['rsvp']);
     final now = AppState.i.members;
     // 폰을 바꾼 사람은 옛·새 번호로 두 번 찍혀 있을 수 있다 — 사람 단위로 모아 «한 번만» 센다
@@ -482,24 +514,14 @@ class Logic {
       final uid = liveUid(k.substring(11));
       if (now.containsKey(uid)) who.add(uid);
     });
-    return who.length;
+    return who.toList();
   }
 
   /* 🙆 그 회차에 그 표(yes·maybe·no)를 남긴 «지금 회원»의 «이름» 목록.
      일정 카드에서 참석·불참을 이름으로 바로 보여 주는 데 쓴다.
      ⚠️ 세는 규칙은 rsvpCount 와 똑같이 — 탈퇴자·폰 바꾼 옛 번호를 빼고 사람 단위로 한 번만. */
-  static List<String> rsvpNames(Map<String, dynamic> e, String date, String want) {
-    final map = asMap(e['rsvp']);
-    final now = AppState.i.members;
-    final who = <String>{};
-    map.forEach((k, v) {
-      if (v != want) return;
-      if (k.length < 12 || !k.startsWith('${date}_')) return;
-      final uid = liveUid(k.substring(11));
-      if (now.containsKey(uid)) who.add(uid);
-    });
-    return [for (final u in who) AppState.i.nameOf(u)];
-  }
+  static List<String> rsvpNames(Map<String, dynamic> e, String date, String want) =>
+      [for (final u in rsvpUids(e, date, want)) AppState.i.nameOf(u)];
 
   /* 🗝 그 사람이 그 날 남긴 «표»의 열쇠들 — 폰을 바꾸기 «전» 번호까지.
 
@@ -739,9 +761,20 @@ class Logic {
         .entries
         .where((e) => now.containsKey(e.key))
         .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+      // 같은 횟수끼리는 이름순 — 자료가 오는 차례에 따라 줄이 매번 바뀌지 않게
+      ..sort((a, b) {
+        final c = b.value.compareTo(a.value);
+        return c != 0 ? c : AppState.i.nameOf(a.key).compareTo(AppState.i.nameOf(b.key));
+      });
     return list;
   }
+
+  /// 순위 — **같은 횟수는 같은 순위**(공동). [sorted] 는 많은 순으로 세운 목록.
+  /// 예: 3·3·2 → 1·1·3. ⚠️ 예전에는 줄 차례대로 🥇🥈🥉를 붙여,
+  /// 셋 다 1회인데 금·은·동으로 갈렸다(2026-09-25 에뮬레이터 홈에서 직접 봤다).
+  static List<int> ranks(List<MapEntry<String, int>> sorted) => [
+        for (final e in sorted) 1 + sorted.where((x) => x.value > e.value).length,
+      ];
 
   /* 「내가 방장 맡기」를 **서버가 받아 줄** 조건 —
      firestore.rules 의 `notSelfPromotingToOwner()` 와 같은 뜻이라야 한다.

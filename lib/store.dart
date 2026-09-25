@@ -78,6 +78,18 @@ class Store {
   /// 인터넷이 돌아왔을 때 다시 시도한다.
   Future<bool> retryInit() => init();
 
+  /// 👥 이 폰의 로그인 번호를 «새로» 받는다 — 같은 폰에서 다른 사람이 자기 이름으로 들어올 때.
+  /// ⚠️ 옛 번호의 회원 자리는 서버에 그대로 남는다(그 사람은 이름·생년월일로 다시 이어받는다).
+  Future<void> freshIdentity() async {
+    if (Demo.on) return;
+    try {
+      await _auth.signOut();
+      await _auth.signInAnonymously();
+    } catch (e) {
+      _err(e, '새로 로그인');
+    }
+  }
+
   /* 🔗 저장 결과 매듭짓기.
      Firestore의 쓰기는 **서버가 받았다고 알려줄 때까지** 끝나지 않는다.
      인터넷이 없거나 신호가 약하면(체육관 지하 같은 곳) 그 기다림이 **영영 안 끝난다** →

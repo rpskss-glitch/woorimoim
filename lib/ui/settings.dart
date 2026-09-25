@@ -562,11 +562,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       danger: true,
     );
     if (!ok || !mounted) return;
+    // 내가 스스로 떠나는 중 — «이용이 중지됐어요» 알림이 끼어들지 않게 (state 의 leavingOnPurpose)
+    st.leavingOnPurpose = true;
     final done = await Store.i.deleteMyData(code);
-    if (!mounted) return;
-    if (!done) return toast(context, '지우지 못했어요 — 연결을 확인하고 다시 해주세요');
+    if (!done) {
+      st.leavingOnPurpose = false;
+      if (!mounted) return;
+      return toast(context, '지우지 못했어요 — 연결을 확인하고 다시 해주세요');
+    }
     Store.i.stopAll();
     await st.clearProfile();
+    st.leavingOnPurpose = false;
     if (!mounted) return;
     Navigator.pop(context);
     toast(context, '내 자료를 지웠어요');

@@ -170,6 +170,10 @@ class AppState extends ChangeNotifier {
   ///    새 대화를 읽음으로 찍고 알림까지 삼켰다(2026-09-25 조사). 대화 탭이 적는다.
   bool chatCovered = false;
 
+  /// 지금 «내가 스스로» 모임을 떠나는 중인가 — 신청 취소·내 자료 지우기.
+  /// 이 동안에는 «자리가 없어졌다» 알림(main)이 끼어들지 않고, 부른 쪽이 마무리·안내한다.
+  bool leavingOnPurpose = false;
+
   /// 지금 정말로 대화를 «눈앞에» 보고 있는가 — 알림을 삼킬지 가르는 데 쓴다.
   bool get chatOnScreen => currentTab == 1 && !chatCovered;
 

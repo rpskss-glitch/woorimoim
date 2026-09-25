@@ -259,14 +259,57 @@ class _EventCard extends StatelessWidget {
                   onSelected: (v) async {
                     if (v == 'edit') return onEdit();
                     if (v != 'del') return;
-                    final ok = await confirmSheet(
-                      context,
-                      '이 모임을 지울까요?',
-                      rep == 'none' ? '되돌릴 수 없어요' : '반복 모임 전체가 사라져요',
-                      okLabel: '지우기',
-                      danger: true,
-                    );
-                    if (!ok) return;
+                    final code0 = AppState.i.code;
+                    if (code0 == null) return;
+                    /* 🔁 반복 모임은 «한 회차 카드»에서 지워도 **반복 전체**가, 그리고
+                          그동안의 출석·참석 기록(배지·순위의 바탕)이 통째로 사라졌다 —
+                          안내는 「반복 모임 전체가 사라져요」 한 줄뿐이었다(2026-09-25 조사).
+                          이제 «이 회차부터 그만하기»(지난 기록은 그대로)를 먼저 내놓고,
+                          통째로 지울 때는 함께 사라지는 기록 수를 보여 준다. */
+                    if (rep != 'none') {
+                      final stop = Logic.stopBefore(event, date);
+                      final n = Logic.recordsIn(event);
+                      final pick = await chooseSheet(
+                        context,
+                        '반복 모임을 어떻게 할까요?',
+                        n > 0 ? '지금까지 출석·참석 기록이 $n건 있어요' : '',
+                        [
+                          if (stop != null)
+                            ['stop', '🛑 $date 회차부터 그만하기 (지난 기록은 그대로)'],
+                          ['all', n > 0 ? '🗑 반복 전체 지우기 (기록 $n건도 함께 사라져요)' : '🗑 반복 전체 지우기'],
+                        ],
+                      );
+                      if (pick == null || !context.mounted) return;
+                      if (pick == 'stop' && stop != null) {
+                        try {
+                          await Store.i.updateItem(code0, event['id'] as String, 'event', {'until': stop});
+                        } catch (_) {
+                          if (context.mounted) toast(context, '바꾸지 못했어요 — 다시 시도해주세요');
+                          return;
+                        }
+                        if (!context.mounted) return;
+                        toast(context, '$date 회차부터 그만했어요 — 지난 모임은 그대로 남아요');
+                        onChanged();
+                        return;
+                      }
+                      final sure = await confirmSheet(
+                        context,
+                        '반복 모임 전체를 지울까요?',
+                        n > 0 ? '출석·참석 기록 $n건도 함께 사라지고, 배지·순위에서도 빠져요. 되돌릴 수 없어요.' : '되돌릴 수 없어요',
+                        okLabel: '전체 지우기',
+                        danger: true,
+                      );
+                      if (!sure) return;
+                    } else {
+                      final ok = await confirmSheet(
+                        context,
+                        '이 모임을 지울까요?',
+                        '되돌릴 수 없어요',
+                        okLabel: '지우기',
+                        danger: true,
+                      );
+                      if (!ok) return;
+                    }
                     final code = AppState.i.code;
                     if (code == null) return;
                     final done =

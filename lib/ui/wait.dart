@@ -81,14 +81,19 @@ class WaitScreen extends StatelessWidget {
       /* ⚠️ 실패를 삼키면 안 된다. 서버에는 신청이 «그대로 남아 있는데»
          화면만 가입 화면으로 돌아간다 → 방장에게는 취소한 사람의 신청이 계속 보이고,
          회원은 취소된 줄 안다. 안 됐으면 안 됐다고 말하고 이 화면에 머문다. */
+      // 내가 스스로 떠나는 중 — «거절됐어요» 알림이 끼어들지 않게 (state 의 leavingOnPurpose)
+      st.leavingOnPurpose = true;
       try {
         await Store.i.patchCouple(code, {'pending.${Store.i.myUid}': null});
       } catch (_) {
+        st.leavingOnPurpose = false;
         if (!context.mounted) return;
         return toast(context, '신청을 취소하지 못했어요 — 잠시 후 다시 눌러주세요');
       }
     }
     Store.i.stopAll();
     await st.clearProfile();
+    st.leavingOnPurpose = false;
+    if (context.mounted) toast(context, '가입 신청을 취소했어요');
   }
 }

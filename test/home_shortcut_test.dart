@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/demo.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/theme.dart';
+import 'package:woorimoim/ui/album.dart';
 import 'package:woorimoim/ui/calendar.dart';
+import 'package:woorimoim/ui/chat.dart';
 import 'package:woorimoim/ui/board.dart';
 import 'package:woorimoim/ui/home.dart';
 import 'package:woorimoim/ui/shell.dart';
@@ -157,5 +159,29 @@ void main() {
     expect(showing<WalletTab>(t), isTrue);
     expect(find.text('회원별 납부 현황'), findsOneWidget,
         reason: '받으러 왔는데 회원 목록이 안 보인다');
+  });
+
+  /* 🏷 최근 게시판 카드의 알약(글·사진첩·대화)은 «단추 모양»이다 — 누르면 제자리로 가야 한다.
+     2026-09-25 에뮬레이터: 「💬 대화 6개」를 눌렀더니 게시글이 열렸다(알약이 이름표라 카드가 눌렸다). */
+  testWidgets('최근 게시판의 「💬 대화 N개」 → 대화방', (t) async {
+    await open(t);
+    final chip = find.descendant(of: find.byType(HomeTab), matching: find.textContaining('💬 대화'));
+    await t.scrollUntilVisible(chip, 200,
+        scrollable: find.descendant(of: find.byType(HomeTab), matching: find.byType(Scrollable)).first);
+    await t.pumpAndSettle();
+    await t.tap(chip.first);
+    await t.pumpAndSettle();
+    expect(showing<ChatTab>(t), isTrue, reason: '대화 알약을 눌렀는데 대화방이 아니다(게시글이 열렸다)');
+  });
+
+  testWidgets('최근 게시판의 「📸 사진첩 N장」 → 사진첩', (t) async {
+    await open(t);
+    final chip = find.descendant(of: find.byType(HomeTab), matching: find.textContaining('📸 사진첩'));
+    await t.scrollUntilVisible(chip, 200,
+        scrollable: find.descendant(of: find.byType(HomeTab), matching: find.byType(Scrollable)).first);
+    await t.pumpAndSettle();
+    await t.tap(chip.last);
+    await t.pumpAndSettle();
+    expect(find.byType(AlbumView), findsOneWidget, reason: '사진첩 알약을 눌렀는데 사진첩이 아니다');
   });
 }

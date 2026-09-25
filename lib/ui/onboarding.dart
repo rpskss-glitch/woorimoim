@@ -12,6 +12,17 @@ import '../store.dart';
 import 'admin.dart';
 import 'common.dart';
 
+/// 이 회원 자리([member])가 지금 적은 이름·생년월일의 사람인가.
+/// 이름은 띄어쓰기·대소문자를 무시하고, 생년월일은 숫자만 본다.
+/// 자리에 생년월일이 없는 옛 회원은 이름만 맞으면 같은 사람으로 본다(예전 그대로 들어가게).
+bool samePerson(Object? member, String name, String birth) {
+  if (member is! Map) return false;
+  if (Store.normTitle(member['name'] as String?) != Store.normTitle(name)) return false;
+  final had = '${member['birth'] ?? ''}'.replaceAll(RegExp(r'[^0-9]'), '');
+  if (had.isEmpty) return true;
+  return had == birth.replaceAll(RegExp(r'[^0-9]'), '');
+}
+
 /// 가입 화면 — 두 가지 열쇠로 들어온다.
 ///  · 모임 이름 (회원용): 방장에게 들은 이름을 그대로 적으면 됨 (대소문자·띄어쓰기 무시)
 ///  · 코드 (방장 초대 전용): 총괄 관리자가 방장 맡을 분에게만 주는 열쇠.
@@ -380,6 +391,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       await enter();
       return;
+    }
+
+    /* 👥 이 폰의 번호는 회원인데, 적은 이름·생년월일이 «그 자리 사람»이 아니다.
+       ⚠️ 로그아웃은 이 폰의 로그인 번호를 안 바꾼다(같은 사람이 다시 들어오면 그대로 이어지게).
+          그래서 예전에는 가족이 같은 태블릿에서 로그아웃 → 자기 이름으로 로그인하면
+          「다시 만나서 반가워요」와 함께 **앞사람 자리로 들어갔다** — 글이 앞사람 이름으로 올라갔다
+          (2026-09-25 조사). 그때만 새 번호를 받아 «자기»로 처음부터 다시 한다. */
+    if (members.containsKey(uid) && !samePerson(members[uid], name, birth)) {
+      await Store.i.freshIdentity();
+      if (Store.i.myUid.isEmpty || Store.i.myUid == uid) {
+        if (mounted) toast(context, '새로 로그인하지 못했어요 — 잠시 후 다시 눌러주세요');
+        return;
+      }
+      return _doJoin(raw, name, birth, loginOnly: loginOnly);
     }
 
     // 이미 승인된 회원이면(같은 기기 재설치 등) 바로 입장

@@ -390,6 +390,8 @@ class _WooriAppState extends State<WooriApp> {
       /* 승인되는 순간 알림 준비를 «다시» 한다.
          알림 토큰은 그 방 회원만 적을 수 있는데, 처음 준비할 때는 아직 승인 전이라 서버가 거부한다.
          여기서 다시 하지 않으면 앱을 껐다 켤 때까지 **알림이 하나도 안 온다.** */
+      // 바로 앞 스냅샷까지 «신청 대기»였는가 — 아래에서 덮어쓰기 전에 잡아 둔다(자리가 없어진 이유를 가른다)
+      final wasPending = _wasPending;
       if (isMember && _wasPending) {
         _wasPending = false;
         Push.i.setupIfAllowed();
@@ -407,8 +409,15 @@ class _WooriAppState extends State<WooriApp> {
       // ⚠️ «왜» 없어졌는지는 셋으로 갈린다. 한 문장으로 뭉뚱그리면
       //    폰을 바꾼 사람은 잘린 줄 알고, 신청이 거절된 사람은 쓴 적도 없는 「이용 중지」를 듣는다.
       if (!isMember) {
+        /* 🙋 «내가 스스로» 한 일(신청 취소·내 자료 지우기)이면 여기서 손대지 않는다 — 부른 쪽이 마무리한다.
+           ⚠️ 예전에는 여기가 먼저 끼어들었다: 신청을 취소하면 내 쓰기가 곧바로 이 알림을 불러
+              「가입 신청이 받아들여지지 않았어요」가 떴고, 취소가 실패해도 대기 화면이 이미 닫혀 있었다.
+              내 자료를 지워도 「모임 이용이 중지됐어요」가 뜰 수 있었다(2026-09-25 조사). */
+        if (st.leavingOnPurpose) return;
         final wasName = st.profile?['name'];
-        final why = AppState.whyGone(c, Store.i.myUid);
+        /* ⚠️ 방금까지 «신청 대기»였다면 거절이다 — 탈퇴했다 다시 신청한 사람은 옛 탈퇴 기록(former)이
+              남아 있어, 그것만 보면 거절당한 사람에게 「모임 이용이 중지됐어요」라고 했다. */
+        final why = wasPending ? SeatGone.rejected : AppState.whyGone(c, Store.i.myUid);
         Store.i.stopAll();
         st.clearProfile();
         // 설정·회원 화면을 열어둔 채 잘렸다면 그 화면들도 닫는다

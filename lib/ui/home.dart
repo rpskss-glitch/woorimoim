@@ -351,6 +351,9 @@ class _HomeTabState extends State<HomeTab> {
     final meets =
         Logic.eventRows(past: true).where((r) => r.date.startsWith(month)).length;
     const medal = ['🥇', '🥈', '🥉'];
+    final places = Logic.ranks(rank);
+    final onPodium = places.where((p) => p <= 3).length;
+    final shown = onPodium < 5 ? onPodium : 5;
     return [
       SectionCard(
         title: '✅ 이번 달 출석',
@@ -364,12 +367,14 @@ class _HomeTabState extends State<HomeTab> {
               style: const TextStyle(height: 1.4),
             ),
             const SizedBox(height: 6),
-            for (var i = 0; i < rank.length && i < 3; i++)
+            /* 메달은 «순위»로 준다 — 같은 횟수면 같은 메달(공동). 3위 안이면 다 보이되
+               한 카드가 길어지지 않게 다섯 줄까지만, 나머지는 「외 N명」으로 묶는다. */
+            for (var i = 0; i < shown; i++)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(
                   children: [
-                    Text(medal[i], style: const TextStyle(fontSize: 18)),
+                    Text(medal[places[i] - 1], style: const TextStyle(fontSize: 18)),
                     const SizedBox(width: 8),
                     Avatar(rank[i].key, size: 30),
                     const SizedBox(width: 10),
@@ -382,6 +387,12 @@ class _HomeTabState extends State<HomeTab> {
                             color: Theme.of(context).colorScheme.primary)),
                   ],
                 ),
+              ),
+            if (onPodium > shown)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text('외 ${onPodium - shown}명도 3위 안이에요',
+                    style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
               ),
           ],
         ),
@@ -607,20 +618,26 @@ class _HomeTabState extends State<HomeTab> {
                     style: TextStyle(color: Theme.of(context).hintColor)),
               ],
               const SizedBox(height: 8),
+              /* ⚠️ 테두리 있는 알약이라 «단추»로 보인다 — 예전에는 누를 수 없는 이름표(Chip)라
+                    「💬 대화 6개」를 누르면 카드 전체가 눌린 것으로 쳐서 **게시글이 열렸다**
+                    (2026-09-25 에뮬레이터에서 직접 눌러 봤다). 알약마다 제자리로 보낸다. */
               Wrap(
                 spacing: 6,
                 children: [
-                  Chip(
+                  ActionChip(
                       label: Text('📔 글 ${diaries.length}개'),
-                      visualDensity: VisualDensity.compact),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => _go(3)),
                   if (photos > 0)
-                    Chip(
+                    ActionChip(
                         label: Text('📸 사진첩 $photos장'),
-                        visualDensity: VisualDensity.compact),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _openAlbum(context)),
                   if (msgs > 0)
-                    Chip(
+                    ActionChip(
                         label: Text('💬 대화 $msgs개'),
-                        visualDensity: VisualDensity.compact),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _go(1)),
                 ],
               ),
             ],
@@ -768,11 +785,8 @@ class _NextEventCard extends StatelessWidget {
     final dDays =
         DateTime.parse(date).difference(DateTime.parse(today)).inDays;
     // 참석한다고 한 사람 얼굴 — 「누가 오나」가 모임의 첫 궁금증이다
-    final yesUids = Logic.asMap(event['rsvp'])
-        .entries
-        .where((e) => e.value == 'yes' && e.key.startsWith('${date}_'))
-        .map((e) => e.key.substring(date.length + 1))
-        .toList();
+    // ⚠️ 위 단추 숫자와 «같은 규칙»(Logic.rsvpUids) — 원자료를 그대로 세면 탈퇴자·옛 번호까지 들어간다
+    final yesUids = Logic.rsvpUids(event, date, 'yes');
 
     Widget voteBtn(String v, String label, int n) => Expanded(
           child: BusyButton(

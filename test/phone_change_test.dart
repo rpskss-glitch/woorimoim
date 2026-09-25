@@ -93,6 +93,20 @@ void main() {
     expect(Logic.attendStats()['u1'], rounds);
   });
 
+  /* 🔁 A폰 → B폰 → «다시 A폰». (2026-09-25 조사)
+     옮길 때마다 옛 번호에 movedTo 를 적으니 「A→B」와 「B→A」가 둘 다 남아 고리가 된다.
+     예전에는 고리를 20번 돌다 멈춘 자리(B — 이미 회원이 아님)를 주인으로 봐서,
+     A 에서 낸 회비가 미납·출석·배지·참석이 통째로 빠졌다. */
+  test('옛 폰으로 «되돌아가도» 그 폰에서 쌓은 것이 내 것이다', () {
+    // 갑은 지금 A(u1) 로 돌아와 있다. B(uB) 에서 A 로, 그전에는 A 에서 B 로 옮겼다
+    final rounds = seed(old: 'uB', extraFormer: {
+      'u1': {'uid': 'u1', 'name': '갑', 'movedTo': 'uB'}, // 처음 A→B 로 옮길 때 남은 것
+    });
+    expect(Logic.liveUid('u1'), 'u1', reason: '지금 회원인 번호를 남(이미 없는 B)으로 본다');
+    expect(Logic.liveUid('uB'), 'u1', reason: 'B 에서 쌓은 것도 지금 A 의 것');
+    expect(Logic.attendStats()['u1'], rounds);
+  });
+
   test('자료가 고리를 이뤄도 안 멈춘다', () {
     AppState.i.couple = Store.tidyCouple({
       'members': {'u1': {'uid': 'u1', 'name': '갑', 'role': 'member'}},
