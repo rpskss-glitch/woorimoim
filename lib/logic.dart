@@ -539,6 +539,22 @@ class Logic {
           if (map[rkey(date, u)] != null) rkey(date, u)
       ];
 
+  /* ✅ 지난 모임의 출석 칸에 실을 회원 — 그 모임 «뒤에» 들어온 사람은 뺀다(2026-09-26 조사).
+     ⚠️ 이미 찍혀 있으면 그대로 싣는다(끌 수 있어야 한다). 들어온 때를 모르면 뺄 근거가 없어 싣는다. */
+  static List<Map<String, dynamic>> attendCandidates(Map<String, dynamic> e, String date) {
+    final d = DateTime.tryParse(date);
+    // 모임 날 «끝»까지 들어온 사람 — 모임 당일 밤에 가입 승인된 사람도 그날 왔을 수 있다
+    final end = d == null ? null : DateTime(d.year, d.month, d.day + 1).millisecondsSinceEpoch;
+    return [
+      for (final m in AppState.i.memberList)
+        if (end == null ||
+            m['joinedAt'] is! num ||
+            (m['joinedAt'] as num) < end ||
+            attended(e, date, m['uid'] as String? ?? ''))
+          m
+    ];
+  }
+
   static bool attended(Map<String, dynamic> e, String date, String uid) {
     final map = asMap(e['attend']);
     if (map[rkey(date, uid)] == true) return true;

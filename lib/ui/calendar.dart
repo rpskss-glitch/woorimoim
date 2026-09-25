@@ -445,7 +445,8 @@ class _EventCard extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                for (final m in st.memberList)
+                // 그 모임 뒤에 들어온 회원은 싣지 않는다 — 잘못 눌러 없던 출석이 붙지 않게
+                for (final m in Logic.attendCandidates(event, date))
                   _AttendChip(
                     /* 🔑 «누구의» 칩인지 붙여 둔다 — 없으면 플러터가 «자리»로 짝짓는다.
                        도는 표시(_busy)는 칩이 들고 있는데, 누르는 «동안» 회원 목록이 바뀌면
