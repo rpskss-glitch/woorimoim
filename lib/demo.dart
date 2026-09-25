@@ -78,6 +78,12 @@ class Demo {
     _itemsCb = null;
     AppState.i.profile = null;
     AppState.i.resetRoom();
+    /* 👀 체험 대화방에서 읽은 흔적(이 폰의 「어디까지 봤다」)도 지운다.
+       ⚠️ 안 지우면 곧바로 가입한 진짜 모임의 그전 대화가 전부 «읽음»으로 잡혀 배지가 0이었다
+          (가입 없이 둘러보기 → 가입은 새 회원이 가장 흔히 밟는 길 — 2026-09-26 조사). */
+    for (final k in const ['club_seenchat', 'club_seenchat_staff', 'club_seendiary']) {
+      Store.i.remove(k);
+    }
     // 알려 주지 않으면 화면이 그대로 남는다 — 나가기를 눌러도 아무 일도 안 나는 것처럼 보인다
     AppState.i.refresh();
   }
