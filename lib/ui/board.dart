@@ -147,6 +147,8 @@ class _BoardTabState extends State<BoardTab> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      // 끌어 내리기는 막는다 — 그 길은 «묻지 못하고» 닫혀 쓰던 글이 사라진다(2026-09-26). 바깥·뒤로 가기는 폼이 묻는다
+      enableDrag: false,
       builder: (c) => const _PostForm(),
     );
     if (ok == true) _r();
@@ -409,6 +411,21 @@ class _PostFormState extends State<_PostForm> {
   bool _notice = false;
   bool _busy = false;
 
+  /// 쓴 것이 있는가 — 있으면 닫기 전에 묻는다
+  bool get _dirty => _title.text.trim().isNotEmpty || _text.text.trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    // 글자가 바뀌면 «닫아도 되는지»를 다시 따진다(PopScope.canPop)
+    _title.addListener(_r);
+    _text.addListener(_r);
+  }
+
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _title.dispose();
@@ -441,7 +458,19 @@ class _PostFormState extends State<_PostForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    /* ✍️ 쓰던 글이 있으면 바깥을 누르거나 뒤로 가기를 해도 바로 닫지 않고 묻는다.
+       ⚠️ 예전에는 긴 공지를 쓰다 바깥을 한 번 건드리면 글이 통째로 사라졌다(2026-09-26 조사).
+       올리기(Navigator.pop)는 이 문을 거치지 않는다. */
+    return PopScope(
+      canPop: !_dirty || _busy,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final drop = await confirmSheet(context, '쓰던 글을 버릴까요?', '지금 창을 닫으면 적은 내용이 사라져요.',
+            okLabel: '버리기', danger: true);
+        if (!drop || !context.mounted) return; // 「취소」면 쓰던 글 그대로 둔다
+        Navigator.pop(context);
+      },
+      child: Padding(
       padding: EdgeInsets.fromLTRB(18, 0, 18, MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).viewPadding.bottom + 18),
       child: SingleChildScrollView(
         child: Column(
@@ -481,6 +510,7 @@ class _PostFormState extends State<_PostForm> {
             ),
           ],
         ),
+      ),
       ),
     );
   }
