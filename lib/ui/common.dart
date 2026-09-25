@@ -224,8 +224,14 @@ class Emblem extends StatelessWidget {
   final double capScale;
   const Emblem({super.key, this.basePx = 30, this.capScale = 3});
 
+  /* 🎨 모임 상태를 «스스로» 듣는다 — 이 위젯은 `const Emblem(...)` 로 쓰이는데,
+     const 는 부모가 다시 그려도 Flutter 가 «같은 것»으로 보고 건너뛴다.
+     그래서 꾸미기를 저장해도 홈 상징이 옛 모양 그대로였다(2026-09-26 에뮬). */
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      ListenableBuilder(listenable: AppState.i, builder: (c, _) => _body(c));
+
+  Widget _body(BuildContext context) {
     final e = (AppState.i.couple?['emblem'] as Map?)?.cast<String, dynamic>();
     final size = ((e?['size'] as num?)?.toDouble() ?? 1).clamp(0.5, capScale);
     final rot = ((e?['rot'] as num?)?.toDouble() ?? 0) * 3.1415926535 / 180;
