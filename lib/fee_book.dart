@@ -1,3 +1,4 @@
+import 'fee.dart';
 import 'logic.dart';
 import 'state.dart';
 import 'store.dart';
@@ -41,6 +42,8 @@ class FeeBook {
     final amount = (AppState.i.couple?['fee'] as Map?)?['amount'];
     final won = (amount as num?)?.toInt() ?? 0;
     if (won <= 0) return FeeReceipt.fail(name, '월 회비 금액을 먼저 정해주세요');
+    // 🔒 잠긴 모임 — 여러 명을 한꺼번에 받을 때 사람마다 「기록하지 못했어요」만 뜨면 까닭을 모른다
+    if (Fee.locked) return FeeReceipt.fail(name, Fee.lockedLine);
 
     // 이미 낸 달은 건너뛰고 «메울 달»만 고른다
     final feeMonths = Logic.feeMonthsToFill(uid, months);

@@ -301,6 +301,10 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     if (text.isEmpty) return;
     final code = AppState.i.code;
     if (code == null) return;
+    /* 🔒 잠긴 모임이면 쓴 글을 «비우기 전에» 말한다 — 예전에는 비웠다가 되돌리며
+       「보내지 못했어요 — 다시 눌러주세요」라고 해서 인터넷 탓인 줄 알았다(2026-09-25 조사). */
+    final locked = Store.lockReason();
+    if (locked != null) return toast(context, locked);
     final reply = _replyTo;
     // 보내기에 실패하면 쓴 글을 되돌려준다 — 먼저 비우고 결과를 안 보면 쓴 글이 사라진다
     _textC.clear();

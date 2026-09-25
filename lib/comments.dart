@@ -1,3 +1,4 @@
+import 'fee.dart';
 import 'moderation.dart';
 import 'state.dart';
 import 'store.dart';
@@ -53,6 +54,8 @@ class Comments {
     if (t.length > maxLen) return '댓글은 $maxLen자까지 쓸 수 있어요';
     final code = AppState.i.code;
     if (code == null) return '모임을 찾지 못했어요';
+    // 🔒 잠긴 모임이면 «왜»를 말한다 — 「다시 해주세요」면 인터넷 탓인 줄 알고 몇 번이고 누른다
+    if (Fee.locked) return Fee.lockedLine;
 
     final id = await Store.i.addItem(code, {
       'type': type,

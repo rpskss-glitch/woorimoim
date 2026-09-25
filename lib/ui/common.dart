@@ -960,7 +960,8 @@ Future<void> reportSheet(BuildContext context, Map<String, dynamic> item,
     snippet: snippet ?? ((item['text'] as String?) ?? '').trim(),
   );
   if (!context.mounted) return;
-  if (!ok) return toast(context, '신고하지 못했어요 — 잠시 후 다시 해주세요');
+  // 잠긴 모임이면 «잠겼다»고 말한다(saveFailToast) — 「잠시 후」라고 하면 기다려도 안 풀린다
+  if (!ok) return saveFailToast(context, '신고하지 못했어요 — 잠시 후 다시 해주세요');
   toast(context, '신고했어요 — 운영진이 확인합니다');
 }
 
