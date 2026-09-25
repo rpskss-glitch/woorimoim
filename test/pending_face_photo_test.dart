@@ -39,4 +39,8 @@ void main() {
     final w = File('lib/ui/wait.dart').readAsStringSync();
     expect(w, contains('dropPhotos('));
   });
+  test('승인 대기 줄에 신청 사진을 보여 준다', () {
+    final m = File('lib/ui/members.dart').readAsStringSync();
+    expect(m, contains("photoId: p['photo'] as String"));
+  });
 }

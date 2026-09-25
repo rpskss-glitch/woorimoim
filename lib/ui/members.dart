@@ -526,7 +526,18 @@ class _MembersScreenState extends State<MembersScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Row(
                         children: [
-                          Avatar(null, size: 34, emojiOverride: p['emoji'] as String?),
+                          /* 📷 신청에 얼굴 사진이 실려 왔으면 보여 준다 — 누구인지 보고 승인하게(2026-09-26) */
+                          if (p['photo'] is String && (p['photo'] as String).isNotEmpty)
+                            ClipOval(
+                              child: ClubPhoto(
+                                  photoId: p['photo'] as String,
+                                  width: 34,
+                                  height: 34,
+                                  decodeWidth: 102,
+                                  placeholder: Avatar(null, size: 34, emojiOverride: p['emoji'] as String?)),
+                            )
+                          else
+                            Avatar(null, size: 34, emojiOverride: p['emoji'] as String?),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
