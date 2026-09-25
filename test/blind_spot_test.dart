@@ -52,6 +52,8 @@ void main() {
         '_coupleSub', '_itemsSub', '_msgsSub', '_itemsCb',
         '_core', '_recent', '_older', '_curRecent', '_curOlder',
         '_hasMore', '_noMoreOlder',
+        // 2026-09-25 대화를 «가입한 때부터»만 받는 선 — 옛 방의 선으로 새 방을 자르면 안 된다
+        '_chatSince', '_chatSinceKnown', '_startMsgs',
       ]) {
         expect(body, contains(f), reason: '방을 옮길 때 $f 를 안 비운다');
       }
@@ -66,7 +68,7 @@ void main() {
           .allMatches(zone)
           .map((m) => m[1]!)
           .toSet();
-      expect(names.length, lessThanOrEqualTo(12),
+      expect(names.length, lessThanOrEqualTo(15),
           reason: '방마다 두는 값이 늘었다 — stopAll 에서도 비우는지 보고 위 목록에 적어라: $names');
     });
   });

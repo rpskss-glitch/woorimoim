@@ -54,13 +54,17 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  /* 📨 «몇 번 탭으로 가라» 신호 — 홈의 빠른 단추·알림 눌러 대화방 열기·스크린샷 촬영이 보낸다.
+
+     🔴 예전에는 번호(_tab)만 바꾸고 **넘기는 판(PageView)은 그대로 두었다.**
+        아래 단추의 불만 옮겨 가고 화면은 홈에 머물러, 홈의 「일정·글 쓰기·회비 장부」가
+        «눌러도 아무 반응이 없었다»(2026-09-25 사장님). 알림을 눌러도 대화방이 안 열렸다.
+        옆으로 밀기를 넣은 9/3 부터 쭉 그랬다 → 아래 단추와 «같은 길»(_goTab)로 보낸다. */
   void _onOpenTab() {
     final t = AppState.i.openTab.value;
     if (t == null || !mounted) return;
     AppState.i.openTab.value = null;   // 한 번만 옮기고 신호를 비운다
-    setState(() => _tab = t);
-    AppState.i.currentTab = t;
-    widget.onTouch();
+    _goTab(t);
   }
 
   @override
@@ -78,9 +82,14 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
        ⚠️ 멀리 뛸 때(홈→회비)까지 다 훑으면 어지럽다. 한 칸이면 밀고, 멀면 바로 간다.
        ⚠️ 값(_tab)은 onPageChanged 가 맞춰 준다 — 여기서 또 setState 하면 두 번 그린다. */
     if (!_pageC.hasClients) {
+      /* 판이 아직 안 그려졌다(알림을 눌러 앱이 막 켜진 때). 번호만 바꾸면
+         판은 첫 장(홈)에서 시작해 **번호와 화면이 어긋난다** — 다 그려진 뒤 그 장으로 옮긴다. */
       setState(() => _tab = i);
       AppState.i.currentTab = i;
       widget.onTouch();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _pageC.hasClients) _pageC.jumpToPage(_tab);
+      });
       return;
     }
     if ((i - _tab).abs() == 1) {

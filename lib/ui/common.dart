@@ -682,7 +682,8 @@ class _PhotoPagesViewState extends State<_PhotoPagesView> {
             /* ⚠️ 닫는 길을 «장마다» 깐다. 넘기는 판(PageView)이 화면을 덮고 있어서
                그 «밑에» 깔아 둔 까만 데는 손이 닿지 않는다 — 예전처럼 한 장에
                한 겹만 깔면 사진 바깥을 눌러도 안 닫힌다(시험이 잡았다).
-               사진 자체를 누를 때는 안 닫는다 — 확대하다 잘못 닫히지 않게. */
+               사진 자체를 누르면 안 닫힌다 — 사진이 위에 있어 까만 판까지 손이 안 닿는다
+               (따로 막는 겹을 두지 않는다: 확대 영역이 화면을 채울 때 바깥까지 막아 버린다). */
             itemBuilder: (c, i) => Stack(
               children: [
                 Positioned.fill(
@@ -692,16 +693,13 @@ class _PhotoPagesViewState extends State<_PhotoPagesView> {
                   ),
                 ),
                 Center(
-                  child: GestureDetector(
-                    onTap: () {}, // 사진을 누른 것은 «닫으라는 뜻이 아니다»
-                    child: ZoomPhoto(
-                      key: ValueKey('page$i'),
-                      photoId: widget.pages[i].photoId,
-                      src: widget.pages[i].src,
-                      onZoom: (z) {
-                        if (z != _zoomed) setState(() => _zoomed = z);
-                      },
-                    ),
+                  child: ZoomPhoto(
+                    key: ValueKey('page$i'),
+                    photoId: widget.pages[i].photoId,
+                    src: widget.pages[i].src,
+                    onZoom: (z) {
+                      if (z != _zoomed) setState(() => _zoomed = z);
+                    },
                   ),
                 ),
               ],

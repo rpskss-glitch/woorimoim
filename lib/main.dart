@@ -420,6 +420,14 @@ class _WooriAppState extends State<WooriApp> {
         return;
       }
 
+      /* 💬 대화는 «내가 들어온 때»부터 — 여기서 처음 내 가입 시각을 안다.
+         ⚠️ 아래 «가벼운 갱신»으로 빠지기 «전»에 둔다. 뒤에 두면 입력중·읽음 표시만
+            바뀐 스냅샷에서는 건너뛰어, 대화가 계속 «불러오는 중»에 머물 수 있다.
+         (같은 값이면 Store 가 다시 안 건다 — 스냅샷마다 불러도 읽기 요금이 안 는다) */
+      final mine = (c['members'] as Map?)?[Store.i.myUid];
+      final joinedAt = (mine is Map ? mine['joinedAt'] : null) as num?;
+      Store.i.setChatSince(Store.chatFloor(joinedAt?.toInt()));
+
       // 입력중·읽음·접속시각·푸시토큰만 바뀌는 일이 대부분이다. 그때마다 홈·회비·일정까지
       // 다시 계산하면 회원 수에 비례해 무거워지므로, 그 값들만 바뀌었으면 채팅만 가볍게 갱신한다.
       if (_onlyLive(before, c)) {

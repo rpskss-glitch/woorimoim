@@ -607,6 +607,10 @@ class Store {
     _recent = [];
     _older = [];
     _curRecent = _curOlder = null;
+    // 옛 방의 가입 시각으로 새 방 대화를 자르면 안 된다
+    _chatSince = null;
+    _chatSinceKnown = false;
+    _startMsgs = null;
     /* 「더 보기」 상태도 반드시 같이 지운다 — 안 지우면 옛 방의 값이 남아,
        대화가 몇 건 없는 방에 들어가도 첫 스냅샷이 오기 전까지 단추가 떠 있다.
        눌러 봐야 커서가 비어 있어 아무것도 안 나온다(헛걸음). */
@@ -634,7 +638,33 @@ class Store {
      이제 첫 스냅샷이 올 때까지 «불러오는 중»을 보여, 한 번에 자리 잡고 끝낸다. */
   bool _msgsIn = false;
   // ⚠️ «구독이 도는 중»일 때만 로딩이다 — 시험은 구독 없이 자료를 직접 넣으므로 로딩이 아니다
-  bool get chatLoading => !Demo.on && _msgsSub != null && !_msgsIn;
+  //    (가입 시각을 기다리는 동안도 «곧 받는다»이므로 로딩이다 — 빈 대화방이 잠깐 뜨면 안 된다)
+  bool get chatLoading =>
+      !Demo.on && (_startMsgs != null && !_chatSinceKnown || _msgsSub != null && !_msgsIn);
+
+  /* 💬 대화는 «내가 들어온 때»부터만 받는다 (2026-09-25 사장님).
+     예전에는 새 회원도 최근 대화 200개를 통째로 받았다 — 들어오기 전 이야기까지
+     보이고, 그만큼 받는 양(요금·데이터)이 늘었다.
+     ⚠️ 구독은 모임 정보가 오기 «전»에 시작된다 — 그때는 내 가입 시각을 모른다.
+        그래서 대화 구독은 **가입 시각을 안 뒤에** 연다(setChatSince 가 연다).
+     ⚠️ 가입 시각이 없는 옛 회원은 예전처럼 다 받는다(없는 값으로 자르면 대화가 통째로 사라진다). */
+  int? _chatSince;
+  bool _chatSinceKnown = false;
+  void Function()? _startMsgs;
+
+  /// 이 시각(밀리초)부터의 대화만 받는다. null 이면 다 받는다. 값이 바뀌면 대화 구독을 새로 연다.
+  void setChatSince(int? since) {
+    if (Demo.on) return;
+    if (_chatSinceKnown && since == _chatSince) return; // 같은 값이면 다시 안 건다(읽기 요금)
+    _chatSince = since;
+    _chatSinceKnown = true;
+    _startMsgs?.call();
+  }
+
+  /// 가입 시각에서 조금 앞으로 당긴 값 — 폰끼리 시계가 몇 분 어긋나도
+  /// 승인 직후의 「환영해요」가 잘리지 않게 한다.
+  static int? chatFloor(int? joinedAt) =>
+      joinedAt == null ? null : joinedAt - const Duration(minutes: 5).inMilliseconds;
   DocumentSnapshot? _curRecent, _curOlder; // 「더 보기」용 문서 커서
   bool _hasMore = false;
   /// 옛 대화를 끝까지 불러왔는지. 새 대화가 와서 창이 다시 차더라도
@@ -665,9 +695,19 @@ class Store {
       emit();
     }, onError: (e) => _err(e));
 
-    // ② 대화는 최근 것만
-    _msgsSub = col('msgs')
-        .where('coupleId', isEqualTo: code)
+    // ② 대화는 최근 것만 — 그리고 «내가 들어온 때»부터만 (위 setChatSince 설명)
+    //    ⚠️ 가입 시각을 알기 전에는 안 연다. 열었다가 다시 열면 첫 묶음 읽기가 두 번 나간다.
+    _chatSinceKnown = false;
+    _startMsgs = () {
+      _msgsSub?.cancel();
+      // 자르는 선이 바뀌었다 — 먼저 받아 둔 것은 새 선과 안 맞으니 비우고 다시 받는다
+      _recent = [];
+      _older = [];
+      _msgsIn = false;
+      _curRecent = _curOlder = null;
+      _hasMore = false;
+      _noMoreOlder = false;
+      _msgsSub = msgsQuery(code)
         .orderBy('createdAt', descending: true)
         .limit(msgWindow)
         .snapshots()
@@ -689,6 +729,21 @@ class Store {
       _msgsIn = true; // 첫 묶음이 왔다 — 이제 로딩 표시를 내린다
       emit();
     }, onError: (e) => _err(e, 'msgs'));
+    };
+    /* ⏱ 모임 정보가 끝내 안 오면(연결 끊김 등) 대화가 영영 «불러오는 중»에 멈춘다.
+       잠시 기다려도 가입 시각을 못 받으면 예전처럼 다 받는다 — 멈추는 것보다 낫다. */
+    Future.delayed(const Duration(seconds: 8), () {
+      if (_itemsCb == cb && !_chatSinceKnown) setChatSince(null);
+    });
+  }
+
+  /// 대화 묻기의 앞부분 — 가입 시각이 있으면 그 뒤의 것만 묻는다.
+  /// (같은 칸(createdAt)으로 줄 세우므로 색인을 새로 만들 필요가 없다)
+  Query<Map<String, dynamic>> msgsQuery(String code) {
+    var q = col('msgs').where('coupleId', isEqualTo: code);
+    final since = _chatSince;
+    if (since != null) q = q.where('createdAt', isGreaterThanOrEqualTo: since);
+    return q;
   }
 
   /// 창(최근 200개) 밖으로 «밀려난» 대화만 골라낸다 — 지운 대화는 빼고.
@@ -736,8 +791,8 @@ class Store {
     if (Demo.on) return 0;
     final cur = _curOlder ?? _curRecent;
     if (cur == null) return 0;
-    final s = await col('msgs')
-        .where('coupleId', isEqualTo: code)
+    // 「더 보기」도 가입 시각에서 멈춘다 — 안 그러면 위로 올려 들어오기 전 대화를 다 받는다
+    final s = await msgsQuery(code)
         .orderBy('createdAt', descending: true)
         .startAfterDocument(cur)
         .limit(n)
