@@ -47,7 +47,11 @@ void main() {
   test('③ 채팅 배지는 차단한 사람의 말을 세지 않는다', () {
     final s = codeOf('lib/ui/shell.dart');
     final at = s.indexOf('int get _unreadChat');
-    expect(s.substring(at, at + 300), contains("Moderation.hide(st.by('msg'))"));
+    expect(s.substring(at, (at + 900).clamp(at, s.length)), contains('Logic.unreadChat('));
+    // 셈은 방마다 따로 세려고 Logic.unreadChat 로 옮겼다(2026-09-26) — 차단 거르기는 거기서 본다
+    final lg = codeOf('lib/logic.dart');
+    final la = lg.indexOf('static int unreadChat(');
+    expect(lg.substring(la, lg.indexOf('.length;', la)), contains("Moderation.hide(AppState.i.by('msg'))"));
   });
 
   test('④ 답장 인용 띠도 차단한 사람의 말을 가린다', () {

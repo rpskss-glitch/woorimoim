@@ -211,6 +211,10 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
 
   bool get _canStaffRoom => AppState.i.isAdmin;
 
+  /// 방마다 안 읽은 말 — 방 단추 숫자에 쓴다
+  int get _staffUnread => Logic.unreadChat(room: 'staff', seen: AppState.i.lastSeenStaff, myUid: Store.i.myUid);
+  int get _publicUnread => Logic.unreadChat(room: '', seen: AppState.i.lastSeenChat, myUid: Store.i.myUid);
+
   /* 🚪 지금 방에 «올리는 것»에 방 표시를 붙인다.
 
      🔴 예전에는 글 보내는 자리에만 붙였다 — 그래서 운영진 방에서 올린
@@ -247,7 +251,12 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     if (all.isEmpty) return;
 
     final last = all.map((m) => ((m['createdAt'] as num?) ?? 0).toInt()).fold<int>(0, (a, b) => a > b ? a : b);
-    if (last > st.lastSeenChat) st.lastSeenChat = last;
+    // 🔒 보고 있는 방의 시각만 올린다 — 하나로 올리면 다른 방 말까지 «읽음»이 된다(2026-09-26 조사)
+    if (_room == 'staff' && _canStaffRoom) {
+      if (last > st.lastSeenStaff) st.lastSeenStaff = last;
+    } else if (last > st.lastSeenChat) {
+      st.lastSeenChat = last;
+    }
 
     final othersLast = all
         // 폰 바꾸기 «전»에 내가 쓴 말도 내 말이다 — 안 이으면 내 옛 말을 «남의 말»로 보고 읽음을 찍는다
@@ -680,9 +689,18 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
             child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: '', label: Text('모두의 방')),
-                ButtonSegment(value: 'staff', label: Text('🔒 운영진')),
+              /* 다른 방에 새 말이 오면 단추에 숫자를 붙인다 — 없으면 운영진 방에 말이 온 줄 모른다(2026-09-26) */
+              segments: [
+                ButtonSegment(
+                    value: '',
+                    label: Text(_room == 'staff' && _publicUnread > 0
+                        ? '모두의 방 $_publicUnread'
+                        : '모두의 방')),
+                ButtonSegment(
+                    value: 'staff',
+                    label: Text(_room != 'staff' && _staffUnread > 0
+                        ? '🔒 운영진 $_staffUnread'
+                        : '🔒 운영진')),
               ],
               selected: {_room},
               /* 방을 바꾸면 그 방의 최신 대화로 내리고 읽음을 찍는다.

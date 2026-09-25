@@ -72,6 +72,10 @@ void main() {
     expect(chat.contains("Logic.isMe(all[i]['by']"), isTrue, reason: '읽음 표시 자리');
     expect(chat.contains("!Logic.isMe(m['by'] as String?, Store.i.myUid)"), isTrue,
         reason: '읽음 찍을 때 «남의 말»을 고르는 자리');
-    expect(shell.contains('Logic.isMe'), isTrue, reason: '안읽음 배지');
+    // 안읽음 배지 셈은 Logic.unreadChat 로 옮겼다(2026-09-26) — 셸은 그것을 부른다
+    expect(shell.contains('Logic.unreadChat('), isTrue, reason: '안읽음 배지');
+    final lg = File('lib/logic.dart').readAsStringSync();
+    final la = lg.indexOf('static int unreadChat(');
+    expect(lg.substring(la, lg.indexOf('.length;', la)).contains('isMe('), isTrue, reason: '안읽음 배지');
   });
 }

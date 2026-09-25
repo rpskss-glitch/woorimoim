@@ -1,4 +1,5 @@
 import 'config.dart';
+import 'moderation.dart';
 import 'state.dart';
 import 'store.dart';
 
@@ -1048,6 +1049,17 @@ class Logic {
      ⚠️ 나간 사람은 `former` 에 적힌다 — 둘 다 본다. */
   /// 🏦 그 달에 «낼 사람» — 그 달을 면제받은 회원은 뺀다.
   /// ⚠️ 홈 카드가 면제 회원을 「미납」 명단과 전체 수에 넣고 있었다(2026-09-26 조사) — 회비 표는 「면」으로 그린다.
+  /* 💬 그 방의 «안 읽은 말» 수 — 남이 쓴 것 중 [seen] 뒤에 온 것(차단한 사람 제외).
+     방은 `''`(모두의 방)·`'staff'`(운영진 방). room 칸이 없는 옛 대화는 모두의 방이다.
+     ⚠️ 방마다 따로 센다 — 하나로 세면 모두의 방을 여는 순간 운영진 방 말이 «읽음»이 됐다(2026-09-26 조사). */
+  static int unreadChat({required String room, required int seen, required String myUid}) =>
+      Moderation.hide(AppState.i.by('msg'))
+          .where((m) =>
+              ((m['room'] as String?) ?? '') == room &&
+              !isMe(m['by'] as String?, myUid) &&
+              asInt(m['createdAt']) > seen)
+          .length;
+
   static List<Map<String, dynamic>> monthDue(List<Map<String, dynamic>> members, String month) =>
       [for (final m in members) if (!feeFree(m['uid'] as String? ?? '').contains(month)) m];
 

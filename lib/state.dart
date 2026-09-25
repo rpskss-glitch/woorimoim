@@ -310,6 +310,7 @@ class AppState extends ChangeNotifier {
        나가기·탈퇴·방 없어짐 뒤에 다른 모임에 들어가면, 그 모임의 옛 대화가
        전부 「이미 읽음」으로 잡혀 안읽음 숫자가 0으로 나온다. */
     await Store.i.remove('club_seenchat');
+    await Store.i.remove('club_seenchat_staff'); // 운영진 방 읽음도 — 다음 모임에 따라가지 않게
     await Store.i.remove('club_seendiary');
     notifyListeners();
   }
@@ -346,6 +347,15 @@ class AppState extends ChangeNotifier {
   // 읽음 표시용 — 어디까지 봤는지 (이 기기 기준)
   int get lastSeenChat => Store.i.getInt('club_seenchat');
   set lastSeenChat(int v) => Store.i.setInt('club_seenchat', v);
+
+  /// 🔒 운영진 방은 따로 — 하나로 적으면 모두의 방을 여는 순간 운영진 방 말까지 «읽음»이 됐다(2026-09-26).
+  /// 아직 안 적힌 폰(업데이트 직후)은 모두의 방 값에서 시작한다 — 배지가 갑자기 쌓이지 않게.
+  int get lastSeenStaff {
+    final v = Store.i.getInt('club_seenchat_staff');
+    return v == 0 ? lastSeenChat : v;
+  }
+
+  set lastSeenStaff(int v) => Store.i.setInt('club_seenchat_staff', v);
   int get lastSeenDiary => Store.i.getInt('club_seendiary');
   set lastSeenDiary(int v) => Store.i.setInt('club_seendiary', v);
 }

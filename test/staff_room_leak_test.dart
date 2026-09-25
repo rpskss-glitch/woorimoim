@@ -91,10 +91,16 @@ void main() {
       expect(at, greaterThan(0));
       // 함수 몸통 전체를 본다(글자 수를 박아 두면 앞에 설명 한 줄만 늘어도 헛짚는다)
       final body = shell.substring(at, shell.indexOf('\n  }', at));
-      expect(body.contains("m['room']"), isTrue,
-          reason: '평회원 배지가 못 보는 글까지 센다 — 들어가면 아무것도 없다');
+      // 셸은 모두의 방 + (운영진이면) 운영진 방을 센다 — 방별 셈은 Logic.unreadChat(2026-09-26)
+      expect(body.contains("room: 'staff'"), isTrue);
       expect(body.contains('isAdmin'), isTrue,
           reason: '운영진에게는 세야 하는데 무조건 빼고 있다');
+    // 2026-09-26: 셈은 방마다 따로 세려고 Logic.unreadChat 로 옮겼다 — 규칙은 그대로 거기서 본다
+    final lg = File('lib/logic.dart').readAsStringSync();
+    final la = lg.indexOf('static int unreadChat(');
+    final lbody = lg.substring(la, lg.indexOf('.length;', la));
+      expect(lbody.contains("m['room']"), isTrue,
+          reason: '평회원 배지가 못 보는 글까지 센다 — 들어가면 아무것도 없다');
     });
 
     testWidgets('홈의 「대화 N개」도 안 센다', (t) async {

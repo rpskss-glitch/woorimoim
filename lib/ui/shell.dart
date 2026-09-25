@@ -218,22 +218,13 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
 
   int get _unreadChat {
     final st = AppState.i;
-    final seen = st.lastSeenChat;
-    /* 🚫 차단한 사람의 말은 세지 않는다 — 대화방에서는 가려 보이는데 배지만 세면,
-          들어가도 새 말이 없고 배지「1」이 다음 사람이 말할 때까지 안 없어졌다(2026-09-25 조사). */
-    return Moderation.hide(st.by('msg'))
-        /* 폰을 바꾸기 «전»에 내가 쓴 말은 «남의 말»이 아니다 —
-           안 이으면 새 폰에서 **내가 쓴 말까지 안읽음으로 세어진다**
-           (2026-08-23 실측: 남이 쓴 말 3개인데 배지가 8). */
-        .where((m) =>
-            !Logic.isMe(m['by'] as String?, Store.i.myUid) &&
-            /* 🔴 **못 보는 방의 대화는 세지 않는다.**
-               운영진 방이 생기면서, 평회원 화면에도 그 방 대화가 안읽음으로 잡혔다 —
-               배지에 「3」이 떠서 들어가 보면 아무것도 없다(볼 수 없는 글이니까).
-               ⚠️ room 칸이 없는 옛 대화는 «모두의 방»이다. */
-            (((m['room'] as String?) ?? '').isEmpty || st.isAdmin) &&
-            ((m['createdAt'] as num?) ?? 0) > seen)
-        .length;
+    /* 차단한 사람·내 말(폰 바꾸기 전 번호 포함)은 안 센다 — Logic.unreadChat 안에서 거른다.
+       🔴 못 보는 방(운영진 방)은 평회원에게 안 센다 — 들어가도 볼 수 없는 글이니까.
+       🔒 방마다 «어디까지 봤는지»가 따로다 — 하나로 세면 모두의 방을 여는 순간
+          운영진 방 말이 «읽음»이 되어 배지에서 사라졌다(2026-09-26 조사). */
+    final me = Store.i.myUid;
+    return Logic.unreadChat(room: '', seen: st.lastSeenChat, myUid: me) +
+        (st.isAdmin ? Logic.unreadChat(room: 'staff', seen: st.lastSeenStaff, myUid: me) : 0);
   }
 }
 

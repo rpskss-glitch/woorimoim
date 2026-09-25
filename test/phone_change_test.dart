@@ -174,7 +174,12 @@ void main() {
       expect(at, greaterThan(0));
       // 파일 «끝» 가까이에 있는 함수다 — 창이 넘으면 substring 이 터진다
       final body = src.substring(at, (at + 700).clamp(at, src.length));
-      expect(body.contains('Logic.isMe'), isTrue,
+      expect(body.contains('Logic.unreadChat('), isTrue);
+    // 2026-09-26: 셈은 방마다 따로 세려고 Logic.unreadChat 로 옮겼다 — 규칙은 그대로 거기서 본다
+    final lg = File('lib/logic.dart').readAsStringSync();
+    final la = lg.indexOf('static int unreadChat(');
+    final lbody = lg.substring(la, lg.indexOf('.length;', la));
+      expect(lbody.contains('isMe('), isTrue,
           reason: '안 이으면 새 폰에서 내가 쓴 말까지 안읽음으로 뜬다');
     });
   });
