@@ -20,7 +20,7 @@ void main() {
     expect(loopAt, greaterThan(0));
     final head = body.substring(0, loopAt);
     expect(head, contains('= _roomTag;'), reason: '보내기를 시작한 방을 잡아 두지 않는다');
-    expect(head.indexOf('= _roomTag;'), lessThan(head.indexOf('pickMultiImage')),
+    expect(head.indexOf('= _roomTag;'), lessThan(head.indexOf('pickManyPhotos')),
         reason: '고르는 사이에 방을 바꿔도 «누른 방»으로 가야 한다');
   });
 

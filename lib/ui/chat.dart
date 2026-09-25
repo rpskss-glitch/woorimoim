@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../logic.dart';
 import '../moderation.dart';
@@ -357,8 +356,7 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     /* 🔒 «누른 방»을 지금 잡아 둔다 — 올라가는 사이 방을 바꾸면 남은 장이 바꾼 방으로 갔다.
        운영진 방 사진이 회원 모두에게 보일 수 있었다(2026-09-25 조사). */
     final room = _roomTag;
-    var picked = await ImagePicker()
-        .pickMultiImage(maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
+    var picked = await pickManyPhotos(context); // 권한 거절 등은 공용 길이 받아 까닭을 말한다
     if (picked.isEmpty) return;
     if (picked.length > 5) {
       picked = picked.take(5).toList();

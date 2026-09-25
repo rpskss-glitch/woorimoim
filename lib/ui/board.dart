@@ -1,5 +1,6 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../logic.dart';
 import '../moderation.dart';
@@ -159,8 +160,7 @@ class _BoardTabState extends State<BoardTab> {
        그러면 ① 이 사진이 안 올라가고 ② `savePhoto` 가 「보관함을 못 쓴다」고 보고
        **그 뒤로 앱을 끌 때까지 모든 사진이 7배 비싼 길(Firestore)로 간다.**
        (모임 상징 고르기는 처음부터 이렇게 하고 있었다 — 여기만 빠져 있었다) */
-    final picked = await ImagePicker()
-        .pickMultiImage(maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
+    final picked = await pickManyPhotos(context); // 권한 거절 등은 공용 길이 받아 까닭을 말한다
     if (picked.isEmpty) return;
     if (!context.mounted) return;
     toast(context, '사진 ${picked.length}장 올리는 중…');
@@ -174,7 +174,16 @@ class _BoardTabState extends State<BoardTab> {
     try {
       for (final x in picked) {
         try {
-          final bytes = await x.readAsBytes();
+          /* ⚠️ 못 읽는 사진(고른 뒤 지워졌거나 클라우드에만 있음)은 «실패 한 장»으로 세고 넘어간다.
+             예전에는 여기서 던지면 반복이 통째로 끊겨 남은 사진도 안 올라가고 결과 안내도 없었다
+             (2026-09-25 조사 — 대화방 사진 보내기와 같은 고침). */
+          final Uint8List bytes;
+          try {
+            bytes = await x.readAsBytes();
+          } catch (_) {
+            fail++;
+            continue;
+          }
           final photoId = await Store.i.savePhoto(code, bytes);
           if (photoId == null) {
             fail++;

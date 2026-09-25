@@ -14,10 +14,12 @@ void main() {
       File(p).readAsStringSync().replaceAll(RegExp(r'//.*'), '');
 
   /// 사진 고르기를 부르는 곳 전부 — 새 화면이 생기면 여기 추가해야 시험이 지켜준다
+  /* 2026-09-25: 사진첩·대화·영수증·모임 상징·내 아바타는 이제 공용 길(common.dart 의
+     pickOnePhoto·pickManyPhotos)로 연다 — 권한 거절을 한 곳에서 받으려고(photo_picker_fail_test).
+     그래서 «앨범을 직접 여는 곳»은 공용 길 둘 + 가입 화면 하나다. */
   const doors = <String, int>{
-    'lib/ui/board.dart': 1,    // 게시판·사진첩
-    'lib/ui/chat.dart': 1,     // 대화방
-    'lib/ui/settings.dart': 2, // 모임 상징 · 내 아바타
+    'lib/ui/common.dart': 2,     // 공용 길 — 한 장·여러 장
+    'lib/ui/onboarding.dart': 1, // 가입 화면 얼굴 사진
   };
 
   test('사진 고르는 곳이 «가로와 세로를 함께» 줄인다', () {

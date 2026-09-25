@@ -44,7 +44,7 @@ void main() {
     expect(body, contains('if (_upBusy) return;'),
         reason: '올리는 중에 또 부르면 같은 사진이 두 번 올라간다');
     // 막이는 사진을 고르기 «전»에 있어야 한다
-    expect(body.indexOf('_upBusy'), lessThan(body.indexOf('pickMultiImage')),
+    expect(body.indexOf('_upBusy'), lessThan(body.indexOf('pickManyPhotos')),
         reason: '막이가 사진 고르기보다 뒤에 있다');
   });
 

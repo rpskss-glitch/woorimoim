@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../fee.dart';
 import '../fee_book.dart';
@@ -797,8 +796,7 @@ class _LedgerFormState extends State<_LedgerForm> {
     // 🔒 잠긴 모임이면 지출 기록 자체가 안 된다 — 영수증부터 올려 두지 않는다
     final locked = Store.lockReason();
     if (locked != null) return toast(context, locked);
-    final x = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
+    final x = await pickOnePhoto(context); // 권한 거절 등은 공용 길이 받아 까닭을 말한다
     if (x == null || !mounted) return;
     setState(() => _rcptBusy = true);
     try {

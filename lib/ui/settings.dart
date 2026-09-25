@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../config.dart';
 import '../fee.dart';
@@ -654,13 +653,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          final x = await ImagePicker().pickImage(
-                            source: ImageSource.gallery,
-                            maxWidth: 360,
-                            // 세로도 함께 줄인다 — 긴 사진은 가로만 줄여선 여전히 크다
-                            maxHeight: 360,
-                            imageQuality: 80,
-                          );
+                          final x = await pickOnePhoto(c, max: 360, quality: 80); // 가로·세로 함께 줄인다 · 권한 거절은 공용 길이 말한다
                           if (x == null) return;
                           final bytes = await x.readAsBytes();
                           setS(() => picked = bytes);
@@ -1076,13 +1069,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () async {
-                          final x = await ImagePicker().pickImage(
-                            source: ImageSource.gallery,
-                            maxWidth: 360,
-                            // 세로도 함께 줄인다 — 긴 사진은 가로만 줄여선 여전히 크다
-                            maxHeight: 360,
-                            imageQuality: 80,
-                          );
+                          final x = await pickOnePhoto(c, max: 360, quality: 80); // 가로·세로 함께 줄인다 · 권한 거절은 공용 길이 말한다
                           if (x == null) return;
                           final bytes = await x.readAsBytes();
                           setS(() {

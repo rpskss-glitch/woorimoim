@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../config.dart';
 import '../moderation.dart';
@@ -26,6 +27,31 @@ void toast(BuildContext context, String msg) {
       **왜 안 되는지 알 길이 없었다.** 방장은 결제해야 하는 줄도 몰랐다.
       팔리려면 «왜 안 되는지»부터 알아야 한다.
    ⚠️ 잠김이 아닐 때는 원래 하던 말을 그대로 한다 — 엉뚱한 곳을 고치게 하면 안 된다. */
+/* 🖼 앨범 열기 — 사진 권한을 거절했거나 앨범이 안 열리면 `ImagePicker` 는 **던진다.**
+   받아 내지 않으면 단추를 눌러도 말없이 아무 일도 없다(2026-09-25 조사: 가입 화면만 받아 냈다).
+   ⚠️ 가로·세로를 «함께» 줄인다 — 세로로 긴 사진이 보관함 한도(2MB)를 넘지 않게. */
+const _pickFail = '앨범을 열지 못했어요 — 폰 설정에서 이 앱의 사진 권한을 확인해주세요';
+
+Future<XFile?> pickOnePhoto(BuildContext context, {double max = 1600, int quality = 82}) async {
+  try {
+    return await ImagePicker().pickImage(
+        source: ImageSource.gallery, maxWidth: max, maxHeight: max, imageQuality: quality);
+  } catch (_) {
+    if (context.mounted) toast(context, _pickFail);
+    return null;
+  }
+}
+
+Future<List<XFile>> pickManyPhotos(BuildContext context) async {
+  try {
+    return await ImagePicker()
+        .pickMultiImage(maxWidth: 1600, maxHeight: 1600, imageQuality: 82);
+  } catch (_) {
+    if (context.mounted) toast(context, _pickFail);
+    return const [];
+  }
+}
+
 void saveFailToast(BuildContext context, String fallback) =>
     toast(context, Fee.locked ? Fee.lockedLine : fallback);
 

@@ -58,7 +58,7 @@ void main() {
     final me = bodyOf(settings, 'Future<void> _editMe()');
 
     test('앨범에서 고를 수 있다', () {
-      expect(me.contains('ImagePicker()'), isTrue);
+      expect(me.contains('pickOnePhoto('), isTrue); // 공용 길로 연다(권한 거절을 받아 낸다)
       expect(me.contains('앨범 사진'), isTrue);
     });
 
