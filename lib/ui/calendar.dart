@@ -284,7 +284,7 @@ class _EventCard extends StatelessWidget {
                         try {
                           await Store.i.updateItem(code0, event['id'] as String, 'event', {'until': stop});
                         } catch (_) {
-                          if (context.mounted) toast(context, '바꾸지 못했어요 — 다시 시도해주세요');
+                          if (context.mounted) saveFailToast(context, '바꾸지 못했어요 — 다시 시도해주세요');
                           return;
                         }
                         if (!context.mounted) return;

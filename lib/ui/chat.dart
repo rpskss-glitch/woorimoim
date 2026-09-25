@@ -1125,7 +1125,7 @@ class _PollCardState extends State<PollCard> {
     await Store.i.syncOlder(id, 'msg');
     if (!mounted) return;
     setState(() => _busy = false);
-    if (!ok) toast(context, '투표하지 못했어요 — 다시 눌러주세요');
+    if (!ok) saveFailToast(context, '투표하지 못했어요 — 다시 눌러주세요'); // 잠겼으면 잠긴 까닭을
   }
 
   Future<void> _setClosed(bool closed) async {
@@ -1142,7 +1142,7 @@ class _PollCardState extends State<PollCard> {
     }
     await Store.i.syncOlder(id, 'msg');
     if (!mounted) return;
-    if (!ok) return toast(context, '바꾸지 못했어요 — 다시 시도해주세요');
+    if (!ok) return saveFailToast(context, '바꾸지 못했어요 — 다시 시도해주세요');
     toast(context, closed ? '투표를 마감했어요 🔒' : '투표를 다시 열었어요');
   }
 

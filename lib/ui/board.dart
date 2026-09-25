@@ -281,7 +281,7 @@ class _PostCard extends StatelessWidget {
                         await Store.i.updateItem(code, id, 'diary', {'pinned': !pinned});
                       } catch (_) {
                         if (context.mounted) {
-                          toast(context, pinned
+                          saveFailToast(context, pinned
                               ? '고정을 풀지 못했어요 — 다시 시도해주세요'
                               : '고정하지 못했어요 — 다시 시도해주세요');
                         }

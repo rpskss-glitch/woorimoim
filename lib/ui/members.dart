@@ -128,7 +128,7 @@ class _MembersScreenState extends State<MembersScreen> {
     try {
       await Store.i.updateItem(code, r['id'] as String, 'report', {'done': true});
     } catch (_) {
-      if (mounted) toast(context, '처리하지 못했어요 — 다시 눌러주세요');
+      if (mounted) saveFailToast(context, '처리하지 못했어요 — 다시 눌러주세요');
       return;
     }
     if (mounted && !quiet) toast(context, '신고를 처리했어요');
