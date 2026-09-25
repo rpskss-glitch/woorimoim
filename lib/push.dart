@@ -196,7 +196,7 @@ class Push {
     if (ok) return '알림을 켰어요 🔔';
     if (denied) {
       return defaultTargetPlatform == TargetPlatform.iOS
-          ? '알림이 꺼져 있어요 — 아이폰 «설정 → 알림 → 우리 모임»에서 켜주세요'
+          ? '알림이 꺼져 있어요 — 아이폰 «설정 → 알림 → ${Cfg.appName}»에서 켜주세요'
           : '알림 권한을 허용해야 받을 수 있어요';
     }
     return '알림을 켜지 못했어요 — 잠시 후 다시 눌러주세요';

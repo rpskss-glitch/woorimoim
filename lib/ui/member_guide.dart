@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config.dart';
 import '../state.dart';
 import 'common.dart';
 
@@ -30,7 +31,6 @@ class _MemberGuideCardState extends State<MemberGuideCard> {
   Widget build(BuildContext context) {
     final hint = Theme.of(context).hintColor;
     final st = AppState.i;
-    final title = (st.couple?['title'] as String?) ?? '모임';
     final feeAmount = ((st.couple?['fee'] as Map?)?['amount'] as num?)?.toInt() ?? 0;
 
     Widget item(String head, String body) => Padding(
@@ -93,7 +93,8 @@ class _MemberGuideCardState extends State<MemberGuideCard> {
                 '대화에 올라온 사진이 모두 모입니다. 사진을 누르면 크게 보고, 두 손가락으로 늘려 볼 수 있습니다.'),
             item('🔔 알림',
                 '설정에서 알림을 켜고 끕니다.\n'
-                '· 알림이 안 오면 폰 설정에서 「$title」 알림이 꺼져 있는지 보세요.'),
+                // ⚠️ 폰 설정 목록에는 «앱 이름»으로 나온다 — 모임 이름으로는 못 찾는다(2026-09-25 조사)
+                '· 알림이 안 오면 폰 설정에서 「${Cfg.appName}」 알림이 꺼져 있는지 보세요.'),
             item('🙋 내 정보',
                 '설정에서 이름 · 사진 · 생년월일을 바꿉니다.\n'
                 '· 직책은 방장이 정합니다.\n'
