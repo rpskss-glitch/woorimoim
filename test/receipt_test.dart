@@ -143,7 +143,8 @@ void main() {
     test('영수증은 «있어도 되고 없어도 되는» 것이다', () {
       // 영수증이 없다고 저장을 막으면, 현금으로 산 것을 못 적는다
       final at = wallet.indexOf('Future<void> _save()');
-      final body = wallet.substring(at, (at + 1200).clamp(0, wallet.length));
+      // 함수 «전체»를 본다 — 앞 1200자만 보면 앞에 확인 줄이 늘 때마다 헛실패한다(2026-09-25)
+      final body = wallet.substring(at, wallet.indexOf('Widget build(', at));
       expect(body.contains("if (_rcptId != null) 'rcptId'"), isTrue,
           reason: '영수증이 없을 때 빈 값을 적으면 웹이 «있는 것»으로 읽는다');
     });
