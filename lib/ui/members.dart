@@ -34,7 +34,6 @@ class _MembersScreenState extends State<MembersScreen> {
 
   Future<void> _approve(Map<String, dynamic> p) async {
     final st = AppState.i;
-    final uid = p['uid'] as String;
     // 같은 이름은 허용하되, 아바타까지 똑같으면 서로 구분이 안 되니 승인하지 않는다
     final clash = st.memberList.any((m) =>
         Store.normTitle(m['name'] as String?) == Store.normTitle(p['name'] as String?) &&
@@ -46,19 +45,15 @@ class _MembersScreenState extends State<MembersScreen> {
     final code = st.code;
     if (code == null) return;
     try {
-      await Store.i.patchCouple(code, {
-        'members.$uid': {
-          'name': p['name'] ?? '회원',
-          'emoji': p['emoji'] ?? defaultAvatar,
-          'uid': uid,
-          'birth': p['birth'] ?? '', // 생년월일도 옮겨야 폰 바꿀 때 자동 이어받기가 된다
-          'role': 'member',
-          'joinedAt': DateTime.now().millisecondsSinceEpoch,
-        },
-        'pending.$uid': null,
-        'former.$uid': null, // 재가입이면 탈퇴 기록은 지운다
-      });
+      /* ⚠️ 서버의 «지금» 문서를 보고 적는다(트랜잭션) — 화면의 옛 목록만 믿으면
+            다른 운영진이 막 거절한 사람을 회원으로 만들거나, 이미 승인돼 직책을 받은 사람을
+            평회원으로 덮어쓴다(Logic.approvePatch 설명). */
+      final wrote = await Store.i.mutateCouple(code,
+          (cur) => Logic.approvePatch(cur, p, DateTime.now().millisecondsSinceEpoch));
       if (!mounted) return;
+      if (!wrote) {
+        return toast(context, '이미 처리된 신청이에요 — 다른 운영진이 먼저 승인했거나 거절했어요');
+      }
       toast(context, '${p['name'] ?? '회원'}님을 승인했어요 🎉');
     } catch (_) {
       if (!mounted) return;
@@ -105,6 +100,11 @@ class _MembersScreenState extends State<MembersScreen> {
           'name': name,
           'emoji': m['emoji'] ?? defaultAvatar,
           'leftAt': DateTime.now().millisecondsSinceEpoch,
+          /* 💵 밀린 회비를 셀 때 필요한 것도 함께 옮긴다.
+             ⚠️ 예전에는 이름·아바타만 남겼다. 회비 표는 «언제 들어왔는지»를 모르면
+                이번 달에 든 것으로 보아 그전 달을 모두 «가입 전»으로 뺐다 —
+                넉 달 밀린 회원을 내보내는 순간 **밀린 회비가 표에서 조용히 사라졌다**(2026-09-25 조사). */
+          ...Logic.feeCarry(m),
         },
       });
       // 탈퇴 기록(former)에는 사진을 안 남기므로, 그 사람 아바타 원본은 아무도 못 찾는다 → 치운다

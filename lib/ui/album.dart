@@ -573,6 +573,10 @@ class _PhotoPageState extends State<PhotoPage> {
     if (widget.rows.isEmpty) return const SizedBox.shrink();
     final at = _i.clamp(0, widget.rows.length - 1);
     final p = _live(widget.rows[at]);
+    /* 🗑 보고 있는 사이 «다른 사람이» 이 사진을 지웠다.
+       ⚠️ 예전에는 열 때 찍어 둔 옛 값을 그대로 보여 줘서, 즐겨찾기·반응을 누르면
+          「바꾸지 못했어요」만 나왔다(2026-09-25 조사). 지워졌다고 말하고 단추를 잠근다. */
+    final gone = !AppState.i.by('photo').any((x) => x['id'] == widget.rows[at]['id']);
     final note = ((p['caption'] as String?) ?? '').trim();
     final tags = photoTags(p['caption'] as String?);
     /* 내가 남긴 반응 — **폰 바꾸기 전 번호로 남긴 것도 내 것**이다. */
@@ -593,13 +597,13 @@ class _PhotoPageState extends State<PhotoPage> {
         actions: [
           IconButton(
             tooltip: p['fav'] == true ? '즐겨찾기 빼기' : '즐겨찾기',
-            onPressed: () => _fav(p),
+            onPressed: gone ? null : () => _fav(p),
             icon: Text(p['fav'] == true ? '💗' : '🤍',
                 style: const TextStyle(fontSize: 20)),
           ),
           IconButton(
             tooltip: '더 보기',
-            onPressed: () => _more(p),
+            onPressed: gone ? null : () => _more(p),
             icon: const Icon(Icons.more_vert),
           ),
         ],
@@ -661,6 +665,10 @@ class _PhotoPageState extends State<PhotoPage> {
                     ),
                   ],
                   const SizedBox(height: 8),
+                  if (gone)
+                    const Text('이 사진은 지워졌어요 — 옆으로 넘기거나 닫아주세요',
+                        style: TextStyle(color: Color(0xFFFFB4A8), fontSize: 13))
+                  else
                   /* ⚠️ **한 줄(Row)로 두면 안 된다.** 반응 다섯에 남이 남긴 것까지
                      한 줄에 몰아넣으면 360px 폰에서 오른쪽으로 **90px 넘쳤다**(실측).
                      넘친 자리는 잘려서 «아예 못 누른다». 자리가 모자라면 다음 줄로 내린다. */
@@ -747,13 +755,39 @@ class _PhotoPageState extends State<PhotoPage> {
   }
 
   Future<void> _more(Map<String, dynamic> p) async {
+    /* ⚠️ 예전 메뉴는 「설명·날짜 고치기」였는데 **설명만** 고쳐졌다 — 날짜를 바꿀 길이 없었다
+          (2026-09-25 조사). 지난 모임 사진을 늦게 올리면 오늘 달로 묶여 찾기 어렵다.
+          둘을 따로 둔다. */
     final pick = await chooseSheet(context, '사진', '', [
-      ['edit', '✏️ 설명·날짜 고치기'],
+      ['edit', '✏️ 설명 고치기'],
+      ['date', '📅 찍은 날짜 바꾸기'],
       ['delete', '🗑 지우기'],
     ]);
     if (pick == null || !mounted) return;
     if (pick == 'edit') return _edit(p);
+    if (pick == 'date') return _editDate(p);
     if (pick == 'delete') return _delete(p);
+  }
+
+  /// 📅 찍은 날짜 — 사진첩은 이 날짜로 «몇 년 몇 월»에 묶는다.
+  Future<void> _editDate(Map<String, dynamic> p) async {
+    final code = AppState.i.code;
+    if (code == null) return;
+    final now = DateTime.now();
+    final cur = DateTime.tryParse((p['date'] as String?) ?? '') ?? now;
+    final d = await showDatePicker(
+      context: context,
+      initialDate: clampDate(cur, DateTime(2000), now),
+      firstDate: DateTime(2000),
+      lastDate: now, // 앞날에 찍은 사진은 없다
+      helpText: '언제 찍은 사진인가요?',
+    );
+    if (d == null || !mounted) return;
+    final ok = await _patchPhoto(code, p['id'] as String, {'date': ymd(d)});
+    if (!mounted) return;
+    if (!ok) return saveFailToast(context, '저장하지 못했어요');
+    toast(context, '날짜를 바꿨어요 — ${d.year}년 ${d.month}월에 모여요');
+    setState(() {});
   }
 
   Future<void> _edit(Map<String, dynamic> p) async {

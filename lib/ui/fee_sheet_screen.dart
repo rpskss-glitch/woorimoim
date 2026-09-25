@@ -346,6 +346,11 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
     final uid = member['uid'] as String;
     final name = (member['name'] as String?) ?? '회원';
     final label = FeeSheet.monthLabel(month);
+    /* ⚠️ 면제 표시는 그 회원 자리에 적는다 — 서버는 남의 자리를 운영진만 고치게 한다.
+          직책만 있는 총무(회계·총무보)가 누르면 확인까지 해 놓고 늘 거절됐다(2026-09-25 조사). */
+    if (!AppState.i.isAdmin) {
+      return toast(context, '면제 표시는 운영진만 적을 수 있어요 — 방장에게 「운영진 권한」을 받아주세요');
+    }
     if (!on) {
       final ok = await confirmSheet(context, '$name님 $label 회비를 면제할까요?',
           '그 달만 «안 내도 되는 달»로 둡니다. 밀린 셈에서 빠지고, 표에는 「면」으로 남아요.',

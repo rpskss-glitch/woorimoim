@@ -928,6 +928,47 @@ class Logic {
     return !paidIn(uid, key);
   }
 
+  /// 🤝 가입 승인에 적을 값 — **서버의 지금 모임 문서([cur])를 보고** 정한다.
+  ///
+  /// null 이면 적지 않는다: 그 사이 다른 운영진이 **거절했거나(신청이 없어짐)**
+  /// **이미 승인했다(벌써 회원)**. 예전에는 화면에 남은 옛 목록만 보고 통째로 덮어써서
+  ///   · 거절된 사람이 회원이 되거나
+  ///   · 방장이 이미 준 직책·권한이 평회원으로, 가입일이 지금으로 덮였다(2026-09-25 조사).
+  static Map<String, dynamic>? approvePatch(
+      Map<String, dynamic> cur, Map<String, dynamic> p, int now) {
+    final uid = p['uid'];
+    if (uid is! String || uid.isEmpty) return null;
+    final pending = asMap(cur['pending']);
+    final members = asMap(cur['members']);
+    if (!pending.containsKey(uid)) return null; // 누가 먼저 거절했다
+    if (members.containsKey(uid)) return null; // 누가 먼저 승인했다 — 직책·가입일을 덮지 않는다
+    return {
+      'members': {
+        uid: {
+          'name': p['name'] ?? '회원',
+          'emoji': p['emoji'] ?? defaultAvatar,
+          'uid': uid,
+          'birth': p['birth'] ?? '', // 생년월일도 옮겨야 폰 바꿀 때 자동 이어받기가 된다
+          'role': 'member',
+          'joinedAt': now,
+        }
+      },
+      'pending': {uid: Store.del},
+      'former': {uid: Store.del}, // 재가입이면 탈퇴 기록은 지운다
+    };
+  }
+
+  /// 🚪 나가는 회원의 자리에서 «회비 셈에 필요한 것»만 골라 former 로 옮길 값.
+  /// 들어온 때(joinedAt)·면제 달(feeFree)·가입비 표시(joinFee) — 없는 것은 안 넣는다.
+  /// ⚠️ 들어온 때가 빠지면 회비 표가 이번 달에 든 것으로 보아 밀린 회비를 통째로 뺀다.
+  static Map<String, dynamic> feeCarry(Map<dynamic, dynamic>? member) {
+    if (member == null) return const {};
+    return {
+      for (final k in const ['joinedAt', 'feeFree', 'joinFee'])
+        if (member[k] != null) k: member[k],
+    };
+  }
+
   /* 🙇 «그 달만 면제»해 준 달들 — `members.<uid>.feeFree`.
 
      ⚠️ 여기(Logic)에 두는 까닭: 밀린 달 셈과 표가 **같은 자리**를 봐야 한다.

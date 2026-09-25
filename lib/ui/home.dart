@@ -475,9 +475,10 @@ class _HomeTabState extends State<HomeTab> {
     if (ledgers.isEmpty) return const [];
     final bal = Logic.balance();
     var monthOut = 0;
+    // 잔액·회비 탭과 같은 규칙 — 「in 만 수입, 나머지는 지출」 (wallet 의 이번 달 칸 설명)
     for (final l in ledgers) {
-      if (l['kind'] == 'out' && ((l['date'] as String?) ?? '').startsWith(month)) {
-        monthOut += ((l['amount'] as num?) ?? 0).toInt();
+      if (l['kind'] != 'in' && ((l['date'] as String?) ?? '').startsWith(month)) {
+        monthOut += Logic.asInt(l['amount']);
       }
     }
     Widget box(String label, String value) => Expanded(

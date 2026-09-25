@@ -263,6 +263,8 @@ class Store {
               if (me['name'] != null) 'name': me['name'],
               if (me['emoji'] != null) 'emoji': me['emoji'],
               'leftAt': DateTime.now().millisecondsSinceEpoch,
+              // 밀린 회비 셈에 필요한 것도 옮긴다 (members 의 내보내기와 같다 — Logic.feeCarry)
+              ...Logic.feeCarry(me),
             }
           },
         };

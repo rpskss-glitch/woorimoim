@@ -381,13 +381,18 @@ class _BalanceCard extends StatelessWidget {
     final color = bal < 0 ? moneyOut(context) : cs.primary;
     final month = ymd(DateTime.now()).substring(0, 7);
     var mIn = 0, mOut = 0;
+    /* ⚠️ 잔액(Logic)·통계와 **같은 규칙**으로 센다 — 「in 만 수입, 나머지는 지출」.
+          예전에는 여기만 거꾸로(「out 만 지출, 나머지는 수입」)라, 종류가 빠진 기록 하나가
+          잔액에서는 빠지고 이번 달 칸에서는 수입으로 잡혔다(웹 백업 복원으로 들어올 수 있다).
+       ⚠️ 금액은 asInt 로 읽는다 — `as num` 은 글자로 적힌 금액에서 터져 회비 화면이 통째로 안 뜬다.
+       (2026-09-25 조사) */
     for (final l in AppState.i.by('ledger')) {
       if (!((l['date'] as String?) ?? '').startsWith(month)) continue;
-      final amt = ((l['amount'] as num?) ?? 0).toInt();
-      if (l['kind'] == 'out') {
-        mOut += amt;
-      } else {
+      final amt = Logic.asInt(l['amount']);
+      if (l['kind'] == 'in') {
         mIn += amt;
+      } else {
+        mOut += amt;
       }
     }
     Widget box(String label, String value, Color c) => Expanded(
@@ -590,6 +595,13 @@ class _MemberFeeRow extends StatelessWidget {
   Future<void> _joinFee(BuildContext context, String uid, String name) async {
     if (!AppState.i.isTreasurer) {
       return toast(context, '가입비 기록은 회장·총무만 할 수 있어요');
+    }
+    /* ⚠️ 가입비 «받음·면제» 표시는 그 회원 자리(members.<번호>)에 적는다 — 서버는 남의 자리를
+          운영진만 고치게 한다. 「회계」·「총무보」처럼 직책만 있고 운영진이 아닌 사람이 누르면
+          장부에 돈은 적히는데 표시가 거절돼, 가입비 단추가 영영 남고 다시 눌러도 또 실패했다
+          (2026-09-25 조사). 아무것도 적기 «전에» 이유를 알려 준다. */
+    if (!AppState.i.isAdmin) {
+      return toast(context, '가입비 표시는 운영진만 적을 수 있어요 — 방장에게 「운영진 권한」을 받아주세요');
     }
     final won = Fee.joinAmount();
     final pick = await chooseSheet(
