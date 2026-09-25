@@ -118,7 +118,15 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
       const WalletTab(),
     ];
 
-    return Scaffold(
+    /* ◀ 안드로이드 뒤로 가기 — 다른 탭에서는 «홈으로», 홈에서만 앱을 닫는다.
+       ⚠️ 예전에는 회비·채팅 탭에서 누르면 앱이 그 자리에서 꺼졌다(2026-09-26 에뮬에서 봄).
+          다른 앱들처럼 먼저 홈 탭으로 간다. 위에 덮인 화면(설정·글 보기)은 이 판단 전에 먼저 닫힌다. */
+    return PopScope(
+      canPop: _tab == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goTab(0);
+      },
+      child: Scaffold(
       appBar: AppBar(
         titleSpacing: 14,
         title: Row(
@@ -203,6 +211,7 @@ class _ShellScreenState extends State<ShellScreen> with WidgetsBindingObserver {
           const NavigationDestination(icon: _NavEmoji('📔'), label: '게시판'),
           const NavigationDestination(icon: _NavEmoji('💰'), label: '회비'),
         ],
+      ),
       ),
     );
   }
