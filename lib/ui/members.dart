@@ -44,6 +44,23 @@ class _MembersScreenState extends State<MembersScreen> {
     if (clash) {
       return toast(context, '같은 이름·같은 아바타의 회원이 있어요 — 거절하고 다른 아바타로 다시 신청받아주세요');
     }
+    /* 💵 밀린 채 나갔던 사람이 다시 들어오는 것이면 «승인 전에» 알린다.
+       ⚠️ 승인은 탈퇴 기록을 지우고 새 가입일을 적어, 나가기 전 밀린 달이 회비 표·현황에서 사라진다
+          (2026-09-26 조사). 먼저 회비 탭 「나간 회원」 줄에서 받아 적을 수 있게 멈춰 묻는다. */
+    final uid = p['uid'] as String?;
+    final oldDebt = (uid != null && st.former.containsKey(uid) && !st.members.containsKey(uid))
+        ? Logic.unpaidMonths(uid)
+        : const <String>[];
+    if (oldDebt.isNotEmpty) {
+      final go = await confirmSheet(
+        context,
+        '${p['name'] ?? '이 분'}님은 나가기 전 밀린 회비가 ${oldDebt.length}달 있어요',
+        '${oldDebt.first}~${oldDebt.last}치예요. 승인하면 새로 가입한 것으로 바뀌어 이 밀린 회비가 표에서 안 보여요.\n'
+            '받을 것이면 먼저 회비 탭 「나간 회원」 줄에서 받아 적고 승인해주세요.',
+        okLabel: '그대로 승인',
+      );
+      if (!go || !mounted) return;
+    }
     final code = st.code;
     if (code == null) return;
     try {
