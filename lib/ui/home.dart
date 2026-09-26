@@ -285,6 +285,9 @@ class _HomeTabState extends State<HomeTab> {
     final today = ymd(now);
     final rows = AppState.i
         .by('dday')
+        /* ⚠️ 날짜로 «읽히는» 것만 — 「2026.12.25」 같은 글자는 다듬기가 그대로 두는데,
+              아래 `_dLabel` 의 parse 가 터져 홈이 통째로 안 떴다(85회차). 셀 수 없으면 안 보인다. */
+        .where((d) => DateTime.tryParse((d['date'] as String?) ?? '') != null)
         .where((d) => ((d['date'] as String?) ?? '').compareTo(today) >= 0)
         .toList()
       ..sort((a, b) =>
@@ -338,7 +341,9 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   static String _dLabel(String today, String date) {
-    final n = DateTime.parse(date).difference(DateTime.parse(today)).inDays;
+    final d = DateTime.tryParse(date), t = DateTime.tryParse(today);
+    if (d == null || t == null) return 'D-?'; // 위에서 걸렀지만 — 여기서 터지면 홈이 통째로 안 뜬다
+    final n = d.difference(t).inDays;
     return n == 0 ? 'D-day' : 'D-$n';
   }
 
