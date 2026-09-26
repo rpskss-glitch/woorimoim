@@ -391,8 +391,7 @@ class _FeeSheetScreenState extends State<FeeSheetScreen> {
   }
 
   /// 만 원 단위로 짧게 — 표 칸에 원 단위를 다 적으면 가로가 두 배가 된다
-  static String _won(int v) =>
-      v == 0 ? '' : '${(v / 10000).toStringAsFixed(v % 10000 == 0 ? 0 : 1)}만';
+  static String _won(int v) => FeeSheet.shortWon(v); // 99,999→「10만」, 400→「400원」 (83회차)
 
   Widget _outTable(List<String> months, {bool scroll = true}) {
     final table = FeeSheet.outByCat(months);

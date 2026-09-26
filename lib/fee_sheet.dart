@@ -199,6 +199,16 @@ class FeeSheet {
     return out;
   }
 
+  /// 💰 표 칸에 적는 짧은 금액 — 만 원 단위, 한 자리까지. 0이면 빈칸.
+  /// ⚠️ 반올림해 딱 떨어지면 소수점을 뗀다(99,999원이 「10.0만」이었다).
+  /// ⚠️ 만 원이 안 되면 원으로 — 「0.0만」은 안 쓴 달처럼 읽힌다(83회차).
+  static String shortWon(int v) {
+    if (v == 0) return '';
+    if (v.abs() < 10000) return '$v원';
+    final tenths = (v / 1000).round(); // 0.1만 단위
+    return tenths % 10 == 0 ? '${tenths ~/ 10}만' : '${(tenths / 10).toStringAsFixed(1)}만';
+  }
+
   /// 「2026-07」 → 「7월」 (표 머리글은 짧아야 한 화면에 들어간다)
   static String monthLabel(String ym) {
     final p = ym.split('-');
