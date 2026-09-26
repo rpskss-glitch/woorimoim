@@ -319,8 +319,13 @@ class _PostCard extends StatelessWidget {
                     if (code == null) return;
                     final done =
                         await Store.i.deleteItem(code, item['id'] as String, 'diary');
-                    if (!context.mounted) return;
-                    if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
+                    /* ⚠️ 뒤처리는 «화면이 살아 있는지» 묻기 «전»에 한다(79회차).
+                       진짜 서버에서는 지우는 순간 목록에서 먼저 빠져 이 칸이 사라지므로,
+                       먼저 물으면 사진 원본·딸린 댓글이 서버에 영영 남는다. */
+                    if (!done) {
+                      if (context.mounted) toast(context, '지우지 못했어요 — 다시 시도해주세요');
+                      return;
+                    }
                     Store.i.dropPhotos(Store.photoIdsOf(item));
                     // 딸린 댓글도 함께 — 안 지우면 «주인 없는 댓글»이 영영 남는다
                     await Comments.removeAllOf(item['id'] as String);

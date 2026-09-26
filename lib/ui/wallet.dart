@@ -773,8 +773,13 @@ class _LedgerRow extends StatelessWidget {
                 final code = AppState.i.code;
                 if (code == null) return;
                 final done = await Store.i.deleteItem(code, id, 'ledger');
-                if (!context.mounted) return;
-                if (!done) return toast(context, '지우지 못했어요 — 다시 시도해주세요');
+                /* ⚠️ 뒤처리는 «화면이 살아 있는지» 묻기 «전»에 한다(79회차).
+                   진짜 서버에서는 지우는 순간 목록에서 먼저 빠져 이 줄이 사라지므로,
+                   먼저 물으면 영수증 원본이 남고 가입비 표시가 영영 안 풀린다. */
+                if (!done) {
+                  if (context.mounted) toast(context, '지우지 못했어요 — 다시 시도해주세요');
+                  return;
+                }
                 Store.i.dropPhotos(Store.photoIdsOf(item));
                 /* 💵 가입비 기록이면 회원 자리의 «받음» 표시도 푼다.
                    ⚠️ 예전에는 돈만 장부에서 빠지고 `joinFee: 'paid'` 가 남아, 가입비 단추가 다시 안 떠
@@ -789,8 +794,8 @@ class _LedgerRow extends StatelessWidget {
                     onChanged();
                     return;
                   }
-                  if (!context.mounted) return;
                 }
+                if (!context.mounted) return;
                 toast(context, '기록을 지웠어요');
                 onChanged();
               },
