@@ -316,10 +316,10 @@ class Demo {
         };
 
     _items = [
-      item({'type': 'msg', 'text': '오늘 정기모임 7시! 코트 3번입니다 🏸'}, 'u_yj', 500000),
+      item({'type': 'msg', 'text': '이번 주 정기모임도 7시! 코트 3번입니다 🏸'}, 'u_yj', 500000),
       item({'type': 'msg', 'text': '네! 셔틀콕 제가 챙겨갈게요'}, 'u_sh', 400000),
-      item({'type': 'msg', 'text': '저 오늘 야근이라 30분 늦어요 🙏'}, 'u_jh', 300000),
-      item({'type': 'msg', 'text': '천천히 오세요~ 몸 먼저 풀고 있을게요'}, uid, 200000),
+      item({'type': 'msg', 'text': '저 이번 주는 야근이라 못 가요 🙏'}, 'u_jh', 300000),
+      item({'type': 'msg', 'text': '아쉽네요~ 다음 주에 봐요!'}, uid, 200000),
       // 📊 투표 — 진행 중인 것과 마감된 복수선택
       item({
         'type': 'msg',
@@ -367,12 +367,15 @@ class Demo {
         'place': '앞산 체육관 3코트',
         'repeat': 'week',
         'memo': '초보 레슨 30분 먼저',
+        /* ⚠️ 참석 투표는 «다음 회차»(사흘 전 + 7일 = next)에 적는다.
+           예전에는 «오늘»에 적었는데 오늘은 모임 날이 아니라 어느 회차에도 안 잡혀,
+           일정 화면이 «참석 0 · 미정 0 · 불참 0»으로 텅 비어 보였다(81회차). */
         'rsvp': {
-          rk(today, uid): 'yes',
-          rk(today, 'u_yj'): 'yes',
-          rk(today, 'u_sh'): 'yes',
-          rk(today, 'u_mj'): 'maybe',
-          rk(today, 'u_jh'): 'no',
+          rk(next, uid): 'yes',
+          rk(next, 'u_yj'): 'yes',
+          rk(next, 'u_sh'): 'yes',
+          rk(next, 'u_mj'): 'maybe',
+          rk(next, 'u_jh'): 'no',
         },
         // 지난 회차 출석 — 배지·이달의 순위가 «쓰는 모습»으로 보이게
         'attend': {
