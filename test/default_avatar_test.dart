@@ -34,18 +34,27 @@ void main() {
   test('겹침 검사의 «두 기본값»이 같은 이름을 쓴다', () {
     /* ⚠️ 「그 이모지 글자가 있나」로만 보면, 한쪽을 «다른 이모지»로 바꿔 놓아도 통과한다
        (184회차에 그렇게 틀렸다). **두 쪽이 같은 이름을 쓰는지**를 본다. */
-    final s = File('lib/ui/members.dart')
+    /* 88회차부터 승인 화면은 공용 셈(Logic.avatarClash)을 쓴다 — 두 쪽이 두 파일로 나뉘었다.
+       회원 쪽은 logic.dart 의 셈 안에서, 신청자 쪽은 members.dart 가 넘길 때 기본 얼굴을 채운다. */
+    String bare(String p) => File(p)
         .readAsStringSync()
         .replaceAll(RegExp(r'/\*.*?\*/', dotAll: true), '')
         .replaceAll(RegExp(r'//.*'), '');
-    final at = s.indexOf("(m['emoji'] as String?)");
+    final lg = bare('lib/logic.dart');
+    final at = lg.indexOf(
+        "(m['emoji'] as String?)", lg.indexOf('static Map<String, dynamic>? avatarClash('));
     expect(at, greaterThan(0), reason: '겹침 검사를 못 찾았다 — 이 시험이 헛돌고 있다');
-    final line = s.substring(s.lastIndexOf('\n', at) + 1, s.indexOf('\n', at));
-    expect('defaultAvatar'.allMatches(line).length, 2,
-        reason: '두 쪽이 «같은 기본 얼굴»을 안 쓴다 — '
-            '아바타를 안 고른 사람끼리가 서로 다른 것으로 보여 겹침 검사가 조용히 멈춘다: $line');
-    expect(RegExp(r"\?\?\s*'").hasMatch(line), isFalse,
-        reason: '기본 얼굴을 «글자 그대로» 적어 두면 다시 어긋날 수 있다: $line');
+    final line = lg.substring(lg.lastIndexOf('\n', at) + 1, lg.indexOf('\n', at));
+    expect(line, contains('?? defaultAvatar'), reason: '회원 쪽이 «같은 기본 얼굴»을 안 쓴다: $line');
+    final mb = bare('lib/ui/members.dart');
+    final ap = mb.indexOf('Logic.avatarClash(', mb.indexOf('Future<void> _approve('));
+    expect(ap, greaterThan(0), reason: '승인 화면이 공용 셈을 안 쓴다');
+    final call = mb.substring(ap, mb.indexOf(';', ap));
+    expect(call, contains("(p['emoji'] as String?) ?? defaultAvatar"),
+        reason: '신청자 쪽이 «같은 기본 얼굴»을 안 쓴다 — 겹침 검사가 조용히 멈춘다: $call');
+    // 이름의 기본값(?? '')은 상관없다 — «얼굴»의 기본값만 본다
+    expect(RegExp(r"emoji'\] as String\?\)\s*\?\?\s*'").hasMatch(line + call), isFalse,
+        reason: '기본 얼굴을 «글자 그대로» 적어 두면 다시 어긋날 수 있다');
   });
 
   test('아바타를 «둘 다 안 고른» 두 사람은 겹침으로 잡힌다', () {

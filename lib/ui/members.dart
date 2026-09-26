@@ -38,10 +38,14 @@ class _MembersScreenState extends State<MembersScreen> {
   Future<void> _approve(Map<String, dynamic> p) async {
     final st = AppState.i;
     // 같은 이름은 허용하되, 아바타까지 똑같으면 서로 구분이 안 되니 승인하지 않는다
-    final clash = st.memberList.any((m) =>
-        Store.normTitle(m['name'] as String?) == Store.normTitle(p['name'] as String?) &&
-        m['photo'] == null &&
-        ((m['emoji'] as String?) ?? defaultAvatar) == ((p['emoji'] as String?) ?? defaultAvatar));
+    /* 📷 신청자가 얼굴 사진을 실어 보냈으면 그 자체로 구분된다 — 막지 않는다(88회차).
+       예전에는 자기 나름의 검사로 «기존 회원의 사진»만 봐서 사진 있는 신청자도 막혔다.
+       겹침 셈은 가입·내 정보와 같은 공용 셈(Logic.avatarClash)을 쓴다. */
+    final hasPhoto = (p['photo'] as String?)?.isNotEmpty == true;
+    final clash = !hasPhoto &&
+        Logic.avatarClash(st.memberList, (p['name'] as String?) ?? '',
+                (p['emoji'] as String?) ?? defaultAvatar) !=
+            null;
     if (clash) {
       return toast(context, '같은 이름·같은 아바타의 회원이 있어요 — 거절하고 다른 아바타로 다시 신청받아주세요');
     }
@@ -355,8 +359,9 @@ class _MembersScreenState extends State<MembersScreen> {
       toast(
           context,
           titleDone
-              ? '직책은 「$picked」(으)로 정해졌는데 운영진 권한은 주지 못했어요 — '
-                  '권한은 다시 눌러주세요 (이 직책만으로도 회비 장부는 열려요)'
+              ? '직책은 「$picked」(으)로 정해졌는데 운영진 권한은 주지 못했어요 — 권한은 다시 눌러주세요'
+                  /* 💰 회비를 여는 직책일 때만 그렇게 말한다 — 부회장·경기이사에게도 붙였었다(89회차) */
+                  '${Logic.keepsMoneyByTitle(picked) ? ' (이 직책만으로도 회비 장부는 열려요)' : ''}'
               : '저장하지 못했어요 — 다시 눌러주세요');
     }
   }
