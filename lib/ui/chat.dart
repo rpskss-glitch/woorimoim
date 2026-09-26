@@ -382,6 +382,9 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
     if (mounted && reply != null) setState(() => _replyTo = null);
 
     var fail = 0;
+    /* ↩️ 답장은 «처음으로 실제로 올라간 장»에 붙인다(87회차).
+       몇 번째 장(i==0)으로 정하면 첫 장이 실패할 때 어느 사진에도 답장이 안 붙었다. */
+    var replied = false;
     for (var i = 0; i < picked.length; i++) {
       final Uint8List bytes;
       try {
@@ -404,14 +407,20 @@ class _ChatTabState extends State<ChatTab> with WidgetsBindingObserver {
         'photoId': photoId,
         'text': '',
         ...room, // 🔴 이게 없어서 운영진 방 사진이 모두에게 보였다
-        if (i == 0 && reply != null) 'replyTo': reply['id'],
+        if (!replied && reply != null) 'replyTo': reply['id'],
         if (thumb != null) 'thumb': thumb,
       });
       if (id == null) {
         // 글이 저장 안 됐으면 올린 원본도 남기지 않는다 (아무도 못 보는 파일에 저장료만 나간다)
         Store.i.dropPhotos([photoId]);
         fail++;
+      } else {
+        replied = true;
       }
+    }
+    // 한 장도 못 보냈으면 «무엇에 답하던 중이었는지»를 되살린다 — 다시 보낼 때 그대로 붙는다
+    if (mounted && reply != null && !replied && _replyTo == null) {
+      setState(() => _replyTo = reply);
     }
     if (mounted && fail > 0) {
       toast(
