@@ -7,7 +7,7 @@ import 'package:woorimoim/theme.dart';
    «테마 선택이 작동 안 하는 것»처럼 보였다(2026-09-01 아이폰 다크 모드에서). */
 void main() {
   test('다크 배경이 테마마다 다르다 (하늘 ≠ 산호 ≠ 포도)', () {
-    final sky = buildTheme('sky', dark: true).scaffoldBackgroundColor;
+    final sky = buildTheme('blue', dark: true).scaffoldBackgroundColor;
     final coral = buildTheme('coral', dark: true).scaffoldBackgroundColor;
     final grape = buildTheme('grape', dark: true).scaffoldBackgroundColor;
     expect(sky, isNot(coral), reason: '다크 바탕이 테마와 상관없이 똑같다 — 선택이 안 보인다');
@@ -17,7 +17,7 @@ void main() {
 
   test('다크 카드·앱바도 테마마다 다르다', () {
     Color card(String k) => buildTheme(k, dark: true).cardTheme.color!;
-    expect(card('sky'), isNot(card('lemon')));
+    expect(card('blue'), isNot(card('lemon')));
   });
 
   test('그래도 여전히 «어두운» 배경이다 (틴트는 옅게)', () {
@@ -29,7 +29,7 @@ void main() {
 
   test('밝은 테마는 예전 그대로 (틴트는 다크에서만)', () {
     // 밝은 테마 바탕은 t.bg 를 그대로 쓴다 — 다크 틴트가 안 새어야 한다
-    final light = buildTheme('sky').scaffoldBackgroundColor;
+    final light = buildTheme('blue').scaffoldBackgroundColor;
     expect(light.computeLuminance(), greaterThan(0.8),
         reason: '밝은 테마 바탕이 어두워졌다');
   });

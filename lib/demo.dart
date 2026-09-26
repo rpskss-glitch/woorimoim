@@ -283,7 +283,7 @@ class Demo {
       'code': code,
       'title': '앞산 배드민턴',
       'startDate': '2023-03-14',
-      'theme': 'sky',
+      'theme': 'coral',
       'emblem': {'kind': 'emoji', 'emoji': '🏸', 'size': 1.2, 'rot': -18.0},
       'fee': {'day': 5, 'amount': 20000},
       'members': {

@@ -264,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: t.acc,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: (st.effectiveTheme ?? 'sky') == t.key
+                              color: themeOf(st.effectiveTheme).key == t.key
                                   ? Colors.black87
                                   : Colors.transparent,
                               width: 3,
@@ -285,7 +285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         final code = st.code;
-                        final now = st.effectiveTheme ?? 'sky';
+                        final now = themeOf(st.effectiveTheme).key;
                         if (code == null) return;
                         try {
                           await Store.i.setCouple(code, {'theme': now});

@@ -9,6 +9,7 @@ import '../fee.dart';
 import '../logic.dart';
 import '../state.dart';
 import '../store.dart';
+import '../theme.dart' show defaultThemeKey;
 import 'admin.dart';
 import 'common.dart';
 
@@ -218,7 +219,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         'titleKey': Store.normTitle(title),
         'createdAt': now.millisecondsSinceEpoch,
         'startDate': ymd(now),
-        'theme': 'sky',
+        'theme': defaultThemeKey,
         'members': {
           uid: {
             'uid': uid,

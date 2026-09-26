@@ -82,4 +82,17 @@ void main() {
     expect(s, contains('ExitGuard(child: WaitScreen('));
     expect(s, contains('ExitGuard(child: _LoadingScreen('));
   });
+
+  /* ◀◀ 「종료할까요?」가 떠 있을 때 뒤로 가기를 한 번 더 누르면 바로 닫는다(2026-09-26 사장님).
+     «뒤로 두 번 = 종료»는 안드로이드 앱에서 흔한 손짓이다. */
+  testWidgets('«종료할까요?»에서 뒤로 가기를 한 번 더 → 앱을 닫는다', (t) async {
+    await open(t);
+    final calls = exits(t);
+    await t.binding.handlePopRoute();
+    await t.pumpAndSettle();
+    expect(find.text('앱을 종료할까요?'), findsOneWidget);
+    await t.binding.handlePopRoute();
+    await t.pumpAndSettle();
+    expect(calls, contains('SystemNavigator.pop'), reason: '뒤로 가기를 두 번 눌러도 안 닫힌다');
+  });
 }

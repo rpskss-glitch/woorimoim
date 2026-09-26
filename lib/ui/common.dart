@@ -372,13 +372,27 @@ class _BusyButtonState extends State<BusyButton> {
    안드로이드에서 첫 화면의 뒤로 가기는 앱을 그냥 닫았다 — 무심코 누른 회원은 앱이 사라진 줄 안다.
    ⚠️ 아이폰은 첫 화면에 «뒤로 가기»가 없어 여기로 오지 않는다(홈 버튼·쓸어 올리기는 앱이 막을 수 없다). */
 Future<void> confirmExit(BuildContext context) async {
-  final ok = await confirmSheet(
-    context,
-    '앱을 종료할까요?',
-    '다시 열면 보던 그대로 이어서 볼 수 있어요.',
-    okLabel: '종료',
+  /* ◀◀ 이 창이 떠 있을 때 뒤로 가기를 «한 번 더» 누르면 바로 닫는다(2026-09-26 사장님).
+     ⚠️ 바깥 두드리기는 막는다 — 바깥을 눌러 닫는 것도 «뒤로 가기»로 들어와서, 놔두면 잘못 스쳐도 앱이 꺼진다. */
+  final ok = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (c) => PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.pop(c, true);
+      },
+      child: AlertDialog(
+        title: const Text('앱을 종료할까요?'),
+        content: const Text('다시 열면 보던 그대로 이어서 볼 수 있어요.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('종료')),
+        ],
+      ),
+    ),
   );
-  if (ok) await SystemNavigator.pop();
+  if (ok ?? false) await SystemNavigator.pop();
 }
 
 /// 앱의 «첫 화면»(가입·불러오기·승인 대기)을 감싸 뒤로 가기에 종료를 묻는다.

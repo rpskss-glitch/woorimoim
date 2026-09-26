@@ -265,6 +265,8 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadProfile() async {
     _myTheme = Store.i.getStr(_myThemeKey); // 이 폰의 개인 테마도 함께 읽는다
+    // 옛 판에서 이 폰에 «하늘»을 골라 둔 사람 — 하늘색 열쇠가 'blue' 로 바뀌었다(2026-09-26)
+    if (_myTheme == 'sky') await setMyTheme('blue');
     final raw = Store.i.getStr(_profileKey);
     if (raw == null) return;
     try {

@@ -84,8 +84,10 @@ void main() {
        쓸 일이 생기면 «저장 안 함/취소» 같은 물음을 띄우고 결국 나갈 수 있게 해야 한다.
        ✅ 예외: 앱의 첫 화면(가입·승인 대기·본 화면)의 «종료할까요?»(2026-09-26 사장님 요청).
           첫 화면은 뒤에 돌아갈 화면이 없어 아이폰 가장자리 스와이프가 원래 없다 — 막을 것이 없다.
-          그 두 자리(common.dart 의 ExitGuard, shell.dart 의 본 화면) «말고는» 여전히 금지다. */
-    const allowed = {'common.dart': 1, 'shell.dart': 1};
+          그 두 자리(common.dart 의 ExitGuard, shell.dart 의 본 화면) «말고는» 여전히 금지다.
+       ✅ common.dart 의 둘째는 «종료할까요?» 창 자신 — 창에서 뒤로 가기 한 번 더 = 종료(2026-09-26).
+          창(대화상자)이라 화면 스와이프와 상관없다. */
+    const allowed = {'common.dart': 2, 'shell.dart': 1};
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
       final n = 'canPop: false'.allMatches(f.readAsStringSync()).length;

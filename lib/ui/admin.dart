@@ -275,7 +275,7 @@ class _AdminConsoleState extends State<AdminConsole> {
          「안 만들어졌다」고 정직하게 말해야 한다. */
       await Store.i.setClubTitle(code, title, {
         'createdAt': DateTime.now().millisecondsSinceEpoch,
-        'theme': 'sky',
+        'theme': defaultThemeKey,
         'members': <String, dynamic>{},
         // 총괄이 만든 방은 «이용료 면제»다 (사장님 방침) — 몇 개를 만들든 무료
         'free': true,

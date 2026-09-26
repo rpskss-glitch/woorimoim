@@ -14,15 +14,22 @@ class ClubTheme {
   const ClubTheme(this.key, this.label, this.acc, this.accText, this.accLight, this.acc2, this.bg);
 }
 
+/* 🎨 맨 앞이 «기본색»이다 — 모르는 값·빈 값은 맨 앞 색으로 그린다.
+   2026-09-26 사장님: 두 번째 줄 두 번째(산호)를 전체 기본색으로, 처음에 있던 하늘색과 자리 바꿈.
+   ⚠️ 하늘색 열쇠를 'sky' → 'blue' 로 바꿨다. 옛 모임 문서에는 만들 때 'sky' 가 «저절로» 적혀 있어서,
+      그 값을 모르는 값으로 두면 새 기본색(산호)으로 보인다(사장님: 하늘색 그대로인 모임도 새 기본색으로).
+      이 폰에서 «일부러» 하늘색을 고른 사람은 AppState.loadProfile 이 'blue' 로 옮겨 적는다. */
+const defaultThemeKey = 'coral';
+
 const clubThemes = <ClubTheme>[
-  ClubTheme('sky', '하늘', Color(0xFF5AA9E6), Color(0xFF2C72AC), Color(0xFFEAF5FF), Color(0xFFCFE9FF), Color(0xFFF3F9FF)),
+  ClubTheme('coral', '산호', Color(0xFFF2707F), Color(0xFFB23142), Color(0xFFFFEEF0), Color(0xFFFFD6DC), Color(0xFFFFF7F8)),
   ClubTheme('mint', '민트', Color(0xFF4FBF9C), Color(0xFF27705A), Color(0xFFE6F8F1), Color(0xFFC9F0E3), Color(0xFFF3FBF7)),
   ClubTheme('forest', '숲', Color(0xFF7AA86B), Color(0xFF456638), Color(0xFFEEF6EA), Color(0xFFD8ECD0), Color(0xFFF6FBF4)),
   ClubTheme('lavender', '라벤더', Color(0xFF9A86E0), Color(0xFF6A55B8), Color(0xFFF0ECFF), Color(0xFFE5DBFF), Color(0xFFF8F6FF)),
   ClubTheme('peach', '복숭아', Color(0xFFF0946A), Color(0xFFAD552B), Color(0xFFFFF1EA), Color(0xFFFFD8C2), Color(0xFFFFF8F3)),
   ClubTheme('lemon', '레몬', Color(0xFFE5B429), Color(0xFF8A6410), Color(0xFFFFF8E2), Color(0xFFFFEEC0), Color(0xFFFFFCF2)),
   ClubTheme('grape', '포도', Color(0xFFC47AB8), Color(0xFF8C3F80), Color(0xFFFDEEFA), Color(0xFFF6DAF0), Color(0xFFFEF7FC)),
-  ClubTheme('coral', '산호', Color(0xFFF2707F), Color(0xFFB23142), Color(0xFFFFEEF0), Color(0xFFFFD6DC), Color(0xFFFFF7F8)),
+  ClubTheme('blue', '하늘', Color(0xFF5AA9E6), Color(0xFF2C72AC), Color(0xFFEAF5FF), Color(0xFFCFE9FF), Color(0xFFF3F9FF)),
   ClubTheme('sage', '세이지', Color(0xFF8FB3A5), Color(0xFF3F6A5C), Color(0xFFEEF5F2), Color(0xFFD7E8E1), Color(0xFFF6FAF8)),
   ClubTheme('cocoa', '코코아', Color(0xFFC08A63), Color(0xFF7D4F2E), Color(0xFFF8EFE7), Color(0xFFECD7C4), Color(0xFFFDF8F4)),
   ClubTheme('denim', '데님', Color(0xFF7B8FC4), Color(0xFF41548A), Color(0xFFEEF1FA), Color(0xFFD8E0F3), Color(0xFFF7F9FD)),
