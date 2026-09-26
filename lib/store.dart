@@ -1181,6 +1181,8 @@ class Store {
     final fee = _open(c, 'fee');
     if (fee != null) {
       if (fee['amount'] != null) fee['amount'] = money(fee['amount']);
+      // 가입비도 돈이다 — 빠져 있어서 글자로 오면 설정·회비 화면이 터졌다(76회차)
+      if (fee['joinAmount'] != null) fee['joinAmount'] = money(fee['joinAmount']);
       _num(fee, 'day'); // 「내는 날」이 글자면 회비 화면이 터진다
       /* 🏦 회비 보내는 곳 — 「은행·계좌번호·예금주」를 한 줄로 적어 둔 글자.
          ⚠️ 글자가 아니면 버린다. 백업을 손으로 고쳤거나 옛 자료면 숫자·배열이 들어올 수 있는데,

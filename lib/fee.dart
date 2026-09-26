@@ -26,7 +26,7 @@ class Fee {
         (실제로 받은 돈은 총무가 장부에 「가입비」로 따로 적는다)
      ⚠️ 칸이 없으면 «아직 안 냄»이다. 옛 회원은 다 그 상태라, 총무가 보고 정리한다. */
   static int joinAmount() =>
-      Store.money(((AppState.i.couple?['fee'] as Map?)?['joinAmount'] as num?)?.toInt() ?? 0);
+      Store.money((AppState.i.couple?['fee'] as Map?)?['joinAmount']); // 글자·엉뚱한 값도 터지지 않게
 
   /// 가입비를 «받는» 모임인가
   static bool get joinOn => joinAmount() > 0;
