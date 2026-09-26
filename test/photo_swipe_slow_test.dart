@@ -99,4 +99,16 @@ void main() {
         reason: '사진을 누르니 한 장짜리 창이 또 떴다');
     expect(counter(t), '1 / 3');
   });
+
+  testWidgets('첫 움직임이 크게 들어와도(빠른 손짓) 사진 위에서 넘어간다', (t) async {
+    await openGallery(t);
+    final g = await t.startGesture(t.getCenter(find.byType(PageView)));
+    for (var i = 0; i < 5; i++) {
+      await g.moveBy(const Offset(-60, 0));
+      await t.pump(const Duration(milliseconds: 16));
+    }
+    await g.up();
+    await t.pumpAndSettle();
+    expect(counter(t), '2 / 3', reason: '빠르게 밀면 사진이 손짓을 가로채 안 넘어간다');
+  });
 }

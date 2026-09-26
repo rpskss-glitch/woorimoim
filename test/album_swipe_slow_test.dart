@@ -71,4 +71,22 @@ void main() {
     await t.pumpAndSettle();
     expect(counter(t), '2 / 3', reason: '누른 뒤에도 넘어가야 한다');
   });
+
+  /* ✋ 빠르게 휙 밀면 손가락이 «한 번에 크게» 움직인 것으로 들어온다(터치 표본이 드문 폰·빠른 손짓).
+     그러면 사진의 확대 손짓이 그 움직임을 넘기기보다 «먼저» 보고 가로채 넘어가지 않았다
+     (2026-09-26 에뮬레이터: 사진 위에서 휙 밀면 안 넘어가고, 까만 바깥에서 밀면 넘어감). */
+  testWidgets('첫 움직임이 크게 들어와도(빠른 손짓) 사진 위에서 넘어간다', (t) async {
+    await open(t);
+    final c = t.getCenter(find.byType(PageView));
+    final g = await t.startGesture(c);
+    await g.moveBy(const Offset(-60, 0));
+    await t.pump(const Duration(milliseconds: 16));
+    for (var i = 0; i < 4; i++) {
+      await g.moveBy(const Offset(-60, 0));
+      await t.pump(const Duration(milliseconds: 16));
+    }
+    await g.up();
+    await t.pumpAndSettle();
+    expect(counter(t), '2 / 3', reason: '빠르게 밀면 사진이 손짓을 가로채 안 넘어간다');
+  });
 }

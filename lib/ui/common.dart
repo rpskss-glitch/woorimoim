@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
@@ -841,8 +842,20 @@ class _ZoomPhotoState extends State<ZoomPhoto> {
     widget.onZoom(z);
   }
 
+  /* ✋ 확대 안 한 동안에는 사진의 확대 손짓이 «한 손가락 밀기»를 가로채지 못하게 문턱을 높인다.
+     ⚠️ 빠르게 휙 밀면 손가락이 한 번에 크게 움직인 것으로 들어오는데(터치 표본이 드문 폰),
+        그러면 사진 안쪽의 확대 손짓이 넘기기(바깥의 PageView)보다 «먼저» 그 움직임을 보고
+        가져가 버려 **사진 위에서는 안 넘어가고 까만 바깥에서만 넘어갔다**(2026-09-26 사장님 안드로이드).
+     확대 손짓의 «밀기 문턱»만 높인다 — 두 손가락 벌리기(확대) 문턱은 따로라 그대로 된다.
+     확대한 뒤에는 원래 문턱으로 돌려 사진을 바로 끌어 볼 수 있게 한다. */
+  static const _idleSlop = DeviceGestureSettings(touchSlop: 80);
+
   @override
-  Widget build(BuildContext context) => InteractiveViewer(
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    return MediaQuery(
+      data: _on ? mq : mq.copyWith(gestureSettings: _idleSlop),
+      child: InteractiveViewer(
         transformationController: _tc,
         panEnabled: _on, // 확대했을 때만 민다 — 아니면 넘기기가 막힌다
         minScale: 1,
@@ -853,7 +866,9 @@ class _ZoomPhotoState extends State<ZoomPhoto> {
                   이미 크게 본 화면에서 톡 누르면 그 위에 **한 장짜리 창**이 또 떠서
                   아무리 밀어도 안 넘어갔다(2026-09-26 사장님 안드로이드 폰). */
             : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain, onTap: () {}),
-      );
+      ),
+    );
+  }
 }
 
 /* 🔢 「몇 개월치인가」를 고르거나 **직접 적는** 시트.
