@@ -184,7 +184,8 @@ class _HomeTabState extends State<HomeTab> {
     final members = st.memberList;
     final startRaw = st.couple?['startDate'] as String?;
     final start = startRaw == null ? null : DateTime.tryParse(startRaw);
-    final years = start == null ? 0 : now.difference(start).inDays ~/ 365;
+    // 「N년째」는 N번째 해 — 꽉 찬 햇수 + 1 (82회차: 3년 반 된 모임이 「3년째」였다)
+    final years = start == null ? 0 : Logic.yearNth(start, now);
     final since = start == null
         ? ''
         : '창단 ${fmtDateFull(startRaw!)}${years >= 1 ? ' · $years년째 함께' : ''} · ';

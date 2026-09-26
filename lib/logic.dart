@@ -255,6 +255,18 @@ class Logic {
     return out;
   }
 
+  /// 🎂 창단 몇 «년째»인지 — 꽉 찬 햇수 + 1 (첫해가 1년째). 앞날이면 0.
+  /// ⚠️ 꽉 찬 햇수를 그대로 쓰면 한 해 모자란다(3년 반 된 모임이 「3년째」 — 82회차).
+  ///    날수를 365로 나누지 않고 «생일이 지났는지»로 센다 — 윤년이 끼어도 어긋나지 않게.
+  static int yearNth(DateTime start, DateTime now) {
+    final s = DateTime(start.year, start.month, start.day);
+    final n = DateTime(now.year, now.month, now.day);
+    if (s.isAfter(n)) return 0;
+    var full = n.year - s.year;
+    if (n.month < s.month || (n.month == s.month && n.day < s.day)) full--;
+    return full + 1;
+  }
+
   /// 처음 날에서 [n]번째 회차의 날짜.
   ///
   /// 매달·매년은 **그 달에 없는 날이면 그 달의 마지막 날로 당긴다** (31일 → 2월은 28/29일).
