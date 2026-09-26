@@ -59,6 +59,27 @@ String? addTagToCaption(String caption, String tag) {
 /// 사진에 남길 수 있는 반응 — 웹과 같은 다섯 가지
 const photoReactions = ['❤️', '😂', '😍', '🥺', '👍'];
 
+/// 이 사진이 «언제»인가 — 날짜 칸이 없으면 올린 때로 본다(웹과 같은 규칙)
+String photoDay(Map<String, dynamic> p) {
+  final d = (p['date'] as String?) ?? '';
+  if (d.length >= 10) return d;
+  final at = (p['createdAt'] as num?)?.toInt();
+  return at == null || at <= 0 ? '' : ymd(DateTime.fromMillisecondsSinceEpoch(at));
+}
+
+/// 📸 사진첩 차례 — 묶을 때와 «같은 날짜»([photoDay])로 세운다. 같은 날이면 늦게 올린 것이 먼저.
+/// ⚠️ 날짜 칸만 보면 빈 칸이 늘 맨 뒤라, 이번 달에 올린 사진이 그 달 끝에 붙고
+///    크게 보기에서 넘길 때 격자와 차례가 달라 다른 달로 튀었다(84회차).
+List<Map<String, dynamic>> sortPhotosByDay(Iterable<Map<String, dynamic>> photos,
+    {bool asc = false}) {
+  final rows = [...photos]..sort((a, b) {
+      final byDate = photoDay(b).compareTo(photoDay(a));
+      if (byDate != 0) return byDate;
+      return ((b['createdAt'] as num?) ?? 0).compareTo((a['createdAt'] as num?) ?? 0);
+    });
+  return asc ? rows.reversed.toList() : rows;
+}
+
 /// 🗑 사진 여러 장 지우기 결과 한 줄 — 지운 장·남의 사진·못 지운 장을 다 말한다.
 /// ⚠️ 예전에는 못 지운 장을 빼고 「2장 지웠어요」만 말해, 고른 3장이 다 지워진 줄 알았다(78회차).
 String bulkDeleteLine({required int done, required int denied, required int failed}) => [
@@ -96,18 +117,9 @@ class _AlbumViewState extends State<AlbumView> {
   /// 정리 모드 — 고른 사진 번호. null 이면 보통 모드
   Set<String>? _pick;
 
-  List<Map<String, dynamic>> get _all {
-    final rows = [...Moderation.hide(AppState.i.by('photo'))]
-      ..sort((a, b) {
-        final da = (a['date'] as String?) ?? '';
-        final db = (b['date'] as String?) ?? '';
-        final byDate = db.compareTo(da);
-        if (byDate != 0) return byDate;
-        return ((b['createdAt'] as num?) ?? 0)
-            .compareTo((a['createdAt'] as num?) ?? 0);
-      });
-    return _asc ? rows.reversed.toList() : rows;
-  }
+  // 묶기와 같은 날짜로 세운다 — 날짜 칸 없는 사진이 맨 끝으로 밀리지 않게(84회차)
+  List<Map<String, dynamic>> get _all =>
+      sortPhotosByDay(Moderation.hide(AppState.i.by('photo')), asc: _asc);
 
   List<Map<String, dynamic>> get _rows {
     var l = _all;
@@ -122,12 +134,7 @@ class _AlbumViewState extends State<AlbumView> {
   }
 
   /// 이 사진이 «언제»인가 — 날짜 칸이 없으면 올린 때로 본다(웹과 같은 규칙)
-  static String _dayOf(Map<String, dynamic> p) {
-    final d = (p['date'] as String?) ?? '';
-    if (d.length >= 10) return d;
-    final at = (p['createdAt'] as num?)?.toInt();
-    return at == null ? '' : ymd(DateTime.fromMillisecondsSinceEpoch(at));
-  }
+  static String _dayOf(Map<String, dynamic> p) => photoDay(p);
 
   void _r() {
     if (mounted) setState(() {});
