@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:woorimoim/demo.dart';
+import 'package:woorimoim/state.dart';
+import 'package:woorimoim/theme.dart';
+import 'package:woorimoim/ui/album.dart';
+
+/* 📚 사진첩 크게 보기(PhotoPage) — 넘기기 (2026-09-26 사장님: 「안드로이드에서 좌우로 안 넘어간다」).
+
+   에뮬레이터에서 찾은 까닭: 크게 본 사진을 **한 번 톡 누르면** 그 위에 «한 장짜리» 보기 창이
+   하나 더 떴다(사진 한 장의 기본 누르기 = 크게 보기). 그 창에는 사진이 한 장뿐이라
+   **아무리 밀어도 안 넘어간다.** 크게 본 사진을 톡 누르는 것은 사람이 늘 하는 일이다. */
+void main() {
+  tearDown(Demo.stop);
+
+  Future<void> open(WidgetTester t) async {
+    t.view.physicalSize = const Size(1080, 2400);
+    t.view.devicePixelRatio = 3.0;
+    addTearDown(t.view.reset);
+    Demo.start();
+    final rows = sortPhotosByDay(AppState.i.by('photo'));
+    await t.pumpWidget(MaterialApp(theme: buildTheme('sky'), home: PhotoPage(rows: rows, start: 0)));
+    await t.pumpAndSettle();
+    await t.runAsync(() async {
+      for (final e in find.byType(Image).evaluate()) {
+        await precacheImage((e.widget as Image).image, e);
+      }
+    });
+    await t.pumpAndSettle();
+  }
+
+  String counter(WidgetTester t) {
+    final f = find.textContaining(' / ');
+    return f.evaluate().isEmpty ? '' : (t.widget<Text>(f.first).data ?? '');
+  }
+
+  testWidgets('곧게 빠르게 밀면 넘어간다', (t) async {
+    await open(t);
+    expect(counter(t), '1 / 3');
+    await t.flingFrom(t.getCenter(find.byType(PageView)), const Offset(-300, 0), 800);
+    await t.pumpAndSettle();
+    expect(counter(t), '2 / 3');
+  });
+
+  testWidgets('천천히 비스듬히 밀어도 넘어간다', (t) async {
+    await open(t);
+    final c = t.getCenter(find.byType(PageView));
+    await t.timedDragFrom(c, const Offset(-150, 27), const Duration(milliseconds: 600));
+    await t.pumpAndSettle();
+    expect(counter(t), '2 / 3', reason: '천천히 비스듬히 밀면 안 넘어간다');
+  });
+
+  testWidgets('한 번 천천히 민 뒤에도 넘기기가 잠기지 않는다', (t) async {
+    await open(t);
+    final c = t.getCenter(find.byType(PageView));
+    await t.timedDragFrom(c, const Offset(-150, 27), const Duration(milliseconds: 600));
+    await t.pumpAndSettle();
+    final before = counter(t);
+    await t.flingFrom(c, const Offset(-300, 0), 800);
+    await t.pumpAndSettle();
+    expect(counter(t), isNot(before), reason: '한 번 천천히 밀고 나면 넘기기가 잠긴다');
+  });
+
+  testWidgets('크게 본 사진을 톡 눌러도 «한 장짜리 창»이 또 뜨지 않는다', (t) async {
+    await open(t);
+    await t.tap(find.byType(Image).first);
+    await t.pumpAndSettle();
+    expect(find.byIcon(Icons.close), findsNothing, reason: '사진을 누르니 넘길 수 없는 한 장짜리 창이 떴다');
+    expect(counter(t), '1 / 3');
+    await t.flingFrom(t.getCenter(find.byType(PageView).first), const Offset(-300, 0), 800);
+    await t.pumpAndSettle();
+    expect(counter(t), '2 / 3', reason: '누른 뒤에도 넘어가야 한다');
+  });
+}

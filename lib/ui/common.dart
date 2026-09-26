@@ -849,7 +849,10 @@ class _ZoomPhotoState extends State<ZoomPhoto> {
         maxScale: 5,
         child: widget.src != null
             ? ClubPhoto.fromSrc(widget.src!, fit: BoxFit.contain)
-            : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain),
+            /* ⚠️ 누르기를 «비워» 둔다 — 사진 한 장의 기본 누르기는 «크게 보기»라,
+                  이미 크게 본 화면에서 톡 누르면 그 위에 **한 장짜리 창**이 또 떠서
+                  아무리 밀어도 안 넘어갔다(2026-09-26 사장님 안드로이드 폰). */
+            : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain, onTap: () {}),
       );
 }
 
