@@ -556,7 +556,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     /* 💳 탈퇴해도 스토어 정기결제는 안 끊긴다 — 이용권을 내는 방장에게 «누르기 전에» 말한다.
        애플 5.1.1(v)가 요구하는 안내이고, 없으면 나간 뒤에도 매달 빠져나가 «몰래 결제»로 보인다
        (2026-09-25 조사). 해지 방법은 이용권 화면과 같은 말로. */
-    final billNote = (Fee.iPay && !Fee.exempt)
+    /* 👑💳 방장 자리가 «넘어가는» 탈퇴면 넘기기와 같은 안내를 한다(86회차) —
+       갱신 영수증이 아무 데로도 안 들어가 끝나는 날쯤 모임이 잠기고, 새 방장이 따로 결제해야 한다.
+       (77회차에 «방장 넘기기»에만 넣고 탈퇴에는 빠져 있었다) */
+    final passNote = handover.isNotEmpty ? Fee.handoverNote() : '';
+    final billNote = passNote.isNotEmpty
+        ? '$passNote\n'
+            '· 아이폰: 설정 → 내 이름 → 구독 → 「우리 모임」 → 구독 취소\n'
+            '· 안드로이드: Play 스토어 → 프로필 → 결제 및 정기 결제 → 정기 결제'
+        : (Fee.iPay && !Fee.exempt)
         ? '\n\n💳 이용권 정기결제는 탈퇴해도 해지되지 않아요 — 스토어에서 직접 해지해야 청구가 멈춰요.\n'
             '· 아이폰: 설정 → 내 이름 → 구독 → 「우리 모임」 → 구독 취소\n'
             '· 안드로이드: Play 스토어 → 프로필 → 결제 및 정기 결제 → 정기 결제'
