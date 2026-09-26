@@ -685,6 +685,19 @@ class _PhotoPageState extends State<PhotoPage> {
                   onZoom: (z) {
                     if (z != _zoomed) setState(() => _zoomed = z);
                   },
+                  /* 🖼 누르면 «전체화면» — 사진첩 사진 «전부»를 담아 거기서도 좌우로 넘긴다.
+                     닫으면 전체화면에서 보던 사진 자리로 따라온다(2026-09-26 사장님: 전체화면에서 안 넘어간다). */
+                  onTap: () => showPhotoPages(
+                    context,
+                    [
+                      for (final r in widget.rows)
+                        PhotoShot(photoId: r['photoId'] as String?, caption: r['caption'] as String?),
+                    ],
+                    _i,
+                    onPage: (p) {
+                      if (_pc.hasClients) _pc.jumpToPage(p);
+                    },
+                  ),
                 ),
               ),
             ),

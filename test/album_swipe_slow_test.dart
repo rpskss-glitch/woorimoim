@@ -61,15 +61,29 @@ void main() {
     expect(counter(t), isNot(before), reason: '한 번 천천히 밀고 나면 넘기기가 잠긴다');
   });
 
-  testWidgets('크게 본 사진을 톡 눌러도 «한 장짜리 창»이 또 뜨지 않는다', (t) async {
+  /* 🖼 사장님이 원한 것(2026-09-26): 사진을 누르면 «전체화면»으로 커지고, 그 전체화면에서도 좌우로 넘어간다.
+     ⚠️ 예전에는 전체화면이 «그 한 장만» 담아 넘어가지 않았다. 한때(1.6.2 초안) 누르기를 아예 없애
+        전체화면 자체가 사라졌다 — 사장님이 쓰던 기능을 없앤 것이다. 전체화면은 두고 «사진 전부»를 담는다. */
+  Finder full() => find.byType(Dialog);
+  String fullCounter(WidgetTester t) {
+    final f = find.descendant(of: full(), matching: find.textContaining(' / '));
+    return f.evaluate().isEmpty ? '' : (t.widget<Text>(f.first).data ?? '');
+  }
+
+  testWidgets('사진을 누르면 전체화면 — 거기서도 좌우로 넘어가고, 닫으면 본 사진 자리로', (t) async {
     await open(t);
     await t.tap(find.byType(Image).first);
     await t.pumpAndSettle();
-    expect(find.byIcon(Icons.close), findsNothing, reason: '사진을 누르니 넘길 수 없는 한 장짜리 창이 떴다');
-    expect(counter(t), '1 / 3');
-    await t.flingFrom(t.getCenter(find.byType(PageView).first), const Offset(-300, 0), 800);
+    expect(full(), findsOneWidget, reason: '사진을 눌러도 전체화면이 안 뜬다');
+    expect(fullCounter(t), '1 / 3', reason: '전체화면이 한 장짜리다 — 넘길 수 없다');
+    final pv = find.descendant(of: full(), matching: find.byType(PageView));
+    await t.flingFrom(t.getCenter(pv), const Offset(-300, 0), 800);
     await t.pumpAndSettle();
-    expect(counter(t), '2 / 3', reason: '누른 뒤에도 넘어가야 한다');
+    expect(fullCounter(t), '2 / 3', reason: '전체화면에서 좌우로 안 넘어간다');
+    await t.tap(find.byIcon(Icons.close));
+    await t.pumpAndSettle();
+    expect(full(), findsNothing);
+    expect(counter(t), '2 / 3', reason: '닫으면 전체화면에서 보던 사진 자리로 돌아와야 한다');
   });
 
   /* ✋ 빠르게 휙 밀면 손가락이 «한 번에 크게» 움직인 것으로 들어온다(터치 표본이 드문 폰·빠른 손짓).

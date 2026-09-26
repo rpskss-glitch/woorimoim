@@ -679,19 +679,22 @@ class PhotoShot {
       한 장 보고 닫고, 다시 찾아 누르고를 되풀이해야 했다 (2026-09-23 요청).
    ⚠️ 확대한 동안에는 **넘기기를 멈춘다** — 안 그러면 확대한 사진을 밀어 보려다
       다음 사진으로 넘어가 버려 확대가 쓸모없어진다 (사진첩에서 겪은 것과 같다). */
-void showPhotoPages(BuildContext context, List<PhotoShot> pages, int start) {
+/// [onPage] — 넘길 때마다 지금 몇 번째인지 알린다(사진첩 크게 보기가 닫힌 뒤 «본 자리»로 따라오게).
+void showPhotoPages(BuildContext context, List<PhotoShot> pages, int start,
+    {ValueChanged<int>? onPage}) {
   if (pages.isEmpty) return;
   final at = start.clamp(0, pages.length - 1);
   showDialog(
     context: context,
-    builder: (d) => _PhotoPagesView(pages: pages, start: at),
+    builder: (d) => _PhotoPagesView(pages: pages, start: at, onPage: onPage),
   );
 }
 
 class _PhotoPagesView extends StatefulWidget {
   final List<PhotoShot> pages;
   final int start;
-  const _PhotoPagesView({required this.pages, required this.start});
+  final ValueChanged<int>? onPage;
+  const _PhotoPagesView({required this.pages, required this.start, this.onPage});
 
   @override
   State<_PhotoPagesView> createState() => _PhotoPagesViewState();
@@ -722,7 +725,10 @@ class _PhotoPagesViewState extends State<_PhotoPagesView> {
                 ? const NeverScrollableScrollPhysics()
                 : const PageScrollPhysics(),
             itemCount: widget.pages.length,
-            onPageChanged: (i) => setState(() => _i = i),
+            onPageChanged: (i) {
+              setState(() => _i = i);
+              widget.onPage?.call(i);
+            },
             /* ⚠️ 닫는 길을 «장마다» 깐다. 넘기는 판(PageView)이 화면을 덮고 있어서
                그 «밑에» 깔아 둔 까만 데는 손이 닿지 않는다 — 예전처럼 한 장에
                한 겹만 깔면 사진 바깥을 눌러도 안 닫힌다(시험이 잡았다).
@@ -811,7 +817,9 @@ class ZoomPhoto extends StatefulWidget {
   final String? photoId;
   final String? src;
   final ValueChanged<bool> onZoom;
-  const ZoomPhoto({super.key, this.photoId, this.src, required this.onZoom});
+  /// 사진을 톡 눌렀을 때 — 없으면 아무것도 안 한다(이미 전체화면인 곳에서 또 겹쳐 띄우지 않게).
+  final VoidCallback? onTap;
+  const ZoomPhoto({super.key, this.photoId, this.src, required this.onZoom, this.onTap});
 
   @override
   State<ZoomPhoto> createState() => _ZoomPhotoState();
@@ -861,11 +869,13 @@ class _ZoomPhotoState extends State<ZoomPhoto> {
         minScale: 1,
         maxScale: 5,
         child: widget.src != null
-            ? ClubPhoto.fromSrc(widget.src!, fit: BoxFit.contain)
-            /* ⚠️ 누르기를 «비워» 둔다 — 사진 한 장의 기본 누르기는 «크게 보기»라,
-                  이미 크게 본 화면에서 톡 누르면 그 위에 **한 장짜리 창**이 또 떠서
-                  아무리 밀어도 안 넘어갔다(2026-09-26 사장님 안드로이드 폰). */
-            : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain, onTap: () {}),
+            ? GestureDetector(
+                onTap: widget.onTap ?? () {},
+                child: ClubPhoto.fromSrc(widget.src!, fit: BoxFit.contain))
+            /* ⚠️ 누르기는 부르는 쪽이 정한다(onTap). 사진 한 장의 «기본» 누르기는 한 장짜리 크게 보기라
+                  그대로 두면 **넘길 수 없는 한 장짜리 창**이 떴다(2026-09-26 사장님 안드로이드 폰).
+                  사진첩 크게 보기는 «사진 전부를 담은» 전체화면을 띄우고, 전체화면 안에서는 아무것도 안 한다. */
+            : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain, onTap: widget.onTap ?? () {}),
       ),
     );
   }
