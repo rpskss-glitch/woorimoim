@@ -404,7 +404,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '회원이 들어오는 법: 이 모임 이름 「${st.couple?['title'] ?? ''}」을 알려주면 됩니다.\n'
+                  '회원이 들어오는 법: 이 모임 이름 「${st.couple?['title'] ?? ''}」'
+                  // 토씨는 받침 따라 — 「하나회」을 이 되면 안 된다(91회차)
+                  '${josa((st.couple?['title'] as String?) ?? '', '을', '를')} 알려주면 됩니다.\n'
                   '대소문자·띄어쓰기가 달라도 찾아와요.',
                   style: const TextStyle(height: 1.6),
                 ),

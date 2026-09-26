@@ -104,7 +104,7 @@ class _FeeScreenState extends State<FeeScreen> {
                 const SizedBox(height: 6),
                 Text(
                   Fee.exempt
-                      ? '「$title」은 이용료를 받지 않는 모임으로 정해져 있어요.'
+                      ? '「$title」${josa(title, '은', '는')} 이용료를 받지 않는 모임으로 정해져 있어요.'
                       : until == null
                           ? '「$title」의 이용권을 켜면 회원 모두가 그대로 쓸 수 있어요.'
                           /* ⏳ 유예 중에 「(지난 날)까지 쓸 수 있어요」라고 하면 괜찮은 줄 안다 (2026-09-25 조사) */

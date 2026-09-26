@@ -136,7 +136,8 @@ class _OwnerGuideCardState extends State<OwnerGuideCard> {
               )
             else ...[
               const SizedBox(height: 4),
-              Text('「$title」을 만드셨습니다. 아래 차례대로 하시면 모임이 바로 굴러갑니다.',
+              // 토씨는 받침 따라 — 「하나회」을 이 되면 안 된다(91회차)
+              Text('「$title」${josa(title, '을', '를')} 만드셨습니다. 아래 차례대로 하시면 모임이 바로 굴러갑니다.',
                   style: TextStyle(height: 1.6, color: Theme.of(context).hintColor)),
               const SizedBox(height: 16),
 
