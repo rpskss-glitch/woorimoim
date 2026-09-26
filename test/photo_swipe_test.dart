@@ -72,7 +72,9 @@ void main() {
     final code = codeOf('lib/ui/common.dart');
     final at = code.indexOf('class _ZoomPhotoState');
     expect(at, greaterThan(0));
-    final body = code.substring(at, (at + 1200).clamp(0, code.length));
+    // 클래스 «전체»를 본다 — 앞 몇 글자만 보면 코드가 늘어날 때 헛실패한다(2026-09-26 확대 영역 넓힘)
+    final end = code.indexOf('\nclass ', at + 10);
+    final body = code.substring(at, end < 0 ? code.length : end);
     expect(body.contains('panEnabled: _on'), isTrue,
         reason: '늘 밀 수 있으면 InteractiveViewer 가 좌우 손짓을 통째로 먹는다');
   });

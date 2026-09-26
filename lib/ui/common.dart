@@ -368,6 +368,35 @@ class _BusyButtonState extends State<BusyButton> {
 }
 
 
+/* ◀ 앱을 끄기 전에 한 번 묻는다 (2026-09-26 사장님: 「앱 종료 전에 한 번 물어보게 해줘」).
+   안드로이드에서 첫 화면의 뒤로 가기는 앱을 그냥 닫았다 — 무심코 누른 회원은 앱이 사라진 줄 안다.
+   ⚠️ 아이폰은 첫 화면에 «뒤로 가기»가 없어 여기로 오지 않는다(홈 버튼·쓸어 올리기는 앱이 막을 수 없다). */
+Future<void> confirmExit(BuildContext context) async {
+  final ok = await confirmSheet(
+    context,
+    '앱을 종료할까요?',
+    '다시 열면 보던 그대로 이어서 볼 수 있어요.',
+    okLabel: '종료',
+  );
+  if (ok) await SystemNavigator.pop();
+}
+
+/// 앱의 «첫 화면»(가입·불러오기·승인 대기)을 감싸 뒤로 가기에 종료를 묻는다.
+/// ⚠️ 본 화면(ShellScreen)은 따로 한다 — 다른 탭에서는 «홈으로» 먼저 가야 해서 겹쳐 감싸면 둘 다 불린다.
+class ExitGuard extends StatelessWidget {
+  final Widget child;
+  const ExitGuard({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) confirmExit(context);
+        },
+        child: child,
+      );
+}
+
 Future<bool> confirmSheet(
   BuildContext context,
   String title,
@@ -734,25 +763,15 @@ class _PhotoPagesViewState extends State<_PhotoPagesView> {
                한 겹만 깔면 사진 바깥을 눌러도 안 닫힌다(시험이 잡았다).
                사진 자체를 누르면 안 닫힌다 — 사진이 위에 있어 까만 판까지 손이 안 닿는다
                (따로 막는 겹을 두지 않는다: 확대 영역이 화면을 채울 때 바깥까지 막아 버린다). */
-            itemBuilder: (c, i) => Stack(
-              children: [
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                ),
-                Center(
-                  child: ZoomPhoto(
-                    key: ValueKey('page$i'),
-                    photoId: widget.pages[i].photoId,
-                    src: widget.pages[i].src,
-                    onZoom: (z) {
-                      if (z != _zoomed) setState(() => _zoomed = z);
-                    },
-                  ),
-                ),
-              ],
+            // 확대 영역이 화면 전체라 «까만 곳 누르면 닫기»도 확대 조각이 받아 넘긴다(onTapOutside)
+            itemBuilder: (c, i) => ZoomPhoto(
+              key: ValueKey('page$i'),
+              photoId: widget.pages[i].photoId,
+              src: widget.pages[i].src,
+              onTapOutside: () => Navigator.pop(context),
+              onZoom: (z) {
+                if (z != _zoomed) setState(() => _zoomed = z);
+              },
             ),
           ),
           SafeArea(
@@ -819,7 +838,10 @@ class ZoomPhoto extends StatefulWidget {
   final ValueChanged<bool> onZoom;
   /// 사진을 톡 눌렀을 때 — 없으면 아무것도 안 한다(이미 전체화면인 곳에서 또 겹쳐 띄우지 않게).
   final VoidCallback? onTap;
-  const ZoomPhoto({super.key, this.photoId, this.src, required this.onZoom, this.onTap});
+  /// 사진 «바깥»(까만 곳)을 톡 눌렀을 때 — 전체화면은 이걸로 닫는다. 없으면 아무것도 안 한다.
+  final VoidCallback? onTapOutside;
+  const ZoomPhoto(
+      {super.key, this.photoId, this.src, required this.onZoom, this.onTap, this.onTapOutside});
 
   @override
   State<ZoomPhoto> createState() => _ZoomPhotoState();
@@ -858,24 +880,57 @@ class _ZoomPhotoState extends State<ZoomPhoto> {
      확대한 뒤에는 원래 문턱으로 돌려 사진을 바로 끌어 볼 수 있게 한다. */
   static const _idleSlop = DeviceGestureSettings(touchSlop: 80);
 
+  /// 두 번 톡 친 자리 — 그 자리를 가운데로 확대한다
+  Offset? _dtAt;
+  static const _dtScale = 2.5;
+
+  /* 🔍 두 번 톡 치면 확대, 확대돼 있으면 원래대로 — 사진 앱에서 사람들이 먼저 해 보는 손짓이다. */
+  void _toggleZoom() {
+    if (_on) {
+      _tc.value = Matrix4.identity();
+      return;
+    }
+    final p = _dtAt ?? Offset.zero;
+    // 친 자리(p)가 확대 뒤에도 같은 자리에 오도록 옮긴다: p·s + t = p → t = -p·(s-1)
+    _tc.value = Matrix4.diagonal3Values(_dtScale, _dtScale, 1)
+      ..setTranslationRaw(-p.dx * (_dtScale - 1), -p.dy * (_dtScale - 1), 0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    return MediaQuery(
-      data: _on ? mq : mq.copyWith(gestureSettings: _idleSlop),
-      child: InteractiveViewer(
-        transformationController: _tc,
-        panEnabled: _on, // 확대했을 때만 민다 — 아니면 넘기기가 막힌다
-        minScale: 1,
-        maxScale: 5,
-        child: widget.src != null
-            ? GestureDetector(
-                onTap: widget.onTap ?? () {},
-                child: ClubPhoto.fromSrc(widget.src!, fit: BoxFit.contain))
-            /* ⚠️ 누르기는 부르는 쪽이 정한다(onTap). 사진 한 장의 «기본» 누르기는 한 장짜리 크게 보기라
-                  그대로 두면 **넘길 수 없는 한 장짜리 창**이 떴다(2026-09-26 사장님 안드로이드 폰).
-                  사진첩 크게 보기는 «사진 전부를 담은» 전체화면을 띄우고, 전체화면 안에서는 아무것도 안 한다. */
-            : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain, onTap: widget.onTap ?? () {}),
+    final photo = widget.src != null
+        ? GestureDetector(
+            onTap: widget.onTap ?? () {},
+            child: ClubPhoto.fromSrc(widget.src!, fit: BoxFit.contain))
+        /* ⚠️ 누르기는 부르는 쪽이 정한다(onTap). 사진 한 장의 «기본» 누르기는 한 장짜리 크게 보기라
+              그대로 두면 **넘길 수 없는 한 장짜리 창**이 떴다(2026-09-26 사장님 안드로이드 폰).
+              사진첩 크게 보기는 «사진 전부를 담은» 전체화면을 띄우고, 전체화면 안에서는 아무것도 안 한다. */
+        : ClubPhoto(photoId: widget.photoId, fit: BoxFit.contain, onTap: widget.onTap ?? () {});
+    /* 🔍 확대 영역은 «사진 크기»가 아니라 «받은 자리 전체»다.
+       ⚠️ 예전에는 사진 크기만큼이라 가로 사진처럼 납작한 사진은 두 손가락을 벌리다
+          한 손가락만 까만 곳에 닿아도 확대가 안 먹었다(2026-09-26 사장님: 「전체화면에서 확대가 안되네」).
+       까만 곳 누르기는 [onTapOutside] 로 부르는 쪽에 넘긴다(전체화면은 그걸로 닫는다). */
+    return LayoutBuilder(
+      builder: (c, box) => MediaQuery(
+        data: _on ? mq : mq.copyWith(gestureSettings: _idleSlop),
+        child: InteractiveViewer(
+          transformationController: _tc,
+          panEnabled: _on, // 확대했을 때만 민다 — 아니면 넘기기가 막힌다
+          minScale: 1,
+          maxScale: 5,
+          child: SizedBox(
+            width: box.maxWidth,
+            height: box.maxHeight,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.onTapOutside,
+              onDoubleTapDown: (d) => _dtAt = d.localPosition,
+              onDoubleTap: _toggleZoom,
+              child: Center(child: photo),
+            ),
+          ),
+        ),
       ),
     );
   }

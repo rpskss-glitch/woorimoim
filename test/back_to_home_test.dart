@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:woorimoim/demo.dart';
 import 'package:woorimoim/state.dart';
 import 'package:woorimoim/theme.dart';
+import 'package:woorimoim/ui/common.dart';
 import 'package:woorimoim/ui/shell.dart';
 
 /* ◀ 안드로이드 뒤로 가기 — 다른 탭에서는 «홈으로», 홈에서만 앱을 닫는다. (2026-09-26 에뮬)
@@ -26,11 +30,56 @@ void main() {
     expect(AppState.i.currentTab, 0, reason: '홈 탭으로 가야 한다');
   });
 
-  testWidgets('홈 탭에서 뒤로 가기 → 앱을 닫게 둔다', (t) async {
+  /* ◀ 2026-09-26 사장님: 「앱 종료 전에 한 번 물어보게 해줘」 — 홈에서 뒤로 가기를 누르면 바로 꺼지던 것을
+     «종료할까요?»로 묻는다. 「취소」면 그대로, 「종료」면 그때 닫는다. */
+  List<String> exits(WidgetTester t) {
+    final calls = <String>[];
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (m) async {
+      calls.add(m.method);
+      return null;
+    });
+    addTearDown(() => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+    return calls;
+  }
+
+  testWidgets('홈 탭에서 뒤로 가기 → 바로 안 닫고 «종료할까요?»', (t) async {
     await open(t);
+    final calls = exits(t);
     AppState.i.openTab.value = 0;
     await t.pumpAndSettle();
     final handled = await t.binding.handlePopRoute();
-    expect(handled, isFalse, reason: '홈에서는 평소처럼 닫혀야 한다');
+    await t.pumpAndSettle();
+    expect(handled, isTrue, reason: '홈에서 뒤로 가기가 묻지도 않고 앱을 닫는다');
+    expect(find.text('앱을 종료할까요?'), findsOneWidget);
+    await t.tap(find.text('취소'));
+    await t.pumpAndSettle();
+    expect(calls.contains('SystemNavigator.pop'), isFalse, reason: '취소했는데 앱이 닫힌다');
+    expect(find.byType(ShellScreen), findsOneWidget);
+  });
+
+  testWidgets('«종료»를 누르면 그때 앱을 닫는다', (t) async {
+    await open(t);
+    final calls = exits(t);
+    await t.binding.handlePopRoute();
+    await t.pumpAndSettle();
+    await t.tap(find.text('종료'));
+    await t.pumpAndSettle();
+    expect(calls, contains('SystemNavigator.pop'), reason: '종료를 눌렀는데 앱이 안 닫힌다');
+  });
+
+  testWidgets('가입 화면·승인 대기 화면도 뒤로 가기에 묻는다', (t) async {
+    exits(t);
+    await t.pumpWidget(MaterialApp(home: ExitGuard(child: const Scaffold(body: Text('가입 화면')))));
+    final handled = await t.binding.handlePopRoute();
+    await t.pumpAndSettle();
+    expect(handled, isTrue);
+    expect(find.text('앱을 종료할까요?'), findsOneWidget);
+  });
+
+  test('앱의 첫 화면(가입·불러오기·승인 대기)이 모두 ExitGuard 로 감싸여 있다', () {
+    final s = File('lib/main.dart').readAsStringSync();
+    expect(s, contains('ExitGuard(child: OnboardingScreen('));
+    expect(s, contains('ExitGuard(child: WaitScreen('));
+    expect(s, contains('ExitGuard(child: _LoadingScreen('));
   });
 }

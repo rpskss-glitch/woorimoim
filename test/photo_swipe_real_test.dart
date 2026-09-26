@@ -95,6 +95,8 @@ void main() {
   testWidgets('사진 «자체»를 누르면 안 닫힌다 — 확대하려다 잘못 닫히지 않게', (t) async {
     await openGallery(t);
     await t.tap(find.byType(Image).first);
+    // 두 번 치기(확대)를 기다리느라 한 번 누르기는 0.3초 뒤에 알린다
+    await t.pump(const Duration(milliseconds: 400));
     await t.pumpAndSettle();
     expect(find.byType(PageView), findsOneWidget, reason: '사진을 눌렀는데 창이 닫혔다');
   });
@@ -102,6 +104,8 @@ void main() {
   testWidgets('바깥을 톡 누르면 닫힌다 (넘기기를 넣어도 그대로)', (t) async {
     await openGallery(t);
     await t.tapAt(const Offset(20, 760));
+    // 두 번 치기(확대)를 기다리느라 한 번 누르기는 0.3초 뒤에 알린다
+    await t.pump(const Duration(milliseconds: 400));
     await t.pumpAndSettle();
     expect(find.byType(PageView), findsNothing);
   });

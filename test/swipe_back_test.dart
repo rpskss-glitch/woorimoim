@@ -79,13 +79,21 @@ void main() {
         reason: '화면전환을 덮어쓰면서 아이폰 몫을 안 남겼다 — 가장자리 스와이프가 죽는다');
   });
 
-  test('나가는 길을 막는 것(PopScope)이 없다', () {
+  test('나가는 길을 막는 것(PopScope)이 없다 — 앱의 «첫 화면» 종료 확인만 예외', () {
     /* `PopScope(canPop: false)` 를 걸면 그 화면에서는 스와이프도 함께 죽는다.
-       쓸 일이 생기면 «저장 안 함/취소» 같은 물음을 띄우고 결국 나갈 수 있게 해야 한다. */
+       쓸 일이 생기면 «저장 안 함/취소» 같은 물음을 띄우고 결국 나갈 수 있게 해야 한다.
+       ✅ 예외: 앱의 첫 화면(가입·승인 대기·본 화면)의 «종료할까요?»(2026-09-26 사장님 요청).
+          첫 화면은 뒤에 돌아갈 화면이 없어 아이폰 가장자리 스와이프가 원래 없다 — 막을 것이 없다.
+          그 두 자리(common.dart 의 ExitGuard, shell.dart 의 본 화면) «말고는» 여전히 금지다. */
+    const allowed = {'common.dart': 1, 'shell.dart': 1};
     for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
       if (!f.path.endsWith('.dart')) continue;
-      expect(f.readAsStringSync().contains('canPop: false'), isFalse,
+      final n = 'canPop: false'.allMatches(f.readAsStringSync()).length;
+      final name = f.uri.pathSegments.last;
+      expect(n, lessThanOrEqualTo(allowed[name] ?? 0),
           reason: '${f.path} 가 나가는 길을 막았다 — 아이폰에서는 갇힌 것처럼 느낀다');
     }
+    expect(File('lib/ui/common.dart').readAsStringSync(), contains('class ExitGuard'),
+        reason: 'common.dart 의 예외는 ExitGuard 몫이다');
   });
 }

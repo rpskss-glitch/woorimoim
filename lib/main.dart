@@ -14,6 +14,7 @@ import 'push.dart';
 import 'state.dart';
 import 'store.dart';
 import 'theme.dart';
+import 'ui/common.dart' show ExitGuard;
 import 'ui/onboarding.dart';
 import 'ui/shell.dart';
 import 'ui/wait.dart';
@@ -525,14 +526,14 @@ class _WooriAppState extends State<WooriApp> {
     final themeKey = st.effectiveTheme; // 내 폰 설정 우선, 없으면 모임 기본
     Widget home;
     if (st.code == null) {
-      home = OnboardingScreen(onJoined: _enter);
+      home = ExitGuard(child: OnboardingScreen(onJoined: _enter)); // 뒤로 가기에 종료를 묻는다
     } else if (st.couple == null) {
       /* 모임 문서가 «아직 안 왔다». 그대로 본 화면을 그리면 회원 0명·통장 0원인
          **텅 빈 모임**이 잠깐 보여서 「내 모임이 사라졌나」로 읽힌다.
          (정말 없어진 방이면 구독이 알려주고 프로필이 지워져 가입 화면으로 간다 — 여기 안 머문다) */
-      home = _LoadingScreen(onRetry: _enter);
+      home = ExitGuard(child: _LoadingScreen(onRetry: _enter));
     } else if (!st.approved) {
-      home = const WaitScreen();
+      home = const ExitGuard(child: WaitScreen());
     } else {
       home = ShellScreen(onTouch: _touch);
     }

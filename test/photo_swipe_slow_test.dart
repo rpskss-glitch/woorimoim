@@ -94,6 +94,7 @@ void main() {
     await t.pumpAndSettle();
     final closeBefore = find.byIcon(Icons.close).evaluate().length;
     await t.tap(find.byType(Image).first);
+    await t.pump(const Duration(milliseconds: 400)); // 두 번 치기를 기다린 뒤 알린다
     await t.pumpAndSettle();
     expect(find.byIcon(Icons.close).evaluate().length, closeBefore,
         reason: '사진을 누르니 한 장짜리 창이 또 떴다');
@@ -110,5 +111,38 @@ void main() {
     await g.up();
     await t.pumpAndSettle();
     expect(counter(t), '2 / 3', reason: '빠르게 밀면 사진이 손짓을 가로채 안 넘어간다');
+  });
+
+  /* 🔍 전체화면에서 «확대가 안 된다» (2026-09-26 사장님 안드로이드).
+     확대 영역이 «사진 크기만큼»이라 가로 사진처럼 납작한 사진은 두 손가락을 벌리다
+     한 손가락만 까만 곳에 닿아도 확대가 안 먹었다 → 확대 영역을 «화면 전체»로.
+     그리고 두 번 톡 치면 확대(한 번 더 치면 원래대로) — 사람들이 먼저 해 보는 손짓이다. */
+  testWidgets('확대 영역이 사진 크기가 아니라 화면 전체다', (t) async {
+    await openGallery(t);
+    final iv = t.getSize(find.byType(InteractiveViewer).first);
+    final pv = t.getSize(find.byType(PageView));
+    expect(iv.height, greaterThan(pv.height * 0.9),
+        reason: '확대 영역이 사진 높이뿐이라 손가락이 까만 곳에 닿으면 확대가 안 된다');
+  });
+
+  testWidgets('두 번 톡 치면 확대, 한 번 더 두 번 치면 원래대로', (t) async {
+    await openGallery(t);
+    double scale() => t
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer).first)
+        .transformationController!
+        .value
+        .getMaxScaleOnAxis();
+    final c = t.getCenter(find.byType(PageView));
+    await t.tapAt(c);
+    await t.pump(const Duration(milliseconds: 60));
+    await t.tapAt(c);
+    await t.pumpAndSettle();
+    expect(scale(), greaterThan(1.5), reason: '두 번 톡 쳐도 확대가 안 된다');
+    expect(find.byType(PageView), findsOneWidget, reason: '두 번 쳤는데 창이 닫혔다');
+    await t.tapAt(c);
+    await t.pump(const Duration(milliseconds: 60));
+    await t.tapAt(c);
+    await t.pumpAndSettle();
+    expect(scale(), lessThan(1.05), reason: '한 번 더 두 번 쳐도 원래대로 안 돌아온다');
   });
 }

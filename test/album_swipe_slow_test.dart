@@ -73,6 +73,8 @@ void main() {
   testWidgets('사진을 누르면 전체화면 — 거기서도 좌우로 넘어가고, 닫으면 본 사진 자리로', (t) async {
     await open(t);
     await t.tap(find.byType(Image).first);
+    // 두 번 치기(확대)를 기다리느라 한 번 누르기는 0.3초 뒤에 알린다
+    await t.pump(const Duration(milliseconds: 400));
     await t.pumpAndSettle();
     expect(full(), findsOneWidget, reason: '사진을 눌러도 전체화면이 안 뜬다');
     expect(fullCounter(t), '1 / 3', reason: '전체화면이 한 장짜리다 — 넘길 수 없다');
