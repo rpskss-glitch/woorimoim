@@ -100,6 +100,25 @@ class Fee {
   static bool get exempt =>
       AppState.i.couple?['free'] == true || Demo.on;
 
+  /* 👑💳 방장을 넘기기 전에 알려야 할 이용권 사정 — 알릴 것이 없으면 빈 글자.
+
+     ⚠️ 이용권은 «넘기는 방장»의 스토어 계정으로 매달 청구된다. 그런데 넘긴 뒤에는
+        · 서버(verifySubApsan)가 **지금 방장**의 영수증만 받고
+        · 앱은 **방장 폰에서만** 스토어 소식을 듣는다(Billing.shouldListen)
+        → 갱신 영수증이 아무 데로도 안 들어가, 옛 방장은 계속 돈을 내는데 끝나는 날 + 사흘 뒤 잠긴다.
+        새 방장은 「구매 복원」을 눌러도 자기 계정이라 되살릴 것이 없다 (77회차).
+     ⚠️ 결제한 사람(`subBy`)이 적혀 있지 않은 옛 자료는 방장이 낸 것으로 본다 — 방장만 결제할 수 있다. */
+  static String handoverNote() {
+    if (exempt || !iPay) return '';
+    final u = until();
+    if (u == null || !u.isAfter(DateTime.now())) return '';
+    final by = AppState.i.couple?['subBy'];
+    if (by is String && by.isNotEmpty && by != AppState.i.slot) return '';
+    return '\n\n💳 이용권은 지금 내 스토어 계정으로 결제되고 있어요. 넘기면 갱신이 이어지지 않아 '
+        '${u.month}월 ${u.day}일쯤 이용권이 끝나요 — 새 방장이 따로 결제해야 하고, '
+        '내 정기결제는 스토어에서 직접 해지해야 청구가 멈춰요.';
+  }
+
   /// 잠겼을 때 회원에게 보여줄 한 줄
   /// ⚠️ 한 번도 결제한 적 없는 방장에게 「끝났어요」라고 하면 안 된다 — 산 적도 없는 것이
   ///    끝났다는 말이 된다(2026-09-25 조사: 새로 만든 모임의 방장이 그렇게 봤다).

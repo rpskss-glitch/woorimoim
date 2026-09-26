@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../comments.dart';
 import '../config.dart';
+import '../fee.dart';
 import '../logic.dart';
 import '../moderation.dart';
 import '../state.dart';
@@ -410,7 +411,7 @@ class _MembersScreenState extends State<MembersScreen> {
     final ok = await confirmSheet(
       context,
       '$name님에게 방장을 넘길까요?',
-      '넘기면 사장님은 운영진이 되고, 되돌리려면 새 방장이 다시 넘겨줘야 해요',
+      '넘기면 사장님은 운영진이 되고, 되돌리려면 새 방장이 다시 넘겨줘야 해요${Fee.handoverNote()}',
       okLabel: '방장 넘기기',
       danger: true,
     );
