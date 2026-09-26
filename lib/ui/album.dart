@@ -539,7 +539,7 @@ class _AlbumViewState extends State<AlbumView> {
     setState(() => _pick = null);
     /* ⚠️ 예전에는 이미 있던 사진·실패가 셈에서 빠져, 다 붙어 있어도 「0장에 붙였어요」였다. */
     toast(context, [
-      '$ok장에 #$tag 를 붙였어요',
+      '$ok장에 #$tag 태그를 붙였어요', // 「#모임 를」 — 태그 받침을 모르니 «태그를»로(92회차)
       if (already > 0) '$already장은 이미 있어요',
       if (full > 0) '$full장은 태그가 가득해 못 붙였어요',
       if (failed > 0) '$failed장은 저장하지 못했어요',
