@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'config.dart';
+import 'logic.dart';
 import 'store.dart';
 
 /// 내 자리가 없어진 «이유» — 회원에게 할 말이 저마다 다르다.
@@ -205,8 +206,16 @@ class AppState extends ChangeNotifier {
     return to is String && to.isNotEmpty && to != uid ? SeatGone.moved : SeatGone.kicked;
   }
 
+  /* 📱➡📱 폰을 바꾼 회원의 옛 번호는 «지금» 번호로 이어 본다 (80회차).
+     회비·출석·차단은 `Logic.liveUid` 로 잇는데 이름·얼굴만 옛 번호를 그대로 찾아,
+     옛 대화에 얼굴 사진이 안 나오고 바꾼 이름·아바타 대신 옛 것이 보였다.
+     지금 회원인 번호는 그대로 둔다(옛 폰으로 돌아온 사람 — movedMap 과 같은 규칙). */
+  String? _live(String? uid) =>
+      uid == null || members.containsKey(uid) ? uid : Logic.liveUid(uid);
+
   /// 탈퇴자 이름도 옛 글에 그대로 보이게 — former에 남겨둔 이름을 쓴다.
-  String nameOf(String? uid) {
+  String nameOf(String? raw) {
+    final uid = _live(raw);
     if (uid == null) return '알 수 없음';
     final m = members[uid] as Map?;
     if (m != null) return (m['name'] as String?) ?? '회원';
@@ -218,21 +227,23 @@ class AppState extends ChangeNotifier {
   /* 👥 얼굴 없이 이름만 늘어놓는 자리(참석·미납 명단, 출석 칸)에 쓸 이름.
      이 앱은 아바타만 다르면 같은 이름 가입을 허락한다 — 이름만 보이면 「김민수, 김민수」가 된다.
      그래서 **지금 회원 중 이름이 겹칠 때만** 아바타를 붙인다(2026-09-26 조사). */
-  String listName(String? uid) {
+  String listName(String? raw) {
+    final uid = _live(raw);
     final name = nameOf(uid);
     final dup = members.entries.where((e) =>
         e.key != uid && e.value is Map && (e.value as Map)['name'] == name);
     return dup.isEmpty ? name : '$name${emojiOf(uid)}';
   }
 
-  String emojiOf(String? uid) {
+  String emojiOf(String? raw) {
+    final uid = _live(raw);
     final m = members[uid] as Map?;
     if (m != null) return (m['emoji'] as String?) ?? defaultAvatar;
     final f = former[uid] as Map?;
     return (f?['emoji'] as String?) ?? defaultAvatar;
   }
 
-  String? photoOf(String? uid) => (members[uid] as Map?)?['photo'] as String?;
+  String? photoOf(String? uid) => (members[_live(uid)] as Map?)?['photo'] as String?;
 
   // ─────────────────────────────── 기기에 남기는 것
 
