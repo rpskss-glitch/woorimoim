@@ -59,6 +59,14 @@ String? addTagToCaption(String caption, String tag) {
 /// 사진에 남길 수 있는 반응 — 웹과 같은 다섯 가지
 const photoReactions = ['❤️', '😂', '😍', '🥺', '👍'];
 
+/// 🗑 사진 여러 장 지우기 결과 한 줄 — 지운 장·남의 사진·못 지운 장을 다 말한다.
+/// ⚠️ 예전에는 못 지운 장을 빼고 「2장 지웠어요」만 말해, 고른 3장이 다 지워진 줄 알았다(78회차).
+String bulkDeleteLine({required int done, required int denied, required int failed}) => [
+      '$done장 지웠어요',
+      if (denied > 0) '$denied장은 남이 올린 사진이라 못 지워요',
+      if (failed > 0) '$failed장은 지우지 못했어요 — 다시 해주세요',
+    ].join(' — ');
+
 /* 사진 한 장 고치기 — 됐으면 참.
    ⚠️ `Store.i.updateItem` 은 «참·거짓»을 안 돌려주고 **던진다.**
       받아 내지 않으면 잠긴 모임·연결 끊김에서 화면이 그대로 빨갛게 된다. */
@@ -540,7 +548,7 @@ class _AlbumViewState extends State<AlbumView> {
     if (!ok || !mounted) return;
     final code = AppState.i.code;
     if (code == null) return;
-    var done = 0, denied = 0;
+    var done = 0, denied = 0, failed = 0;
     for (final id in ids) {
       final p = AppState.i.by('photo').firstWhere((x) => x['id'] == id,
           orElse: () => <String, dynamic>{});
@@ -554,15 +562,18 @@ class _AlbumViewState extends State<AlbumView> {
         done++;
         // 기록을 지웠으면 원본도 정리한다 (안 그러면 아무도 못 보는 파일에 저장료만 나간다)
         Store.i.dropPhotos(Store.photoIdsOf(p));
+      } else {
+        failed++;
       }
     }
     if (!mounted) return;
     setState(() => _pick = null);
-    toast(
-        context,
-        denied > 0
-            ? '$done장 지웠어요 — $denied장은 남이 올린 사진이라 못 지워요'
-            : '$done장 지웠어요');
+    // 하나도 못 지웠으면 「0장 지웠어요」가 아니라 실패 안내 — 잠긴 모임이면 잠긴 까닭을
+    if (done == 0 && failed > 0) {
+      saveFailToast(context, '사진을 지우지 못했어요 — 다시 해주세요');
+    } else {
+      toast(context, bulkDeleteLine(done: done, denied: denied, failed: failed));
+    }
     _r();
   }
 }
