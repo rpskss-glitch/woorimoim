@@ -177,7 +177,12 @@ class _MembersScreenState extends State<MembersScreen> {
 
   Future<void> _reject(Map<String, dynamic> p) async {
     final ok = await confirmSheet(
-        context, '${p['name'] ?? '이 신청'}을 거절할까요?', '거절해도 다시 신청할 수 있어요',
+        context,
+        // 이름 뒤에 「을」을 박으면 「김민수을」이 된다 — 거절하는 것은 «신청»이다(90회차)
+        p['name'] is String && (p['name'] as String).isNotEmpty
+            ? '${p['name']}님의 신청을 거절할까요?'
+            : '이 신청을 거절할까요?',
+        '거절해도 다시 신청할 수 있어요',
         okLabel: '거절');
     if (!ok) return;
     final code = AppState.i.code;
